@@ -1,0 +1,33 @@
+{
+		"name": "visualcard",
+		"version": "0.1.0",
+		"private": true,
+		"dependencies": {
+				"@chakra-ui/icons": "^2.0.8",
+				"@chakra-ui/react": "^2.2.6",
+				"@emotion/cache": "^11.11.0",
+				"@emotion/react": "^11.11.0",
+				"@emotion/styled": "^11.11.0",
+				"framer-motion": "^7.1.0",
+				"next": "^13.2.4",
+				"react": "^18.2.0",
+				"react-dom": "^18.2.0",
+				"react-icons": "^4.10.1",
+				"react-router-dom": "^6.2.1",
+				"typescript": "^4.5.4"
+		},
+		"devDependencies": {
+				"@types/node": "^17.0.42",
+				"@types/react": "^18.0.28",
+				"@types/react-dom": "^18.0.11",
+				"eslint": "8.17.0",
+				"eslint-config-next": "13.2.4",
+				"typescript": "4.7.3"
+		},
+		"scripts": {
+				"dev": "next dev",
+				"build": "next build && next export -o build/",
+				"start": "next start",
+				"lint": "next lint"
+		}
+}

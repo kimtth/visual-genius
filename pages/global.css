@@ -1,0 +1,86 @@
+/* @import url("https://fonts.googleapis.com/css2?family=Fabric+MDL2+Assets:wght@400&display=swap"); */
+@import url("https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap");
+/* @import url("https://fonts.googleapis.com/css2?family=Full+MDL2+Assets:wght@400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Teams+Assets:wght@300&display=swap"); */
+body {
+  margin: 0;
+  line-height: normal;
+}
+:root {
+  /* fonts */
+  --fabricmdl-12: "Fabric MDL2 Assets";
+  --medium-400: "Segoe UI";
+  --fabric-icons-16: "Full MDL2 Assets";
+  --font-teams-assets: "Teams Assets";
+
+  /* font sizes */
+  --fabricmdl-16-size: 16px;
+  --medium-400-size: 14px;
+  --large-700-size: 18px;
+  --segoeui-regular-10-ms-fontsize-10-fontsizessize10-size: 10px;
+  --segoeui-semibold-12-ms-fontsize-12-fontsizessize12-size: 12px;
+  --font-size-7xs: 6px;
+
+  /* Colors */
+  --neutral-fill-layer-neutralfilllayeraltrest: #f7f7f7;
+  --light-theme-rest-border-default-border-3: #f0f0f0;
+  --neutrals-web-gray-30-edebe9: #edebe9;
+  --color-gainsboro-100: #e6e6e6;
+  --light-theme-rest-border-default-border-2: #e0e0e0;
+  --color-gainsboro-200: #d9d9d9;
+  --light-theme-rest-foreground-default-foreground-242424: #242424;
+  --light-fill-color-text-primary: rgba(0, 0, 0, 0.9);
+  --light-theme-component-styles-leftrail-mica-bg: rgba(255, 255, 255, 0.5);
+  --color-darkgray-100: #9e9e9e;
+  --color-darkgray-200: #9d9d9d;
+  --comm-blue-primary-0078d4: #0078d4;
+  --light-theme-rest-background-default-background: #fff;
+  --neutrals-web-gray-160-323130: #323130;
+  --light-theme-rest-foreground-default-foreground-2: #616161;
+  --type-colors-secondary: #605e5c;
+  --light-theme-rest-border-default-border: #d1d1d1;
+  --comm-blue-shade-20-005a9e: #005a9e;
+  --comm-blue-shade-30-004578: #004578;
+  --light-theme-rest-background-green-background: #6bb700;
+  --color-moccasin: #ffe4ae;
+  --color-mistyrose: #f8d8d8;
+  --color-darkseagreen: #bedab1;
+  --color-lightsteelblue: #bec2f6;
+  --brand-onenote-light-tint-40-e6d1f2: #e6d1f2;
+  --neutrals-web-black-000000: #000;
+  --comm-blue-tint-20-c7e0f4: #c7e0f4;
+
+  /* Gaps */
+  --gap-5xs: 8px;
+  --gap-lgi: 19px;
+  --gap-5xl: 24px;
+  --gap-3xs: 10px;
+  --gap-9xs: 4px;
+  --gap-xs: 12px;
+
+  /* Paddings */
+  --padding-5xs: 8px;
+  --padding-xl: 20px;
+  --padding-7xs: 6px;
+  --padding-33xl: 52px;
+  --padding-8xs: 5px;
+  --padding-xs: 12px;
+  --padding-9xs: 4px;
+  --padding-11xs: 2px;
+  --padding-base: 16px;
+  --padding-4xs: 9px;
+
+  /* border radiuses */
+  --br-11xs: 2px;
+  --br-3xs: 10px;
+  --br-9xs: 4px;
+  --br-81xl: 100px;
+  --br-sm: 14px;
+  --br-5xs: 8px;
+  --br-7xs: 6px;
+  --br-5xl: 24px;
+
+  /* Effects */
+  --elevation-depth4: 0px 0.30000001192092896px 0.9px rgba(0, 0, 0, 0.1),
+    0px 1.600000023841858px 3.6px rgba(0, 0, 0, 0.13);
+}
