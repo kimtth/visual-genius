@@ -4,7 +4,7 @@ import { ArrowForwardIcon } from "@chakra-ui/icons";
 import styles from "./index.module.css";
 import Header from "../../components/header/header";
 
-const FrameComponent1: NextPage = () => {
+const CatalogPage: NextPage = () => {
   return (
     <>
       <Header />
@@ -1471,4 +1471,4 @@ const FrameComponent1: NextPage = () => {
   );
 };
 
-export default FrameComponent1;
+export default CatalogPage;

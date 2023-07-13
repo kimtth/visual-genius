@@ -1,40 +1,125 @@
 import type { NextPage } from "next";
-import { Input, Button, InputGroup, InputRightElement } from "@chakra-ui/react";
-import { ArrowForwardIcon } from "@chakra-ui/icons";
-import styles from "./header.module.css";
+import { Box, Button, IconButton, Image, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack } from "@chakra-ui/react";
+import styles from "./sidepanel.module.css";
+import { GrFormEdit } from "react-icons/gr";
+import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
+import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
+import { VscSaveAll } from "react-icons/vsc";
+import { useState } from "react";
 
-const newSidePanel: NextPage = () => {
+const NewSidePanel: NextPage = () => {
+    const [captionToggle, setCaptionToggle] = useState(true);
+
     return (
-        <header className={styles.navheader}>
-            <div className={styles.headerButtonRegion}>
-                <div className={styles.buttonBadgeButtonBadge}>
-                    <div className={styles.persona}>
-                        <img
-                            className={styles.personaContainerIcon}
-                            alt=""
-                            src="/personacontainer.svg"
-                        />
-                    </div>
-                </div>
-            </div>
-            <div className={styles.staticContainerWaffleName}>
-                <div className={styles.waffleWaffle}>
-                    {/* <div className={styles.stringIcon}></div> */}
-                </div>
-                <div className={styles.productNameStack}>
-                    <div className={styles.stringProductName}>Product name</div>
-                </div>
-            </div>
-            <Input
-                className={styles.o365ShellSearchSearch}
-                bg='white'
-                color='gray'
-                variant="outline"
-                placeholder="Search"
-                size='sm'
-            />
-        </header>
+        <>
+            <VStack position={'absolute'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
+                <Box display="flex" alignItems="center" paddingLeft={'5px'}>
+                    <Text fontWeight='bold' fontSize='2xl'>Patterns</Text>
+                    <IconButton aria-label='Edit'
+                        variant="ghost"
+                        colorScheme='gray'
+                        icon={<GrFormEdit />} />
+                </Box>
+                <Box display="flex" alignItems="center">
+                    <IconButton aria-label='Back'
+                        variant="ghost"
+                        colorScheme='gray'
+                        icon={<HiChevronLeft />} />
+                    <Text fontWeight='bold' fontSize='md'>Back</Text>
+                </Box>
+                <Box>
+                    <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Prompts</Text>
+                    <Textarea
+                        margin={'5px'} 
+                        placeholder='Hint text'
+                        minHeight={"30vh"}
+                        variant={'filled'}
+                        resize="none" />
+                </Box>
+                {/* Number of cards */}
+                <Box>
+                    <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Number of cards</Text>
+                    <Box>
+                        <NumberInput size='sm' min={1} defaultValue={1}>
+                            <NumberInputField />
+                            <NumberInputStepper>
+                                <NumberIncrementStepper />
+                                <NumberDecrementStepper />
+                            </NumberInputStepper>
+                        </NumberInput>
+                    </Box>
+                </Box>
+                {/* Number of cards */}
+                {/* Toggle */}
+                <Box display="flex" alignItems="center">
+                    <Text padding={'5px'} fontWeight='bold' fontSize='sm' marginRight="15rem">Caption</Text>
+                    <Switch size='md' isChecked={captionToggle} onChange={() => setCaptionToggle(!captionToggle)} />
+                </Box>
+                {/* Toggle */}
+                {/* Grid Size */}
+                <Box>
+                    <Box>
+                        <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Grid size</Text>
+                    </Box>
+                    <Box display="flex" alignItems="center">
+                        <Box>
+                            <NumberInput size='sm' min={1} defaultValue={1}>
+                                <NumberInputField />
+                                <NumberInputStepper>
+                                    <NumberIncrementStepper />
+                                    <NumberDecrementStepper />
+                                </NumberInputStepper>
+                            </NumberInput>
+                        </Box>
+                        <Image alt="" src="/dismiss.svg" />
+                        <Box>
+                            <NumberInput size='sm' min={1} defaultValue={1}>
+                                <NumberInputField />
+                                <NumberInputStepper>
+                                    <NumberIncrementStepper />
+                                    <NumberDecrementStepper />
+                                </NumberInputStepper>
+                            </NumberInput>
+                        </Box>
+                    </Box>
+                </Box>
+                {/* Grid Size */}
+                {/* Icon Button */}
+                <Box padding={'2vh'}>
+                    <Button colorScheme='messenger' size='sm' width='95%'>
+                        Generate
+                    </Button>
+                </Box>
+                <Box display="flex" alignItems="center" position={'fixed'} bottom={0}>
+                    <Box marginRight="10rem">
+                        <IconButton aria-label='Delete'
+                            variant="ghost"
+                            colorScheme='red'
+                            icon={<HiOutlineTrash />} />
+                    </Box>
+                    <Box>
+                        <IconButton aria-label='Share'
+                            variant="ghost"
+                            colorScheme='blue'
+                            icon={<VscSaveAll/>} />
+                        <IconButton aria-label='Share'
+                            variant="ghost"
+                            colorScheme='blue'
+                            icon={<LiaShareSquareSolid />} />
+                        <IconButton aria-label='Download'
+                            variant="ghost"
+                            colorScheme='blue'
+                            icon={<LiaDownloadSolid />} />
+                        <IconButton aria-label='Print'
+                            variant="ghost"
+                            colorScheme='blue'
+                            icon={<LiaPrintSolid />} />
+                    </Box>
+                </Box>
+                {/* Icon Button */}
+            </VStack>
+        </>
     )
 }
 
-export default newSidePanel;
+export default NewSidePanel;
