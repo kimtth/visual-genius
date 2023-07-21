@@ -1,15 +1,15 @@
 .freWelcomeScreenSimple {
   position: absolute;
-  top: 305px;
-  left: 868px;
+  top: 30vh;
+  left: 45vw;
   width: 488px;
   height: 351px;
   overflow: hidden;
 }
 .label4 {
   position: absolute;
-  top: 684px;
-  left: 846px;
+  top: 70vh;
+  left: 50vw;
   line-height: 20px;
   font-weight: 600;
   display: inline-block;
