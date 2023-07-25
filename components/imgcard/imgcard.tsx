@@ -3,7 +3,7 @@ import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconB
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
 
-const ImageCard: NextPage = () => {
+const ImageCard: NextPage = (item, index) => {
 
     const footerIconsLyaoutSytle = {
         justifyContent: 'flex-end'

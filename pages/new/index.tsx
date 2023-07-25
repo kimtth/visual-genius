@@ -2,7 +2,6 @@ import type { NextPage } from "next";
 import styles from "./index.module.css";
 import Header from "../../components/header/header";
 import NewSidePanel from "../../components/sidepanel/newsidepanel";
-import { Box, Button } from "@chakra-ui/react";
 
 const NewPage: NextPage = () => {
 

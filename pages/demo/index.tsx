@@ -1,5 +1,5 @@
 import type { NextPage } from "next";
-import { Input, Button } from "@chakra-ui/react";
+import { Button } from "@chakra-ui/react";
 import { ArrowForwardIcon } from "@chakra-ui/icons";
 import styles from "./index.module.css";
 import Header from "../../components/header/header";

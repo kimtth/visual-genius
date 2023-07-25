@@ -1,31 +1,47 @@
 import type { NextPage } from "next";
-import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack, Checkbox, Box, Flex, Spacer } from "@chakra-ui/react";
-import { HiOutlineTrash } from "react-icons/hi";
-import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
+import dynamic from 'next/dynamic';
+import { Card, CardBody, Image, Checkbox, Flex, Spacer } from "@chakra-ui/react";
 
 interface PhotoProps {
+    item?: any;
+    index?: any;
     imgPath: string;
 }
 
-const PhotoCard: NextPage<PhotoProps> = ({ imgPath }) => {
+const Draggable = dynamic(
+    async () => {
+        const mod = await import('react-beautiful-dnd');
+        return mod.Draggable;
+    },
+    { ssr: false },
+);
 
+
+const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
     return (
-        <div>
-            <Card maxW='sm' >
-                <CardBody>
-                    <Flex>
-                        <Checkbox size='sm' colorScheme='green' />
-                        <Spacer/>
-                        <Image
-                            src={imgPath ? imgPath : "-"}
-                            borderRadius='lg'
-                            objectFit='cover'
-                            maxW={{ sm: '10vw' }}
-                        />
-                    </Flex>
-                </CardBody>
-            </Card>
-        </div>
+        // The draggableId should match the key of the component
+        <Draggable key={item.id} draggableId={item.id} index={index}>
+            {(provided) => (
+                <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                >
+                    <Card maxW='sm' style={{margin: '3px'}}>
+                        <CardBody>
+                            <Flex align="center">
+                                <Image
+                                    src={imgPath ? imgPath : "-"}
+                                    borderRadius='lg'
+                                    objectFit='cover'
+                                    maxW={{ sm: '10vw' }}
+                                />
+                            </Flex>
+                        </CardBody>
+                    </Card>
+                </div>
+            )}
+        </Draggable>
     )
 }
 

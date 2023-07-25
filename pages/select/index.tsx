@@ -1,9 +1,7 @@
 import type { NextPage } from "next";
-import styles from "./index.module.css";
 import Header from "../../components/header/header";
-import { ArrowForwardIcon } from "@chakra-ui/icons";
-import { Button, Text, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs, Box, VStack, IconButton, Divider, Checkbox, HStack, Flex, ButtonGroup } from "@chakra-ui/react";
-import PhotoCard from "../../components/imgcard/photocard";
+import { Button, Text, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs, Box, VStack, Divider, Checkbox, HStack, ButtonGroup } from "@chakra-ui/react";
+import ResultCard from "../../components/imgcard/resultcard";
 import { BiUpload } from "react-icons/bi";
 
 const FrameComponent1: NextPage = () => {
@@ -37,42 +35,42 @@ const FrameComponent1: NextPage = () => {
               <TabPanels height={'72vh'}>
                 <TabPanel>
                   <SimpleGrid spacing={4} columns={5}>
-                    <PhotoCard imgPath="rectangle-3469579@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469579@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469579@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469579@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469579@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469579@2x.png" />
+                    <ResultCard imgPath="rectangle-3469579@2x.png" />
+                    <ResultCard imgPath="rectangle-3469579@2x.png" />
+                    <ResultCard imgPath="rectangle-3469579@2x.png" />
+                    <ResultCard imgPath="rectangle-3469579@2x.png" />
+                    <ResultCard imgPath="rectangle-3469579@2x.png" />
+                    <ResultCard imgPath="rectangle-3469579@2x.png" />
                   </SimpleGrid>
                 </TabPanel>
                 <TabPanel>
                   <SimpleGrid spacing={4} columns={5}>
-                    <PhotoCard imgPath="rectangle-3469580@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469580@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469580@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469580@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469580@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469580@2x.png" />
+                    <ResultCard imgPath="rectangle-3469580@2x.png" />
+                    <ResultCard imgPath="rectangle-3469580@2x.png" />
+                    <ResultCard imgPath="rectangle-3469580@2x.png" />
+                    <ResultCard imgPath="rectangle-3469580@2x.png" />
+                    <ResultCard imgPath="rectangle-3469580@2x.png" />
+                    <ResultCard imgPath="rectangle-3469580@2x.png" />
                   </SimpleGrid>
                 </TabPanel>
                 <TabPanel>
                   <SimpleGrid spacing={4} columns={5}>
-                    <PhotoCard imgPath="rectangle-3469581@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469581@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469581@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469581@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469581@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469581@2x.png" />
+                    <ResultCard imgPath="rectangle-3469581@2x.png" />
+                    <ResultCard imgPath="rectangle-3469581@2x.png" />
+                    <ResultCard imgPath="rectangle-3469581@2x.png" />
+                    <ResultCard imgPath="rectangle-3469581@2x.png" />
+                    <ResultCard imgPath="rectangle-3469581@2x.png" />
+                    <ResultCard imgPath="rectangle-3469581@2x.png" />
                   </SimpleGrid>
                 </TabPanel>
                 <TabPanel>
                   <SimpleGrid spacing={4} columns={5}>
-                    <PhotoCard imgPath="rectangle-3469582@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469582@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469582@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469582@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469582@2x.png" />
-                    <PhotoCard imgPath="rectangle-3469582@2x.png" />
+                    <ResultCard imgPath="rectangle-3469582@2x.png" />
+                    <ResultCard imgPath="rectangle-3469582@2x.png" />
+                    <ResultCard imgPath="rectangle-3469582@2x.png" />
+                    <ResultCard imgPath="rectangle-3469582@2x.png" />
+                    <ResultCard imgPath="rectangle-3469582@2x.png" />
+                    <ResultCard imgPath="rectangle-3469582@2x.png" />
                   </SimpleGrid>
                 </TabPanel>
               </TabPanels>
