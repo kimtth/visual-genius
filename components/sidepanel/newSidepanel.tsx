@@ -12,7 +12,7 @@ const NewSidePanel: NextPage = () => {
 
     return (
         <>
-            <VStack position={'absolute'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
+            <VStack position={'fixed'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
                 <Box display="flex" alignItems="center" paddingLeft={'5px'}>
                     <Text fontWeight='bold' fontSize='2xl'>Patterns</Text>
                     <IconButton aria-label='Edit'
@@ -52,8 +52,8 @@ const NewSidePanel: NextPage = () => {
                 {/* Number of cards */}
                 {/* Toggle */}
                 <Box display="flex" alignItems="center">
-                    <Text padding={'5px'} fontWeight='bold' fontSize='sm' marginRight="15rem">Caption</Text>
-                    <Switch size='md' isChecked={captionToggle} onChange={() => setCaptionToggle(!captionToggle)} />
+                    <Text padding={'5px'} fontWeight='bold' fontSize='sm' marginRight="8vw">Caption</Text>
+                    <Switch size='md' isChecked={captionToggle} onChange={() => setCaptionToggle(!captionToggle)} overflow={"auto"}/>
                 </Box>
                 {/* Toggle */}
                 {/* Grid Size */}

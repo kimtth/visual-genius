@@ -1,8 +1,8 @@
 import React from "react";
 import dynamic from 'next/dynamic';
-import PhotoCard from "../../components/imgcard/photocard";
+import PhotoCard from "../imgcard/photocard";
 import { useSelector, useDispatch } from "react-redux";
-import { setDataPayload } from "../../components/state/settings";
+import { setDataPayload } from "../state/settings";
 
 
 const Container = ({ children }: any) => (

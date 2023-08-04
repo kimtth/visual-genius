@@ -3,8 +3,6 @@
 
 Most children with autism spectrum disorders (ASD) are visual learners. They tend to comprehend visual information better than auditory input, making visual supports more effective for their learning process.
 
-- VisualGenius means Visual + Generative AI + Me & Us.
-
 - What Will You Do in This Application?
 
   1. Vector-based image search
@@ -41,6 +39,10 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
 ### Generate and Search Page
 
   <img src="docs/generate.png" alt="generate" width="500"/> 
+
+### Drag and Drop
+
+  <img src="docs/dnd.png" alt="dnd" width="500"/> 
 
 ### Search Result Page
 

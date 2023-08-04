@@ -8,13 +8,14 @@ const FrameComponent1: NextPage = () => {
 
   return (
     <>
-      <Header />
+      <Box position="sticky" w="100%" top="0" zIndex="20">
+        <Header />
+      </Box>
       <>
         <VStack position={'absolute'} top={'8vh'} left={'20px'} padding={'5px'} alignItems="left">
           <Box display="flex" alignItems="center" paddingLeft={'5px'}>
             <Text fontWeight='bold' fontSize='2xl'>Select your photos</Text>
           </Box>
-          {/* <Box display="flex" top={1} paddingLeft={'5px'} textAlign={"right"}> */}
           <HStack justifyContent="right">
             <Button aria-label='Upload'
               leftIcon={<BiUpload />}

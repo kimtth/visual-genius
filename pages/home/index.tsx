@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import Header from "../../components/header/header";
 import ImageCard from "../../components/imgcard/imgcard";
-import { Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react'
+import { Box, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react'
 
 
 const FrameComponent1: NextPage = () => {
@@ -12,7 +12,9 @@ const FrameComponent1: NextPage = () => {
 
   return (
     <div>
-      <Header />
+      <Box position="sticky" w="100%" top="0" zIndex="20">
+        <Header />
+      </Box>
       <Center style={kbStyles}>
         <Tabs>
           <TabList>
