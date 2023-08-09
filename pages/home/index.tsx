@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import Header from "../../components/header/header";
-import ImageCard from "../../components/imgcard/imgcard";
+import ImageCard from "../../components/imgcard/imgGrpCard";
 import { Box, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react'
 
 

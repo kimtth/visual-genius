@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import styles from "./index.module.css";
 import Header from "../../components/header/header";
-import NewSidePanel from "../../components/sidepanel/newsidepanel";
+import NewSidePanel from "../../components/sidepanel/sidepanel";
 import DragDropBoard from "../../components/dnd";
 
 import React from "react";

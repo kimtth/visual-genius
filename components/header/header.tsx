@@ -1,16 +1,27 @@
 import type { NextPage } from "next";
-import { HStack, Box, Text, Input, InputGroup, Image, InputRightElement, Icon } from "@chakra-ui/react";
+import { HStack, Box, Text, Input, InputGroup, Image, InputRightElement, Icon, IconButton } from "@chakra-ui/react";
 import { SiMicrosoftbing } from 'react-icons/si';
 import { FiSearch } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 
 const Header: NextPage = () => {
+    const { push } = useRouter();
+    const [searchKeyword, setSearchKeyword] = useState('');
+
+    const handleSearch = () => {
+        if (searchKeyword) {
+            push('/select')
+        }
+    }
+
     return (
         <>
             <HStack justifyContent='space-between' width={'100%'} height={'49px'} backgroundColor={'var(--comm-blue-primary-0078d4)'}>
                 <Box display="flex" alignItems="center" p={4} >
                     <Icon as={SiMicrosoftbing} w={5} h={5} color='white' />
-                    <Text fontWeight='bold' color="white">ImagiGenius: Communication Assistant</Text>
+                    <Text fontWeight='bold' color="white">Visual Genius: Communication Assistant</Text>
                 </Box>
                 <Box>
                     <InputGroup size='sm'>
@@ -21,11 +32,19 @@ const Header: NextPage = () => {
                             placeholder="Search"
                             size='sm'
                             width={'35vw'}
+                            value={searchKeyword}
+                            onChange={(e) => { setSearchKeyword(e.target.value) }}
                         />
-                        <InputRightElement
-                            pointerEvents="none"
-                            children={<FiSearch color='gray.500' />}
-                        />
+                        <InputRightElement>
+                            <IconButton aria-label='Edit'
+                                variant="ghost"
+                                colorScheme='gray'
+                                icon={<FiSearch
+                                    color='gray.500'
+                                />}
+                                onClick={handleSearch}
+                            />
+                        </InputRightElement>
                     </InputGroup>
                 </Box>
                 <Box display="flex" alignItems="center" marginRight={'3rem'}>

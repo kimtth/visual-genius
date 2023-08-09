@@ -1,5 +1,5 @@
 import { createAction, handleActions } from 'redux-actions';
-import { dataFromBackend } from '../data/ImgCardData';
+import { dataFromBackend } from '../data/ImgGenData';
 
 const TITLE = 'settings/TITLE ';
 const TEXT_VISIBLE = 'settings/TEXTVISIBLE ';

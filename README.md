@@ -11,7 +11,7 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
 
 ## Why did you start planning this project?
 
-1. <b>Personal experience</b>: During my participation in a project last year, I took part in an activity involving the creation of a visual card. The activity required cutting an image from a book and covering it with a laminated sheet, which was then heated to attach it to the image. However, I found this process to be extremely time-consuming and challenging considering the final outcome.
+1. <b>Personal experience</b>: I took part in an activity involving the creation of a visual card. The activity required cutting an image from a book and covering it with a laminated sheet, which was then heated to attach it to the image. However, I found this process to be extremely time-consuming and challenging considering the final outcome.
 
 2. <b>Market demands</b>: My team's market research revealed that the existing products in this particular niche market were both expensive and of inferior quality. It was apparent that there was an opportunity to provide a better solution for consumers.
 
