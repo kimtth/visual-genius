@@ -5,14 +5,13 @@ const TITLE = 'settings/TITLE ';
 const TEXT_VISIBLE = 'settings/TEXTVISIBLE ';
 const DATA_PAYLOAD = 'settings/DATAPAYLOAD';
 
-export const optTitle = createAction(TITLE, (string: any) => string);
+export const optionTitle = createAction(TITLE, (string: any) => string);
 export const setTextVisible = createAction(TEXT_VISIBLE);
 export const setDataPayload = createAction(DATA_PAYLOAD, (any: any) => any);
 
 const initialState = {
     titleStr: 'Our feelings',
     textvisible: true,
-    dottedvisible: false,
     dataPayload: dataFromBackend
 }
 

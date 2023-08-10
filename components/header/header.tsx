@@ -3,16 +3,20 @@ import { HStack, Box, Text, Input, InputGroup, Image, InputRightElement, Icon, I
 import { SiMicrosoftbing } from 'react-icons/si';
 import { FiSearch } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from "react";
 
 
 const Header: NextPage = () => {
     const { push } = useRouter();
     const [searchKeyword, setSearchKeyword] = useState('');
+    const searchParams = useSearchParams()
+    const sk = searchParams.get('sk')
 
     const handleSearch = () => {
         if (searchKeyword) {
-            push('/select')
+            // Save a last searched keyword to next page
+            push(`/select?sk=${searchKeyword}`)
         }
     }
 
@@ -32,7 +36,7 @@ const Header: NextPage = () => {
                             placeholder="Search"
                             size='sm'
                             width={'35vw'}
-                            value={searchKeyword}
+                            value={searchKeyword ? searchKeyword : sk!}
                             onChange={(e) => { setSearchKeyword(e.target.value) }}
                         />
                         <InputRightElement>

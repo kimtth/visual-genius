@@ -1,14 +1,14 @@
 import type { NextPage } from "next";
 import Header from "../../components/header/header";
 import ImageCard from "../../components/imgcard/imgGrpCard";
-import { Box, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react'
+import { Box, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
+import { items } from '../../components/data/homeData'
 
+const kbStyles = {
+  paddingTop: '5%'
+}
 
-const FrameComponent1: NextPage = () => {
-
-  const kbStyles = {
-    paddingTop: '5%'
-  }
+const Home: NextPage = () => {
 
   return (
     <div>
@@ -23,12 +23,14 @@ const FrameComponent1: NextPage = () => {
           <TabPanels>
             <TabPanel>
               <SimpleGrid columns={3} spacingX='30px' spacingY='10px'>
-                <ImageCard />
-                <ImageCard />
-                <ImageCard />
-                <ImageCard />
-                <ImageCard />
-                <ImageCard />
+                {
+                  items.map((item, index) => {
+                    return (
+                      <ImageCard key={item['key']} item={item}/>
+                    )
+                  }
+                  )
+                }
               </SimpleGrid>
             </TabPanel>
           </TabPanels>
@@ -38,4 +40,4 @@ const FrameComponent1: NextPage = () => {
   );
 };
 
-export default FrameComponent1;
+export default Home;

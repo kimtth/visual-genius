@@ -1,27 +1,50 @@
 export const items = [
     {
         key: '1',
-        header: 'Fruit',
-        content: 'Lemon, Apple, ...',
+        category: 'Object Recognition',
+        title: 'Our feelings',
+        difficulty: 'Easy',
+        imgNum: 6,
+        contentUrl: ['avatarimage1@2x.png', 'avatarimage4@2x.png', 'avatarimage8@2x.png']
     },
     {
         key: '2',
-        header: 'Car',
-        content: 'Truck, Jeep, ...',
+        category: 'Object Recognition',
+        title: 'Nature',
+        difficulty: 'Easy',
+        imgNum: 6,
+        contentUrl: ['nature.png', 'nature.png', 'nature1.png']
     },
     {
         key: '3',
-        header: 'Train',
-        content: 'Tomas, Yamanote, Shinkansen ..',
+        category: 'Pattern Recognition',
+        title: 'Trains',
+        difficulty: 'Medium',
+        imgNum: 8,
+        contentUrl: ['avatarimage1@2x.png', 'avatarimage4@2x.png', 'avatarimage8@2x.png']
     },
     {
         key: '4',
-        header: 'Emotion',
-        content: 'Smile, Happy, Positive ..',
+        category: 'Pattern Recognition',
+        title: 'Cars',
+        difficulty: 'Medium',
+        imgNum: 6,
+        contentUrl: ['nature.png', 'nature.png', 'nature1.png']
     },
     {
         key: '5',
-        header: 'Nature',
-        content: 'Flower, Bee',
+        category: 'Object Recognition',
+        title: 'Fruits',
+        difficulty: 'Easy',
+        imgNum: 9,
+        contentUrl: ['avatarimage1@2x.png', 'avatarimage4@2x.png', 'avatarimage8@2x.png']
+    },
+    {
+        key: '6',
+        category: 'Object Recognition',
+        title: 'Our feelings',
+        difficulty: 'Medium',
+        imgNum: 3,
+        contentUrl: ['avatarimage1@2x.png', 'avatarimage4@2x.png', 'avatarimage8@2x.png']
     },
 ]

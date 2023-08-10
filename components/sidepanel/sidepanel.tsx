@@ -6,6 +6,8 @@ import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icon
 import { VscSaveAll } from "react-icons/vsc";
 import { FC, useState } from "react";
 import { useRouter } from "next/navigation";
+import BasicModal from "../dialog/modal";
+import { handleAction } from "redux-actions";
 
 
 interface AlertPopupProps {
@@ -26,6 +28,9 @@ const NewSidePanel: NextPage = () => {
     const { push } = useRouter();
     const [captionToggle, setCaptionToggle] = useState(true);
     const [showAlert, setShowAlert] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [modalTitle, setModalTitle] = useState("");
+    const [modalMessageType, setModalMessageType] = useState("");
 
     const [alertMessage, setAlertMessage] = useState("");
     const [prompts, setPrompts] = useState("");
@@ -34,13 +39,20 @@ const NewSidePanel: NextPage = () => {
     const [numCard, setNumCard] = useState(1); // number of cards
     const [rowNumCard, setRowNumCard] = useState(1); // number of cards per row
     const [colNumCard, setColNumCard] = useState(1); // number of cards per column
-    
+
     const handleAlert = (showAlert: boolean) => {
         setShowAlert(showAlert);
 
         setTimeout(() => {
             setShowAlert(false);
         }, 2000);
+    }
+
+    const handleModal = (modalTitle: string, modalMessageType: string) => {
+        setModalTitle(modalTitle);
+        setModalMessageType(modalMessageType);
+
+        setShowModal(true);
     }
 
     return (
@@ -50,6 +62,11 @@ const NewSidePanel: NextPage = () => {
                     <AlertPopup message={alertMessage} />
                 </>
                 : null
+            }
+            {showModal ?
+                <>
+                    <BasicModal open={showModal} setOpen={setShowModal} title={modalTitle} messageType={modalMessageType} />
+                </> : null
             }
             <VStack position={'fixed'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
                 <Box display="flex" alignItems="center" paddingLeft={'5px'}>
@@ -211,25 +228,35 @@ const NewSidePanel: NextPage = () => {
                         <IconButton aria-label='Delete'
                             variant="ghost"
                             colorScheme='red'
-                            icon={<HiOutlineTrash />} />
+                            icon={<HiOutlineTrash />}
+                            onClick={() => { handleModal('Delete', 'delete') }}
+                        />
                     </Box>
                     <Box>
+                        <IconButton aria-label='Save'
+                            variant="ghost"
+                            colorScheme='blue'
+                            icon={<VscSaveAll />}
+                            onClick={() => { handleModal('Save', 'save') }}
+                        />
                         <IconButton aria-label='Share'
                             variant="ghost"
                             colorScheme='blue'
-                            icon={<VscSaveAll />} />
-                        <IconButton aria-label='Share'
-                            variant="ghost"
-                            colorScheme='blue'
-                            icon={<LiaShareSquareSolid />} />
+                            icon={<LiaShareSquareSolid />}
+                            onClick={() => { handleModal('Share', 'share') }}
+                        />
                         <IconButton aria-label='Download'
                             variant="ghost"
                             colorScheme='blue'
-                            icon={<LiaDownloadSolid />} />
+                            icon={<LiaDownloadSolid />}
+                            onClick={() => { handleModal('Download', 'download') }}
+                        />
                         <IconButton aria-label='Print'
                             variant="ghost"
                             colorScheme='blue'
-                            icon={<LiaPrintSolid />} />
+                            icon={<LiaPrintSolid />}
+                            onClick={() => { handleModal('Print', 'print') }}
+                        />
                     </Box>
                 </Box>
                 {/* Icon Button */}

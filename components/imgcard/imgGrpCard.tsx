@@ -2,40 +2,67 @@ import type { NextPage } from "next";
 import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack } from "@chakra-ui/react";
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import BasicModal from "../dialog/modal";
 
-const ImageCard: NextPage = (item, index) => {
+const footerIconsLyaoutSytle = {
+    justifyContent: 'flex-end'
+}
 
-    const footerIconsLyaoutSytle = {
-        justifyContent: 'flex-end'
+interface ImageCardProps {
+    item: any;
+}
+
+const ImageCard: NextPage<ImageCardProps> = ({ item }) => {
+    const { push } = useRouter();
+    const [showModal, setShowModal] = useState(false);
+    const [modalTitle, setModalTitle] = useState("");
+    const [modalMessageType, setModalMessageType] = useState("");
+
+    const handleModal = (modalTitle: string, modalMessageType: string) => {
+        setModalTitle(modalTitle);
+        setModalMessageType(modalMessageType);
+
+        setShowModal(true);
     }
 
     return (
-        <div>
+        <>
+            {showModal ?
+                <>
+                    <BasicModal open={showModal} setOpen={setShowModal} title={modalTitle} messageType={modalMessageType} />
+                </> : null
+            }
             <Card maxW='sm'>
-                <CardBody>
-                    <HStack spacing='4px'>
+                <CardBody
+                    onClick={() => push('/new')}
+                >
+                    <HStack height={'12vh'} spacing='4px'>
                         <Image
-                            src='./avatarimage1@2x.png'
+                            src={item['contentUrl'].length > 0 ? item['contentUrl'][0] : ''}
                             borderRadius='lg'
                             objectFit='cover'
-                            maxW={{ base: '80%', sm: '110px' }}
-                            transform='rotate(16deg)'
-                        />
-                        <Image
-                            src='./avatarimage4@2x.png'
-                            borderRadius='lg'
-                            objectFit='cover'
-                            maxW={{ base: '80%', sm: '110px' }}
-                        />
-                        <Image
-                            src='./avatarimage8@2x.png'
-                            borderRadius='lg'
-                            objectFit='cover'
-                            maxW={{ base: '80%', sm: '110px' }}
+                            maxW={{ base: '80%', sm: '100px' }}
+                            maxH={{ base: '80%', sm: '100px' }}
                             transform='rotate(10deg)'
                         />
+                        <Image
+                            src={item['contentUrl'].length > 1 ? item['contentUrl'][1] : ''}
+                            borderRadius='lg'
+                            objectFit='cover'
+                            maxW={{ base: '80%', sm: '100px' }}
+                            transform='rotate(-10deg)'
+                        />
+                        <Image
+                            src={item['contentUrl'].length > 2 ? item['contentUrl'][2] : ''}
+                            borderRadius='lg'
+                            objectFit='cover'
+                            maxW={{ base: '80%', sm: '100px' }}
+                            maxH={{ base: '80%', sm: '100px' }}
+                        />
                     </HStack>
-                    <Stack mt='6' spacing='3'>
+                    <Stack mt='5' spacing='3'>
                         <Text
                             maxW={{ base: '100%', sm: '110px' }}
                             fontSize='xs'
@@ -44,10 +71,10 @@ const ImageCard: NextPage = (item, index) => {
                             borderRadius='lg'
                             backgroundColor='blue.100'
                             textAlign="center"
-                        >Pattern Recognition</Text>
-                        <Heading size='sm' color='blue.400'>Our feelings</Heading>
+                        >{item['category']}</Text>
+                        <Heading size='sm' color='blue.400'>{item['title']}</Heading>
                         <Text fontSize='xs'>
-                            6 images | Difficulty 3
+                            {item['imgNum']} images | Difficulty {item['difficulty']}
                         </Text>
                     </Stack>
                 </CardBody>
@@ -56,22 +83,30 @@ const ImageCard: NextPage = (item, index) => {
                     <IconButton aria-label='Delete'
                         variant="ghost"
                         colorScheme='red'
-                        icon={<HiOutlineTrash />} />
+                        icon={<HiOutlineTrash />}
+                        onClick={() => { handleModal('Delete', 'delete') }}
+                    />
                     <IconButton aria-label='Share'
                         variant="ghost"
                         colorScheme='blue'
-                        icon={<LiaShareSquareSolid />} />
+                        icon={<LiaShareSquareSolid />}
+                        onClick={() => { handleModal('Share', 'share') }}
+                    />
                     <IconButton aria-label='Download'
                         variant="ghost"
                         colorScheme='blue'
-                        icon={<LiaDownloadSolid />} />
+                        icon={<LiaDownloadSolid />}
+                        onClick={() => { handleModal('Download', 'download') }}
+                    />
                     <IconButton aria-label='Print'
                         variant="ghost"
                         colorScheme='blue'
-                        icon={<LiaPrintSolid />} />
+                        icon={<LiaPrintSolid />}
+                        onClick={() => { handleModal('Print', 'print') }}
+                    />
                 </CardFooter>
             </Card>
-        </div>
+        </>
     )
 }
 
