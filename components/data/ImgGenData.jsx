@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-export const data_1 = [
+export const column_1 = [
   {
     id: '1',
     title: 'Smile',
@@ -13,7 +13,7 @@ export const data_1 = [
   }
 ];
 
-export const data_2 = [
+export const column_2 = [
   {
     id: '3',
     title: 'Confidence',
@@ -31,7 +31,7 @@ export const data_2 = [
   }
 ];
 
-export const data_3 = [
+export const column_3 = [
   {
     id: '4',
     title: 'Little smile',
@@ -44,7 +44,7 @@ export const data_3 = [
   },
 ];
 
-export const data_4 = [
+export const column_4 = [
   {
     id: '8',
     title: 'Smile',
@@ -67,17 +67,17 @@ export const data_4 = [
   },
 ];
 
-export const dataFromBackend = {
+export const ImgDataByColumn = {
   [uuidv4()]: {
-    items: data_1,
+    items: column_1,
   },
   [uuidv4()]: {
-    items: data_2,
+    items: column_2,
   },
   [uuidv4()]: {
-    items: data_3,
+    items: column_3,
   },
   [uuidv4()]: {
-    items: data_4,
+    items: column_4,
   }
 };

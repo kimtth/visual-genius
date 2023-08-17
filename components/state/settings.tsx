@@ -1,27 +1,19 @@
 import { createAction, handleActions } from 'redux-actions';
-import { dataFromBackend } from '../data/ImgGenData';
+import { SettingState } from './type';
 
-const TITLE = 'settings/TITLE ';
-const TEXT_VISIBLE = 'settings/TEXTVISIBLE ';
-const DATA_PAYLOAD = 'settings/DATAPAYLOAD';
+const SHOW_IMG_DESC = 'settings/SHOW_IMG_DESC';
 
-export const optionTitle = createAction(TITLE, (string: any) => string);
-export const setTextVisible = createAction(TEXT_VISIBLE);
-export const setDataPayload = createAction(DATA_PAYLOAD, (any: any) => any);
+export const showImgDescription = createAction(SHOW_IMG_DESC);
 
-const initialState = {
-    titleStr: 'Our feelings',
-    textvisible: true,
-    dataPayload: dataFromBackend
+const initialSettingState: SettingState = {
+    showImgDesc: true,
 }
 
-export const settings = handleActions(
+export const settings = handleActions<SettingState>(
     {
-        [TITLE]: (state: any, { payload }: any) => ({ ...state, titleStr: payload }),
-        [TEXT_VISIBLE]: (state: { textvisible: any; }) => ({ ...state, textvisible: !state.textvisible }),
-        [DATA_PAYLOAD]: (state: any, { payload }: any) => ({ ...state, dataPayload: payload })
+        [SHOW_IMG_DESC]: (state: any) => ({ ...state, showImgDesc: !state.showImgDesc })
     },
-    initialState,
+    initialSettingState,
 )
 
-export default settings;
+

@@ -22,7 +22,7 @@ const store = configureStore({
 })
 
 
-function MyApp({ Component, pageProps }: AppProps) {
+function App({ Component, pageProps }: AppProps) {
   return (
     <React.Fragment>
       <Provider store={store}>
@@ -43,4 +43,4 @@ function MyApp({ Component, pageProps }: AppProps) {
   );
 }
 
-export default MyApp;
+export default App;

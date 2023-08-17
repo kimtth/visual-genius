@@ -1,4 +1,4 @@
-export const items = [
+export const categoryData = [
     {
         key: '1',
         category: 'Object Recognition',
