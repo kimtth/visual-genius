@@ -82,15 +82,27 @@ export default async function ImageHandler(
         res.status(200).json(item);
         break;
       } else {
-        const response = await axios.get<Category[]>(`${BACKEND_URL}/images`);
+        const response = await axios.get<Image[]>(`${BACKEND_URL}/images`);
         const items = response.data;
         res.status(200).json(items);
         break;
       }
     case 'POST':
-      const newData: Image = req.body;
-      await axios.post(`${BACKEND_URL}`, newData);
-      res.status(201).json(newData);
+      if (!req.body) {
+        res.status(400).json({ message: 'No file uploaded' });
+        break;
+      }
+      const form = new FormData();
+      form.append('file', req.body);
+      form.append('categoryId', req.body.categoryId);
+      form.append('title', req.body.title);
+      form.append('imgPath', req.body.imgPath);
+      const response = await axios.post(`${BACKEND_URL}`, form, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      res.status(201).json(response.data);
       break;
     case 'PUT':
       const id = req.query.id as string;
@@ -105,5 +117,23 @@ export default async function ImageHandler(
     default:
       res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
       res.status(405).end(`Method ${method} Not Allowed`);
+  }
+}
+
+export async function SearchHandler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const { method } = req;
+
+  switch (method) {
+    case 'GET':
+      const response = await axios.get<Image[]>(`${BACKEND_URL}/search`);
+      const items = response.data;
+      res.status(200).json(items);
+      break;
+      default:
+        res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
+        res.status(405).end(`Method ${method} Not Allowed`);
   }
 }

@@ -2,7 +2,7 @@ import React from "react";
 import dynamic from 'next/dynamic';
 import PhotoCard from "../imgcard/photoCard";
 import { useSelector, useDispatch } from "react-redux";
-import { setDataPayload } from "../state/settings";
+import { setImageDataPayload } from "../state/datas";
 
 
 const Container = ({ children }: any) => (
@@ -25,11 +25,10 @@ const Droppable = dynamic(
   { ssr: false },
 );
 
-const DragDropBoard = () => {
-  const dataPayload = useSelector((state: any) => state.settings.dataPayload);
+const DragDropBoard = ({ dataPayload }: any) => {
   const dispatch = useDispatch();
   const onDataPayload = React.useCallback(
-    (any: any) => dispatch(setDataPayload(any)),
+    (any: any) => dispatch(setImageDataPayload(any)),
     [dispatch]
   );
 

@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import dynamic from 'next/dynamic';
-import { Card, CardBody, Image, Checkbox, Flex, Spacer } from "@chakra-ui/react";
+import { Card, CardBody, Image, Flex } from "@chakra-ui/react";
 
 interface PhotoProps {
     item?: any;
@@ -31,7 +31,7 @@ const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
                         <CardBody>
                             <Flex align="center">
                                 <Image
-                                    src={imgPath ? imgPath : "-"}
+                                    src={imgPath ? imgPath : ""}
                                     borderRadius='lg'
                                     objectFit='cover'
                                     maxW={{ sm: '10vw' }}

@@ -1,12 +1,13 @@
 import { Flex, Heading, } from "@chakra-ui/react";
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { pathes } from "../components/state/pathes";
 
 export default function Home() {
     const { push } = useRouter();
 
     useEffect(() => {
-        push('/home');
+        push(pathes.home);
     }, []);
     
     return (

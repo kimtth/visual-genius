@@ -5,6 +5,7 @@ import { FiSearch } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from "react";
+import { pathes } from "../../components/state/pathes";
 
 
 const Header: NextPage = () => {
@@ -16,7 +17,7 @@ const Header: NextPage = () => {
     const handleSearch = () => {
         if (searchKeyword) {
             // Save a last searched keyword to next page
-            push(`/select?sk=${searchKeyword}`)
+            push(`/${pathes.rtn}?sk=${searchKeyword}`)
         }
     }
 
@@ -36,7 +37,7 @@ const Header: NextPage = () => {
                             placeholder="Search"
                             size='sm'
                             width={'35vw'}
-                            value={searchKeyword ? searchKeyword : sk!}
+                            value={searchKeyword ? searchKeyword : sk === null ? '' : sk}
                             onChange={(e) => { setSearchKeyword(e.target.value) }}
                         />
                         <InputRightElement>

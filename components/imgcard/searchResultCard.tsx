@@ -27,7 +27,7 @@ const ResultCard: NextPage<PhotoProps> = ({ imgPath, selectAll }) => {
                         />
                         <Spacer />
                         <Image
-                            src={imgPath ? imgPath : "-"}
+                            src={imgPath ? imgPath : ""}
                             borderRadius='lg'
                             objectFit='cover'
                             maxW={{ sm: '10vw' }}

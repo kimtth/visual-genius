@@ -5,16 +5,17 @@ import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icon
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
+import { pathes } from "../state/pathes";
 
 const footerIconsLyaoutSytle = {
     justifyContent: 'flex-end'
 }
 
-interface ImageCardProps {
+interface CategoryCardProps {
     item: any;
 }
 
-const ImageCard: NextPage<ImageCardProps> = ({ item }) => {
+const CategoryCard: NextPage<CategoryCardProps> = ({ item }) => {
     const { push } = useRouter();
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
@@ -36,7 +37,7 @@ const ImageCard: NextPage<ImageCardProps> = ({ item }) => {
             }
             <Card maxW='sm'>
                 <CardBody
-                    onClick={() => push('/new')}
+                    onClick={() => push(pathes.gen)}
                 >
                     <HStack height={'12vh'} spacing='4px'>
                         <Image
@@ -110,4 +111,4 @@ const ImageCard: NextPage<ImageCardProps> = ({ item }) => {
     )
 }
 
-export default ImageCard;
+export default CategoryCard;

@@ -1,2 +1,9 @@
-flask
-flask_sqlalchemy
+quart
+quart_sqlalchemy
+uvicorn[standard]
+aiohttp
+azure-search-documents --pre
+azure-storage-blob
+openai
+python-dotenv
+bing-image-urls

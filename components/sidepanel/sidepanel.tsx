@@ -7,7 +7,7 @@ import { VscSaveAll } from "react-icons/vsc";
 import { FC, useState } from "react";
 import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
-import { handleAction } from "redux-actions";
+import { pathes } from "../../components/state/pathes";
 
 
 interface AlertPopupProps {
@@ -89,7 +89,7 @@ const NewSidePanel: NextPage = () => {
                         variant="ghost"
                         colorScheme='gray'
                         icon={<HiChevronLeft />}
-                        onClick={() => { push('/home') }}
+                        onClick={() => { push(pathes.home) }}
                     />
                     <Text fontWeight='bold' fontSize='md'>Back to Home</Text>
                 </Box>
@@ -201,7 +201,7 @@ const NewSidePanel: NextPage = () => {
                         width='95%'
                         variant="outline"
                         marginBottom='2px'
-                        onClick={() => { push('/select') }}
+                        onClick={() => { push(pathes.rtn) }}
                     >
                         Add my own photos
                     </Button>

@@ -5,6 +5,7 @@ import ResultCard from "../../components/imgcard/searchResultCard";
 import { BiUpload } from "react-icons/bi";
 import { HiChevronLeft } from "react-icons/hi";
 import { useRouter } from "next/navigation";
+import { pathes } from "../../components/state/pathes";
 import { useState } from "react";
 
 const SelectPage: NextPage = () => {
@@ -23,7 +24,7 @@ const SelectPage: NextPage = () => {
               variant="ghost"
               colorScheme='gray'
               icon={<HiChevronLeft />}
-              onClick={() => { push('/new') }}
+              onClick={() => { push(pathes.gen) }}
             />
             <Text fontWeight='bold' fontSize='md'>Back to Edit</Text>
           </Box>
@@ -92,13 +93,13 @@ const SelectPage: NextPage = () => {
                 variant="outline"
                 colorScheme='gray'
                 borderRadius='1px'
-                onClick={() => { push('/new') }}
+                onClick={() => { push(pathes.gen) }}
               >Cancel</Button>
               <Button aria-label='Select Photos'
                 size='sm'
                 colorScheme='blue'
                 borderRadius='1px'
-                onClick={() => { push('/new') }}
+                onClick={() => { push(pathes.gen) }}
               >Select Photos</Button>
             </ButtonGroup>
           </HStack>
