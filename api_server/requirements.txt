@@ -6,4 +6,5 @@ azure-search-documents --pre
 azure-storage-blob
 openai
 python-dotenv
-bing-image-urls
+bing-images
+Pillow

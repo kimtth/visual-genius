@@ -132,3 +132,9 @@ dist
 # python
 .vscode
 api_server/.venv
+api_server/.idea
+api_server/.env
+api_server/func/venv
+api_server/venv
+api_server/func/.python_packages
+api_server/memo.txt
