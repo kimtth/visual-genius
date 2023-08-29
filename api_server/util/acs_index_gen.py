@@ -1,42 +1,25 @@
 # Import libraries  
 import os
-import json
-import requests
-from dotenv import load_dotenv
+
 from azure.core.credentials import AzureKeyCredential
-from azure.search.documents import SearchClient
-from azure.search.documents.indexes import SearchIndexClient, SearchIndexerClient
-from azure.search.documents.models import Vector
+from azure.search.documents.indexes import SearchIndexClient
+from azure.search.documents.indexes import SearchIndexerClient
 from azure.search.documents.indexes.models import (
-    SearchIndex,
     SearchField,
-    SearchFieldDataType,
-    SimpleField,
     FieldMapping,
-    SearchableField,
-    SearchIndex,
     VectorSearch,
     HnswVectorSearchAlgorithmConfiguration,
+    SearchIndex, SearchIndexer, SimpleField, SearchFieldDataType,
+    InputFieldMappingEntry, OutputFieldMappingEntry, SearchIndexerSkillset,
+    SearchableField
+)
+from azure.search.documents.indexes.models import (
     SearchIndexerDataContainer,
-    SearchIndexer,
     SearchIndexerDataSourceConnection,
-    InputFieldMappingEntry,
-    OutputFieldMappingEntry,
-    SearchIndexerSkillset,
-    CorsOptions,
-    IndexingParameters,
-    IndexerStatus,
-    SearchIndexerDataContainer, SearchIndex, SearchIndexer, SimpleField, SearchFieldDataType,
-    EntityRecognitionSkill, InputFieldMappingEntry, OutputFieldMappingEntry, SearchIndexerSkillset,
-    CorsOptions, IndexingSchedule, SearchableField, IndexingParameters, SearchIndexerDataSourceConnection
 )
 from azure.search.documents.indexes.models import WebApiSkill
 from azure.storage.blob import BlobServiceClient
-from azure.search.documents.indexes import SearchIndexerClient
-from azure.search.documents.indexes.models import (
-    SearchIndexerDataContainer,
-    SearchIndexerDataSourceConnection,
-)
+from dotenv import load_dotenv
 
 # https://github.com/Azure/cognitive-search-vector-pr
 # demo-python/code/azure-search-vector-image-python-sample.ipynb

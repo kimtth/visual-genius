@@ -1,16 +1,14 @@
+import os
+
+from azure.core.credentials import AzureKeyCredential
+from azure.search.documents import SearchClient
+from azure.search.documents.models import Vector
+from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
 from quart import Quart, request, jsonify
 from quart_sqlalchemy import SQLAlchemy
-from quart import url_for
-from quart import Blueprint
 
-from azure.search.documents import SearchClient
-from azure.core.credentials import AzureKeyCredential
-from azure.search.documents.models import Vector
-
-from dotenv import load_dotenv
-from util import generate_embeddings
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-import os
+from util import cog_embedding_gen
 
 app = Quart(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.db'
@@ -33,7 +31,7 @@ blob_service_client = BlobServiceClient.from_connection_string(connection_string
 # TODO: https://github.com/Azure-Samples/azure-search-openai-demo/blob/main/app/backend/app.py
 
 class Category(db.Model):
-    id = db.Column(db.String, primary_key=True)
+    id = db.Column(db.String, primary_key=True, autoincrement=True)
     category = db.Column(db.String)
     title = db.Column(db.String)
     difficulty = db.Column(db.String)
@@ -42,7 +40,7 @@ class Category(db.Model):
 
 
 class Image(db.Model):
-    id = db.Column(db.String, primary_key=True)
+    id = db.Column(db.String, primary_key=True, autoincrement=True)
     categoryId = db.Column(db.String, db.ForeignKey('category.id'))
     title = db.Column(db.String)
     imgPath = db.Column(db.String)
@@ -50,7 +48,7 @@ class Image(db.Model):
 
 @app.route('/category', methods=['GET', 'POST'])
 @app.route('/category/<id>', methods=['GET', 'PUT', 'DELETE'])
-def category_handler(id=None):
+async def category_handler(id=None):
     if request.method == 'GET':
         if id:
             item = Category.query.get(id)
@@ -59,16 +57,16 @@ def category_handler(id=None):
             items = Category.query.all()
             return jsonify([item.to_dict() for item in items])
     elif request.method == 'POST':
-        data = request.get_json()
+        data = await request.get_json()
         new_item = Category(**data)
         db.session.add(new_item)
         db.session.commit()
         return jsonify(new_item.to_dict()), 201
     elif request.method == 'PUT':
-        data = request.get_json()
+        data = await request.get_json()
         item = Category.query.get(id)
-        for key, value in data.items():
-            setattr(item, key, value)
+        for k, value in data.items():
+            setattr(item, k, value)
         db.session.commit()
         return jsonify(item.to_dict())
     elif request.method == 'DELETE':
@@ -80,7 +78,7 @@ def category_handler(id=None):
 
 @app.route('/images', methods=['GET', 'POST'])
 @app.route('/images/<id>', methods=['GET', 'PUT', 'DELETE'])
-def image_handler(id=None):
+async def image_handler(id=None):
     if request.method == 'GET':
         if id:
             item = Image.query.filter_by(categoryId=id).first()
@@ -107,21 +105,23 @@ def image_handler(id=None):
 
             return jsonify(items_list)
     elif request.method == 'POST':
-        file = request.files['file']
+        data = await request.get_json()
+        files = await request.files
+        file = files['file']
         filename = file.filename
         # Get a reference to a container client
         container_client = blob_service_client.get_container_client(container_name)
         # Upload the file data to the container
         container_client.upload_blob(name=filename, data=file, overwrite=True)
-        new_item = Image(imgPath=filename)
+        new_item = Image(categoryId=data['categoryId'], title=data['title'], imgPath=filename)
         db.session.add(new_item)
         db.session.commit()
         return jsonify(new_item.to_dict()), 201
     elif request.method == 'PUT':
-        data = request.get_json()
+        data = await request.get_json()
         item = Image.query.get(id)
-        for key, value in data.items():
-            setattr(item, key, value)
+        for k, value in data.items():
+            setattr(item, k, value)
         db.session.commit()
         return jsonify(item.to_dict())
     elif request.method == 'DELETE':
@@ -136,8 +136,8 @@ def image_handler(id=None):
 
 
 @app.route('/search', methods=['GET'])
-def search_handler():
-    data = request.get_json()
+async def search_handler():
+    data = await request.get_json()
     query = data['query']
 
     # Initialize the SearchClient
@@ -145,7 +145,7 @@ def search_handler():
     search_client = SearchClient(endpoint=service_endpoint,
                                  index_name=index_name,
                                  credential=credential)
-    vector = Vector(value=generate_embeddings(
+    vector = Vector(value=cog_embedding_gen.img_embeddings(
         query, cogSvcsEndpoint, cogSvcsApiKey), k=3, fields="imageVector")
 
     # Perform vector search
@@ -166,8 +166,7 @@ def search_handler():
 
     items = Image.query.filter(Image.id.in_(img_ids)).all()
     items_list = [item.to_dict() for item in items]
-    for item in items_list:
-        item['imgPath'] = url_for('static', filename=item['imgPath'])
+
     return jsonify(items_list)
 
 
