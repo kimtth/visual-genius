@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useCallback } from "react";
 import dynamic from 'next/dynamic';
 import PhotoCard from "../imgcard/photoCard";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
 import { setImageDataPayload } from "../state/datas";
 
 
@@ -27,7 +27,7 @@ const Droppable = dynamic(
 
 const DragDropBoard = ({ dataPayload }: any) => {
   const dispatch = useDispatch();
-  const onDataPayload = React.useCallback(
+  const onDataPayload = useCallback(
     (any: any) => dispatch(setImageDataPayload(any)),
     [dispatch]
   );

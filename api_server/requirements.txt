@@ -1,10 +1,10 @@
-quart
-quart_sqlalchemy
-uvicorn[standard]
+fastapi~=0.103.0
+uvicorn[standard]~=0.23.2
 aiohttp
 azure-search-documents --pre
 azure-storage-blob
-openai
-python-dotenv
-bing-images
-Pillow
+openai~=0.27.9
+python-dotenv~=1.0.0
+bing-image-urls
+Pillow~=10.0.0
+httpx~=0.23.3

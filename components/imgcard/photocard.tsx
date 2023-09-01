@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
 import dynamic from 'next/dynamic';
-import { Card, CardBody, Image, Flex } from "@chakra-ui/react";
+import { Card, CardBody, Image, Flex, Box, Text } from "@chakra-ui/react";
+import { useSelector } from "react-redux";
 
 interface PhotoProps {
     item?: any;
@@ -18,6 +19,8 @@ const Draggable = dynamic(
 
 
 const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
+    const showImgCaption = useSelector((state: any) => state.settings.showImgCaption);
+
     return (
         // The draggableId should match the key of the component
         <Draggable key={item.id} draggableId={item.id} index={index}>
@@ -37,6 +40,7 @@ const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
                                     maxW={{ sm: '10vw' }}
                                 />
                             </Flex>
+                            {showImgCaption && <Text fontSize='sm' as='b'>{item.title}</Text>}
                         </CardBody>
                     </Card>
                 </div>

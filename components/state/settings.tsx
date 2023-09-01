@@ -1,19 +1,29 @@
 import { createAction, handleActions } from 'redux-actions';
 import { SettingState } from './type';
 
-const SHOW_IMG_DESC = 'settings/SHOW_IMG_DESC';
+const SHOW_IMG_CAPTION = 'settings/SHOW_IMG_CAPTION';
+const SET_IMG_NUMBER = 'settings/SET_IMG_NUMBER';
+const SET_ROW_NUMBER = 'settings/SET_ROW_NUMBER';
+const SET_COLUMN_NUMBER = 'settings/SET_COLUMN_NUMBER';
 
-export const showImgDescription = createAction(SHOW_IMG_DESC);
+export const showImgCaption = createAction(SHOW_IMG_CAPTION);
+export const setImageNumber = createAction(SET_IMG_NUMBER);
+export const setRowNumber = createAction(SET_ROW_NUMBER);
+export const setColumnNumber = createAction(SET_COLUMN_NUMBER);
 
 const initialSettingState: SettingState = {
-    showImgDesc: true,
+    showImgCaption: false,
+    setImageNumber: 1,
+    setRowNumber: 1,
+    setColumnNumber: 5
 }
 
 export const settings = handleActions<SettingState>(
     {
-        [SHOW_IMG_DESC]: (state: any) => ({ ...state, showImgDesc: !state.showImgDesc })
+        [SHOW_IMG_CAPTION]: (state: any) => ({ ...state, showImgCaption: !state.showImgCaption }),
+        [SET_IMG_NUMBER]: (state: any, { payload }: any) => ({ ...state, setImageNumber: payload }),
+        [SET_ROW_NUMBER]: (state: any, { payload }: any) => ({ ...state, setRowNumber: payload }),
+        [SET_COLUMN_NUMBER]: (state: any, { payload }: any) => ({ ...state, setColumnNumber: payload })
     },
     initialSettingState,
 )
-
-

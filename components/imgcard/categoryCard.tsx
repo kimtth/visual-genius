@@ -12,10 +12,11 @@ const footerIconsLyaoutSytle = {
 }
 
 interface CategoryCardProps {
+    categoryId: string;
     item: any;
 }
 
-const CategoryCard: NextPage<CategoryCardProps> = ({ item }) => {
+const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
     const { push } = useRouter();
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
@@ -24,7 +25,6 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ item }) => {
     const handleModal = (modalTitle: string, modalMessageType: string) => {
         setModalTitle(modalTitle);
         setModalMessageType(modalMessageType);
-
         setShowModal(true);
     }
 
@@ -35,32 +35,30 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ item }) => {
                     <BasicModal open={showModal} setOpen={setShowModal} title={modalTitle} messageType={modalMessageType} />
                 </> : null
             }
-            <Card maxW='sm'>
+            <Card maxW='sm' key={categoryId}>
                 <CardBody
-                    onClick={() => push(pathes.gen)}
+                    onClick={() => push(`${pathes.gen}?categoryId=${categoryId}`)}
                 >
                     <HStack height={'12vh'} spacing='4px'>
                         <Image
                             src={item['contentUrl'].length > 0 ? item['contentUrl'][0] : ''}
                             borderRadius='lg'
                             objectFit='cover'
-                            maxW={{ base: '80%', sm: '100px' }}
-                            maxH={{ base: '80%', sm: '100px' }}
+                            boxSize='100px'
                             transform='rotate(10deg)'
                         />
                         <Image
                             src={item['contentUrl'].length > 1 ? item['contentUrl'][1] : ''}
                             borderRadius='lg'
                             objectFit='cover'
-                            maxW={{ base: '80%', sm: '100px' }}
+                            boxSize='100px'
                             transform='rotate(-10deg)'
                         />
                         <Image
                             src={item['contentUrl'].length > 2 ? item['contentUrl'][2] : ''}
                             borderRadius='lg'
                             objectFit='cover'
-                            maxW={{ base: '80%', sm: '100px' }}
-                            maxH={{ base: '80%', sm: '100px' }}
+                            boxSize='100px'
                         />
                     </HStack>
                     <Stack mt='5' spacing='3'>

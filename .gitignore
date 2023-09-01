@@ -138,4 +138,11 @@ api_server/func/venv
 api_server/venv
 api_server/func/.python_packages
 api_server/memo.txt
+api_server/__pycache__
+api_server/util/__pycache__
 api_server/db.db
+api_server/module/__pycache__
+api_server/instance
+
+yarn.lock
+package-lock.json

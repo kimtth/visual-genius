@@ -30,6 +30,10 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
   !important: `react-beautiful-dnd` was not able to work well with `reactStrictMode: true` in NextJs.
   Turn off the option at `next.config.js`.`
 
+## API Specification
+
+  http://localhost:5000/docs
+
 ## Design
 
 ### Landing Page

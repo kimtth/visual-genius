@@ -4,10 +4,15 @@ import { GrFormEdit } from "react-icons/gr";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
 import { VscSaveAll } from "react-icons/vsc";
-import { FC, useState } from "react";
+import { FC, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../../components/state/pathes";
+import { v4 as uuidv4 } from 'uuid';
+import { useDispatch, useSelector } from "react-redux";
+import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption } from "../state/settings";
+import { setImageDataPayload } from "../state/datas";
+import { DataFromBackend } from "../state/type";
 
 
 interface AlertPopupProps {
@@ -36,9 +41,33 @@ const NewSidePanel: NextPage = () => {
     const [prompts, setPrompts] = useState("");
     const [title, setTitle] = useState("Patterns");
 
-    const [numCard, setNumCard] = useState(1); // number of cards
-    const [rowNumCard, setRowNumCard] = useState(1); // number of cards per row
-    const [colNumCard, setColNumCard] = useState(1); // number of cards per column
+    const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
+    const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
+    const imgCaption = useSelector((state: any) => state.settings.showImgCaption);
+    const rowNumber = useSelector((state: any) => state.settings.setRowNumber);
+    const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
+    const dispatch = useDispatch();
+
+    const onSetImageNumber = useCallback(
+        (any: any) => dispatch(setImageNumber(any)),
+        [dispatch]
+    );
+    const onShowImgCaption = useCallback(
+        (any: any) => dispatch(showImgCaption(any)),
+        [dispatch]
+    );
+    const onShowRowNumebr = useCallback(
+        (any: any) => dispatch(setRowNumber(any)),
+        [dispatch]
+    );
+    const onSetColumnNumber = useCallback(
+        (any: any) => dispatch(setColumnNumber(any)),
+        [dispatch]
+    );
+    const onDataPayload = useCallback(
+        (any: any) => dispatch(setImageDataPayload(any)),
+        [dispatch]
+    );
 
     const handleAlert = (showAlert: boolean) => {
         setShowAlert(showAlert);
@@ -107,24 +136,17 @@ const NewSidePanel: NextPage = () => {
                 </Box>
                 {/* Number of cards */}
                 <Box>
-                    <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Number of cards (max. 30)</Text>
+                    <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Number of cards</Text>
                     <Box>
                         <NumberInput
                             size='sm'
                             min={1}
                             max={30}
-                            value={numCard}
+                            value={imageNumber}
                             defaultValue={1}
+                            isReadOnly={true}
                         >
                             <NumberInputField />
-                            <NumberInputStepper>
-                                <NumberIncrementStepper
-                                    onClick={() => { setNumCard(numCard + 1) }}
-                                />
-                                <NumberDecrementStepper
-                                    onClick={() => { setNumCard(numCard - 1) }}
-                                />
-                            </NumberInputStepper>
                         </NumberInput>
                     </Box>
                 </Box>
@@ -133,8 +155,8 @@ const NewSidePanel: NextPage = () => {
                 <Box display="flex" alignItems="center" justifyContent={"space-between"}>
                     <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Caption</Text>
                     <Switch size='md'
-                        isChecked={captionToggle}
-                        onChange={() => setCaptionToggle(!captionToggle)}
+                        isChecked={imgCaption}
+                        onChange={() => onShowImgCaption(!captionToggle)}
                         overflow={"auto"}
                     />
                 </Box>
@@ -150,17 +172,10 @@ const NewSidePanel: NextPage = () => {
                                 size='sm'
                                 min={1}
                                 defaultValue={1}
-                                value={rowNumCard}
+                                value={rowNumber}
+                                isReadOnly={true}
                             >
                                 <NumberInputField />
-                                <NumberInputStepper>
-                                    <NumberIncrementStepper
-                                        onClick={() => { setRowNumCard(rowNumCard + 1) }}
-                                    />
-                                    <NumberDecrementStepper
-                                        onClick={() => { setRowNumCard(rowNumCard - 1) }}
-                                    />
-                                </NumberInputStepper>
                             </NumberInput>
                         </Box>
                         <Image alt="" src="/dismiss.svg" />
@@ -169,15 +184,15 @@ const NewSidePanel: NextPage = () => {
                                 size='sm'
                                 min={1}
                                 defaultValue={1}
-                                value={colNumCard}
+                                value={columnNumber}
                             >
                                 <NumberInputField />
                                 <NumberInputStepper>
                                     <NumberIncrementStepper
-                                        onClick={() => { setColNumCard(colNumCard + 1) }}
+                                        onClick={() => { onSetColumnNumber(columnNumber + 1) }}
                                     />
                                     <NumberDecrementStepper
-                                        onClick={() => { setColNumCard(colNumCard - 1) }}
+                                        onClick={() => { onSetColumnNumber(columnNumber - 1) }}
                                     />
                                 </NumberInputStepper>
                             </NumberInput>
@@ -210,13 +225,18 @@ const NewSidePanel: NextPage = () => {
                         width='95%'
                         variant="outline"
                         marginBottom='2px'
-                        onClick={() => {
-                            const checkNumCard = rowNumCard * colNumCard;
-                            if (checkNumCard > numCard) {
-                                setAlertMessage("Grid size is too big!");
+                        onClick={(e) => {
+                            e.preventDefault();
+                            
+                            if (columnNumber > 6) {
+                                setAlertMessage("Grid size is too big! (max.6)");
                                 handleAlert(true);
                             } else {
-                                console.log("Grid size is okay!");
+                                const rowNum = Math.ceil(imageNumber / columnNumber);
+                                onShowRowNumebr(rowNum);
+                                onSetColumnNumber(columnNumber);
+
+                                //TODO
                             }
                         }}
                     >

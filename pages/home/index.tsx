@@ -4,19 +4,35 @@ import CategoryCard from "../../components/imgcard/categoryCard";
 import { Box, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
 import { useSelector, useDispatch } from "react-redux";
 import { setCategoryDataPayload } from "../../components/state/datas";
-import React from "react";
+import React, { useCallback, useEffect } from "react";
+import useAxios from "axios-hooks";
+import { API_ENDPOINT } from "../../components/state/const";
+import { setColumnNumber, setImageNumber, showImgCaption } from "../../components/state/settings";
 
 const kbStyles = {
   paddingTop: '5%'
 }
 
 const Home: NextPage = () => {
+  const [{ data, loading, error }] = useAxios(
+    `${API_ENDPOINT}/categories`
+  );
   const categoryData = useSelector((state: any) => state.datas.CategoryDataPayload);
   const dispatch = useDispatch();
-  const onDataPayload = React.useCallback(
+
+  const onDataPayload = useCallback(
     (any: any) => dispatch(setCategoryDataPayload(any)),
     [dispatch]
   );
+
+  useEffect(() => {
+    if (data) {
+      onDataPayload(data);
+    }
+  }, [data]);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error!</p>;
 
   return (
     <div>
@@ -34,7 +50,7 @@ const Home: NextPage = () => {
                 {
                   categoryData.map((item: any, index: any) => {
                     return (
-                      <CategoryCard key={item['key']} item={item} />
+                      <CategoryCard key={item['id']} categoryId={item['id']} item={item} />
                     )
                   }
                   )

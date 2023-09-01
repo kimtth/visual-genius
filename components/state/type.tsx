@@ -5,5 +5,14 @@ export interface DataState {
 }
 
 export interface SettingState {
-    showImgDesc: boolean;
+    showImgCaption: boolean;
+    setImageNumber: number;
+    setRowNumber: number;
+    setColumnNumber: number;
+}
+
+export interface DataFromBackend {
+    [key: string]: {
+        items: any[];
+    };
 }

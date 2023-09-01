@@ -10,9 +10,12 @@ class PromptType:
 class ImgListPrompt(PromptType):
     imgListPrompt = '''
     Please provide a list of up to 10 items that are both popular among children and 
-    suitable for aiding them in learning a new language. 
+    suitable for aiding them in learning a new language. The list should create based on the user input.
     Consider not only the items' popularity but also their educational value for language learners. 
     The output should be a comma-separated string without any additional explanation.
+    
+    The user query
+    {query}
 
     Example of output
     Dog, Cat, Cow, Sheep, Chicken, Frog, Duck, Pig, Horse, Elephant
@@ -27,6 +30,9 @@ class ImgGenPrompt(PromptType):
     Generate a creative and surprising cartoon-style illustration on a topic determined through reasoning based on user input.
     The generated image should be designed to captivate children. 
     It should be an illustrated image, as possible in Japanese manga-style.
+    
+    The user input
+    {query}
     '''
 
     def __init__(self):
@@ -40,6 +46,7 @@ def return_prompt(prompt_type):
     }
 
     if prompt_type in prompt_types:
-        return prompt_types[prompt_type].get_msg()
+        prompt_instance = prompt_types[prompt_type]()
+        return prompt_instance.get_msg()
 
     return 'Prompt not found.'

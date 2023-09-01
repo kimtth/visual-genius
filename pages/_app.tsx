@@ -27,7 +27,7 @@ function App({ Component, pageProps }: AppProps) {
     <React.Fragment>
       <Provider store={store}>
         <Head>
-          <title>VisualCard</title>
+          <title>Visual Genius</title>
           <meta
             name="viewport"
             content="minimum-scale=1, initial-scale=1, width=device-width"
