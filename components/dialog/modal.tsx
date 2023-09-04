@@ -48,7 +48,7 @@ const BasicModal: FC<BasicModelProps> = ({ open, setOpen, title, messageType, ac
 
                     <ModalFooter>
                         <Button colorScheme='blue' mr={3} onClick={() => { handleAction() }}>
-                            Agree
+                            OK
                         </Button>
                         <Button variant='ghost' onClick={() => setOpen(false)}>Close</Button>
                     </ModalFooter>

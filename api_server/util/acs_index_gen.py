@@ -85,7 +85,8 @@ index_client = SearchIndexClient(
     endpoint=service_endpoint, credential=credential)
 fields = [
     SimpleField(name="id", type=SearchFieldDataType.String, key=True, sortable=True, filterable=True, facetable=True),
-    SimpleField(name="imgPath", type=SearchFieldDataType.String, retrievable=True),
+    SimpleField(name="sid", type=SearchFieldDataType.String, sortable=True, filterable=True, facetable=True), # uuid in the sql
+    SimpleField(name="imgPath", type=SearchFieldDataType.String, filterable=True, retrievable=True),
     SearchableField(name="title", type=SearchFieldDataType.String, searchable=True, retrievable=True),
     SearchField(
         name="imageVector",

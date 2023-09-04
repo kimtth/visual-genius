@@ -59,7 +59,7 @@ def bing_image_urls(  # pylint: disable=too-many-locals
         "first": page_counter,
         "count": count,
         "adlt": adult,
-        "qft": filters,
+        "qft": "+filterui:imagesize-medium+filterui:color2-color+filterui:photo-photo", # +filterui:aspect-square
     }
 
     url = "https://www.bing.com/images/async"

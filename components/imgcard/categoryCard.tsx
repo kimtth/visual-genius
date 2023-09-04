@@ -32,7 +32,7 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
         <>
             {showModal ?
                 <>
-                    <BasicModal open={showModal} setOpen={setShowModal} title={modalTitle} messageType={modalMessageType} />
+                    <BasicModal key={"modal"} open={showModal} setOpen={setShowModal} title={modalTitle} messageType={modalMessageType} />
                 </> : null
             }
             <Card maxW='sm' key={categoryId}>

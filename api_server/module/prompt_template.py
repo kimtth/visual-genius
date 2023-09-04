@@ -9,16 +9,16 @@ class PromptType:
 
 class ImgListPrompt(PromptType):
     imgListPrompt = '''
-    Please provide a list of up to 10 items that are both popular among children and 
-    suitable for aiding them in learning a new language. The list should create based on the user input.
-    Consider not only the items' popularity but also their educational value for language learners. 
-    The output should be a comma-separated string without any additional explanation.
+    Please generate a list of 10 to 15 words suitable for assisting children in learning a new language. 
+    The list should be inspired by the user's query or a topic within it. 
+    This output will be used for image searches, so please consider that. 
+    Provide the list as a comma-separated string without any additional explanation.
     
     The user query
     {query}
 
     Example of output
-    Dog, Cat, Cow, Sheep, Chicken, Frog, Duck, Pig, Horse, Elephant
+    Dog, Cat, Cow, Sheep, Chicken, Frog, Duck, Pig, Horse
     '''
 
     def __init__(self):
@@ -27,11 +27,10 @@ class ImgListPrompt(PromptType):
 
 class ImgGenPrompt(PromptType):
     imgGenPrompt = '''
-    Generate a creative and surprising cartoon-style illustration on a topic determined through reasoning based on user input.
+    Generate a creative and surprising cartoon-style illustration on a topic determined through reasoning based on the user query.
     The generated image should be designed to captivate children. 
-    It should be an illustrated image, as possible in Japanese manga-style.
     
-    The user input
+    The user query
     {query}
     '''
 

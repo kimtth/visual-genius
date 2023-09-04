@@ -6,11 +6,13 @@ import { BiUpload } from "react-icons/bi";
 import { HiChevronLeft } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { pathes } from "../../components/state/pathes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 
 const SelectPage: NextPage = () => {
   const { push } = useRouter();
   const [selectAll, setSelectAll] = useState(false);
+  const dataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
 
   return (
     <>
@@ -28,57 +30,6 @@ const SelectPage: NextPage = () => {
             />
             <Text fontWeight='bold' fontSize='md'>Back to Edit</Text>
           </Box>
-          <HStack justifyContent="right">
-            <Button aria-label='Upload'
-              leftIcon={<BiUpload />}
-              size='sm'
-              variant="outline"
-              colorScheme='gray'
-              borderRadius='1px'
-            >Upload My own photos</Button>
-          </HStack>
-          <Box>
-            <Tabs defaultIndex={0} width={'68vw'}>
-              <TabList>
-                <Tab width="20vw">All</Tab>
-                <Tab width="20vw">My Photos</Tab>
-                <Tab width="20vw">Emojis</Tab>
-              </TabList>
-              <TabPanels height={'72vh'}>
-                <TabPanel>
-                  <SimpleGrid spacing={4} columns={5}>
-                    <ResultCard imgPath="rectangle-3469579@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469579@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469579@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469579@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469579@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469579@2x.png" selectAll={selectAll} />
-                  </SimpleGrid>
-                </TabPanel>
-                <TabPanel>
-                  <SimpleGrid spacing={4} columns={5}>
-                    <ResultCard imgPath="rectangle-3469580@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469580@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469580@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469580@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469580@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469580@2x.png" selectAll={selectAll} />
-                  </SimpleGrid>
-                </TabPanel>
-                <TabPanel>
-                  <SimpleGrid spacing={4} columns={5}>
-                    <ResultCard imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                  </SimpleGrid>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
-          </Box>
-          <Divider />
           <HStack justifyContent="space-between">
             <Checkbox
               size='sm'
@@ -88,21 +39,62 @@ const SelectPage: NextPage = () => {
               <Text>Select All Photos</Text>
             </Checkbox>
             <ButtonGroup gap='1'>
-              <Button aria-label='Cancel'
+              {/* <Button aria-label='Cancel'
                 size='sm'
                 variant="outline"
                 colorScheme='gray'
                 borderRadius='1px'
                 onClick={() => { push(pathes.gen) }}
-              >Cancel</Button>
-              <Button aria-label='Select Photos'
+              >Cancel</Button> */}
+              <Button aria-label='Add Photos'
                 size='sm'
                 colorScheme='blue'
                 borderRadius='1px'
                 onClick={() => { push(pathes.gen) }}
-              >Select Photos</Button>
+              >Add Photos</Button>
+              <Button aria-label='Upload'
+                leftIcon={<BiUpload />}
+                size='sm'
+                variant="outline"
+                colorScheme='gray'
+                borderRadius='1px'
+              >Upload My own photos</Button>
             </ButtonGroup>
           </HStack>
+          <Box>
+            <Tabs defaultIndex={0} width={'68vw'}>
+              <TabList>
+                <Tab width="20vw">Search Result</Tab>
+                <Tab width="20vw">Emojis</Tab>
+              </TabList>
+              <TabPanels height={'72vh'}>
+                <TabPanel>
+                  <SimpleGrid spacing={4} columns={5}>
+                    {
+                      dataPayload.map((item: any, index: any) => {
+                        return (
+                          <ResultCard key={item['id']} title={item['title']} imgPath={item['imgPath']} selectAll={selectAll} />
+                        )
+                      }
+                      )
+                    }
+                  </SimpleGrid>
+                </TabPanel>
+                <TabPanel>
+                  <SimpleGrid spacing={4} columns={5}>
+                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
+                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
+                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
+                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
+                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
+                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
+                  </SimpleGrid>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </Box>
+          <Divider />
+
         </VStack>
       </>
     </>

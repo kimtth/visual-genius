@@ -2,6 +2,7 @@ export interface DataState {
     title: string;
     CategoryDataPayload: any;
     ImageDataPayload: any;
+    SearchResultPayload: any;
 }
 
 export interface SettingState {

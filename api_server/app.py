@@ -1,5 +1,6 @@
 import os
-from typing import List
+import uuid
+from typing import List, Any
 
 import uvicorn
 from azure.core.credentials import AzureKeyCredential
@@ -56,7 +57,7 @@ def get_db():
 # SQLAlchemy model
 class CategoryModel(Base):
     __tablename__ = "category"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(String, primary_key=True, index=True, autoincrement=True)
     title = Column(String, index=True)
     category = Column(String)
     difficulty = Column(String)
@@ -78,7 +79,7 @@ class CategorySchema(BaseModel):
 
 # Pydantic model
 class CategoryDB(CategorySchema):
-    id: int
+    id: str
 
     class Config:
         from_attributes = True
@@ -87,7 +88,7 @@ class CategoryDB(CategorySchema):
 # SQLAlchemy model
 class ImageModel(Base):
     __tablename__ = "image"
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(String, primary_key=True, autoincrement=True)
     categoryId = Column(String, ForeignKey('category.id'))
     title = Column(String)
     imgPath = Column(String)
@@ -105,10 +106,20 @@ class ImageSchema(BaseModel):
 
 # Pydantic model
 class ImageDB(ImageSchema):
-    id: int
+    id: str
 
     class Config:
         from_attributes = True
+
+
+class PromptGen(BaseModel):
+    query: str
+    completeMsg: str
+    imgUrls: list
+
+    class Config:
+        validate_assignment = True
+
 
 @app.get('/categories')
 def get_categories(session: Session = Depends(get_db)):
@@ -178,6 +189,8 @@ def create_image(image: ImageSchema, session: Session = Depends(get_db)):
 
 @app.get('/images/{id}')
 def get_image(id: str, session: Session = Depends(get_db)):
+    if not id:
+        return []
     items = session.query(ImageModel).filter_by(categoryId=id)
     if not items:
         raise HTTPException(status_code=404, detail="Image not found")
@@ -238,45 +251,61 @@ async def img_gen_handler(query: str):
 async def img_gen_handler(query: str):
     msg = await aoai_call.img_list_gen(query)
 
-    img_urls = []
-    if msg:
+    img_urls: list[str | Any] = []
+    substrings = ['sorry', 'unable']
+
+    category_id = str(uuid.uuid4())
+    if msg and not any(substring in msg.lower() for substring in substrings):
         img_queries = msg.split(',')
 
-        for query in img_queries:
-            img_url = await bing_img_search.fetch_image_from_bing(query)
-            img_urls.append(img_url)
+        # Bing Search Image
+        for search_query in img_queries:
+            img_url = await bing_img_search.fetch_image_from_bing(search_query)
 
-    return img_urls
+            img_id = str(uuid.uuid4())
+            img = ImageDB(id=img_id, categoryId=category_id, title=search_query, imgPath=img_url)
+
+            img_urls.append(img)
+
+        # Generative Image
+        img_query = img_queries[1]
+        img_id = str(uuid.uuid4())
+        try:
+            img_url = await aoai_call.img_gen(img_query)
+            img = ImageDB(id=img_id, categoryId=category_id, title=img_query + '_gen_', imgPath=img_url)
+            img_urls.append(img)
+        except Exception as e:
+            img_url = await bing_img_search.fetch_image_from_bing(img_query)
+            img = ImageDB(id=img_id, categoryId=category_id, title=img_query + '_gen_', imgPath=img_url)
+            img_urls.append(img)
+
+    # pg = PromptGen(query=query, completeMsg=msg, imgUrls=img_urls)
+    items_list = [ImageDB.model_validate(item) for item in img_urls]
+    return items_list
 
 
-@app.get('/search')
-async def search_handler(request: Request, session: Session = Depends(get_db)):
-    data = await request.json()
-    query = data['query']
-
+@app.get('/search/{query}')
+async def search_handler(query: str, request: Request, session: Session = Depends(get_db)):
+    params = request.query_params
+    k_num = int(params['count']) if 'count' in params else 3
+    print(k_num)
     # Initialize the SearchClient
     credential = AzureKeyCredential(key)
     search_client = SearchClient(endpoint=service_endpoint,
                                  index_name=index_name,
                                  credential=credential)
     vector = Vector(value=cog_embed_gen.generate_embeddings(
-        query, cogSvcsEndpoint, cogSvcsApiKey), k=3, fields="imageVector")
+        query, cogSvcsEndpoint, cogSvcsApiKey), k=k_num, fields="imageVector")
 
     # Perform vector search
     results = search_client.search(
         search_text=None,
         vectors=[vector],
-        select=["title", "imgPath"]
+        select=["sid", "title", "imgPath"]
     )
 
-    # Print the search results
-    for result in results:
-        print(f"Title: {result['title']}")
-        print(f"Image URL: {result['imgPath']}")
-        print("\n")
-
     # Return the search results
-    img_ids = [result['id'] for result in results]
+    img_ids = [rtn['sid'] for rtn in results]
 
     items = session.query(ImageModel).filter(ImageModel.id.in_(img_ids)).all()
     items_list = [ImageDB.model_validate(item) for item in items]

@@ -3,23 +3,67 @@ import { HStack, Box, Text, Input, InputGroup, Image, InputRightElement, Icon, I
 import { SiMicrosoftbing } from 'react-icons/si';
 import { FiSearch } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-import { usePathname, useSearchParams } from 'next/navigation'
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { pathes } from "../../components/state/pathes";
+import { API_ENDPOINT } from "../state/const";
+import useAxios from "axios-hooks";
+import { MouseEvent, KeyboardEvent } from "react";
+import { useDispatch } from "react-redux";
+import { setSearchResultPayload } from "../state/datas";
 
 
 const Header: NextPage = () => {
     const { push } = useRouter();
     const [searchKeyword, setSearchKeyword] = useState('');
-    const searchParams = useSearchParams()
-    const sk = searchParams.get('sk')
+    const [searchTriggerd, setSearchTriggered] = useState(false);
+    const [{ data, loading, error }, refetch] = useAxios({
+        url: `${API_ENDPOINT}/search/${searchKeyword}`, //`${API_ENDPOINT}/search/${searchKeyword}?count=5`
+        method: 'GET'
+    }, { manual: true }
+    );
 
-    const handleSearch = () => {
-        if (searchKeyword) {
-            // Save a last searched keyword to next page
-            push(`/${pathes.rtn}?sk=${searchKeyword}`)
+    const dispatch = useDispatch();
+    const onDataPayload = useCallback(
+        (any: any) => dispatch(setSearchResultPayload(any)),
+        [dispatch]
+    );
+
+    useEffect(() => {
+        if (data) {
+            onDataPayload(data);
+            setSearchTriggered(false);
+            push(pathes.rtn);
+        }
+    }, [data]);
+
+    const handleSearchClick = (e: MouseEvent) => {
+        e.preventDefault();
+        handleSearch();
+    }
+
+    const handleSearchInput = (e: KeyboardEvent) => {
+        if (e.key == 'Enter') {
+            handleSearch();
         }
     }
+
+    const handleSearch = () => {
+        if (!searchKeyword) {
+            alert("Search Keyword cannot be empty!");
+        } else {
+            try {
+                refetch();
+            } catch (error) {
+                alert(error);
+                console.error(error);
+            } finally {
+                setSearchTriggered(true);
+            }
+        }
+    }
+
+    // if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error!</p>;
 
     return (
         <>
@@ -37,8 +81,9 @@ const Header: NextPage = () => {
                             placeholder="Search"
                             size='sm'
                             width={'35vw'}
-                            value={searchKeyword ? searchKeyword : sk === null ? '' : sk}
+                            value={searchKeyword}
                             onChange={(e) => { setSearchKeyword(e.target.value) }}
+                            onKeyDown={(e) => handleSearchInput(e)}
                         />
                         <InputRightElement>
                             <IconButton aria-label='Edit'
@@ -47,7 +92,8 @@ const Header: NextPage = () => {
                                 icon={<FiSearch
                                     color='gray.500'
                                 />}
-                                onClick={handleSearch}
+                                onClick={(e) => handleSearchClick(e)}
+                                
                             />
                         </InputRightElement>
                     </InputGroup>

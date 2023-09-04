@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
 import os
 import json
+import uuid
 import sqlite3
 
 # Set the directory path
@@ -9,54 +10,6 @@ dir_path = '../data'
 
 # Get a list of all files in the directory
 file_list = os.listdir(dir_path)
-
-cls_1 = {
-    'category': 'Object Recognition',
-    'title': 'Animals #1',
-    'difficulty': 'Easy',
-    'imgNum': 8,
-    'contentUrl': ''
-}
-
-cls_2 = {
-    'category': 'Object Recognition',
-    'title': 'Animals #2',
-    'difficulty': 'Medium',
-    'imgNum': 8,
-    'contentUrl': ''
-}
-
-cls_3 = {
-    'category': 'Object Recognition',
-    'title': 'Animals #3',
-    'difficulty': 'Easy',
-    'imgNum': 8,
-    'contentUrl': ''
-}
-
-cls_4 = {
-    'category': 'Pattern Recognition',
-    'title': 'Everyday Life',
-    'difficulty': 'Medium',
-    'imgNum': 8,
-    'contentUrl': ''
-}
-
-cls_5 = {
-    'category': 'Pattern Recognition',
-    'title': 'Everyday Life',
-    'difficulty': 'Medium',
-    'imgNum': 8,
-    'contentUrl': ''
-}
-
-cls_6 = {
-    'category': 'Pattern Recognition',
-    'title': 'Everyday Life',
-    'difficulty': 'Medium',
-    'imgNum': 8,
-    'contentUrl': ''
-}
 
 load_dotenv()
 connection_string = os.getenv("BLOB_CONNECTION_STRING")
@@ -136,7 +89,7 @@ def update_category(conn):
     conn.commit()
 
 
-def get_cls_id(i, file_name):
+def get_cls_id(i):
     cls_id = i // 20
     if 'val2017' in file_name:
         cls_id = cls_id + 4
@@ -149,7 +102,13 @@ def get_cls_id(i, file_name):
 cls_animal = [x for x in file_list if 'val2017' not in x]
 cls_everyday_life = [x for x in file_list if 'val2017' in x]
 
+category_id_list = []
+
 image_list_1 = []
+cls_id = 0
+cls_uuid = str(uuid.uuid4())
+category_id_list.append(cls_uuid)
+prev_cls_id = 0
 
 for i, file_name in enumerate(cls_animal):
     # Split the file name into animal name and id
@@ -162,13 +121,19 @@ for i, file_name in enumerate(cls_animal):
     # Construct the URL for the blob
     blob_url = f"{primary_endpoint}/{container_name}/{file_name}"
 
+    cls_id = i // 20
+    if cls_id != prev_cls_id:
+        cls_uuid = str(uuid.uuid4())
+        category_id_list.append(cls_uuid)
     # Create a dictionary for the image
     image_dict = {
+        'id': str(uuid.uuid4()),
         'title': img_name.title(),
-        'categoryId': get_cls_id(i, file_name),
+        'categoryId': cls_uuid,
         'imgPath': blob_url
     }
 
+    prev_cls_id = cls_id
     image_list_1.append(image_dict)
 
 print("#1")
@@ -184,18 +149,78 @@ for i, file_name in enumerate(cls_everyday_life):
     # Construct the URL for the blob
     blob_url = f"{primary_endpoint}/{container_name}/{file_name}"
 
+    cls_id = i // 20
+    if cls_id != prev_cls_id:
+        cls_uuid = str(uuid.uuid4())
+        category_id_list.append(cls_uuid)
     # Create a dictionary for the image
     image_dict = {
+        'id': str(uuid.uuid4()),
         'title': img_name.title(),
-        'categoryId': get_cls_id(i, file_name),
+        'categoryId': cls_uuid,  # get_cls_id(i, file_name),
         'imgPath': blob_url
     }
 
+    prev_cls_id = cls_id
     image_list_2.append(image_dict)
 
 print("#2")
 print(image_list_2)
 print(len(image_list_2))
+
+cls_1 = {
+    'id': category_id_list[0],
+    'category': 'Object Recognition',
+    'title': 'Animals #1',
+    'difficulty': 'Easy',
+    'imgNum': 8,
+    'contentUrl': ''
+}
+
+cls_2 = {
+    'id': category_id_list[1],
+    'category': 'Object Recognition',
+    'title': 'Animals #2',
+    'difficulty': 'Medium',
+    'imgNum': 8,
+    'contentUrl': ''
+}
+
+cls_3 = {
+    'id': category_id_list[2],
+    'category': 'Object Recognition',
+    'title': 'Animals #3',
+    'difficulty': 'Easy',
+    'imgNum': 8,
+    'contentUrl': ''
+}
+
+cls_4 = {
+    'id': category_id_list[3],
+    'category': 'Pattern Recognition',
+    'title': 'Everyday Life',
+    'difficulty': 'Medium',
+    'imgNum': 8,
+    'contentUrl': ''
+}
+
+cls_5 = {
+    'id': category_id_list[4],
+    'category': 'Pattern Recognition',
+    'title': 'Everyday Life',
+    'difficulty': 'Medium',
+    'imgNum': 8,
+    'contentUrl': ''
+}
+
+cls_6 = {
+    'id': category_id_list[5],
+    'category': 'Pattern Recognition',
+    'title': 'Everyday Life',
+    'difficulty': 'Medium',
+    'imgNum': 8,
+    'contentUrl': ''
+}
 
 category_data = [cls_1, cls_2, cls_3, cls_4, cls_5, cls_6]
 # Insert data into the category table

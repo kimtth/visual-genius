@@ -3,7 +3,7 @@ import Header from "../../components/header/header";
 import NewSidePanel from "../../components/sidepanel/sidepanel";
 import DragDropBoard from "../../components/dnd";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Box } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
 import useAxios from "axios-hooks";
@@ -11,9 +11,9 @@ import { API_ENDPOINT } from "../../components/state/const";
 import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import { setImageDataPayload } from "../../components/state/datas";
-import { v4 as uuidv4 } from 'uuid';
-import { DataFromBackend } from "../../components/state/type";
-import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption } from "../../components/state/settings";
+
+import { setColumnNumber, setImageNumber, setRowNumber } from "../../components/state/settings";
+import { arrangeDataToColumns } from "../../components/data/dataHandler";
 
 const welcomeMessage = {
   position: 'absolute',
@@ -40,8 +40,8 @@ const welcomeLabel = {
 const NewPage: NextPage = () => {
   const router = useRouter()
   const { categoryId } = router.query
-  const [{ data, loading, error }] = useAxios(
-    `${API_ENDPOINT}/images/${categoryId}`
+  const [{ data, loading, error }, getData] = useAxios(
+    `${API_ENDPOINT}/images/${categoryId}`, { manual: true }
   );
   const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
   const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
@@ -66,34 +66,25 @@ const NewPage: NextPage = () => {
     [dispatch]
   );
 
-  const arrangeDataToColumns = (data: any) => {
-    const prematureImgs = data.length > 0 ? data : [];
-    // Draggable requires a [string] draggableId.
-    const imgs = prematureImgs.map((img: any) => {
-      img.id = img.id.toString();
-      return img;
-    });
-
-    const totalImgNum = Object.keys(imgs).length;
-    const rowNum = Math.ceil(totalImgNum / columnNumber);
-    console.log(totalImgNum, columnNumber, rowNum);
-
-    onSetImageNumber(totalImgNum);
-    onSetRowNumber(rowNum);
-    onSetColumnNumber(columnNumber);
-
-    const dataFromBackend: DataFromBackend = {};
-    for (let i = 0; i < columnNumber; i++) {
-      dataFromBackend[uuidv4()] = {
-        items: imgs.slice(i * rowNum, (i + 1) * rowNum),
-      }
-    }
-    return dataFromBackend;
+  const onSetImageColRowNumber = (totalImgNum: number, rowNum: number, columnNumber: number) => {
+    onSetImageNumber(totalImgNum > 0 ? totalImgNum : 1);
+    onSetRowNumber(rowNum > 0 ? rowNum : 1);
+    onSetColumnNumber(columnNumber > 0 ? columnNumber : 5);
+    console.log(totalImgNum, rowNum, columnNumber);
   }
 
   useEffect(() => {
+    if (categoryId) {
+      getData();
+    } else {
+      onDataPayload(null);
+      onSetImageColRowNumber(0, 0, 0);
+    }
+  }, [categoryId]);
+
+  useEffect(() => {
     if (data) {
-      const arrangedData = arrangeDataToColumns(data);
+      const arrangedData = arrangeDataToColumns(data, columnNumber, (totalImgNum: number, rowNum: number, columnNumber: number) => { onSetImageColRowNumber(totalImgNum, rowNum, columnNumber) });
       onDataPayload(arrangedData);
     }
   }, [data]);
@@ -111,7 +102,7 @@ const NewPage: NextPage = () => {
           <NewSidePanel />
         </div>
         <div style={{ width: '80vw' }}>
-          {dataPayload ?
+          {dataPayload != null ?
             // display='flex'
             // justifyContent='center' -> vertical direction
             // alignItems='center' -> horizontal direction

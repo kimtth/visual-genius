@@ -4,15 +4,17 @@ import { GrFormEdit } from "react-icons/gr";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
 import { VscSaveAll } from "react-icons/vsc";
-import { FC, useCallback, useState } from "react";
+import { FC, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../../components/state/pathes";
-import { v4 as uuidv4 } from 'uuid';
 import { useDispatch, useSelector } from "react-redux";
 import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption } from "../state/settings";
 import { setImageDataPayload } from "../state/datas";
-import { DataFromBackend } from "../state/type";
+import useAxios from "axios-hooks";
+import { API_ENDPOINT } from "../state/const";
+import { arrangeDataToColumns } from "../data/dataHandler";
+import { get } from "http";
 
 
 interface AlertPopupProps {
@@ -31,14 +33,20 @@ const AlertPopup: FC<AlertPopupProps> = ({ message }) => {
 
 const NewSidePanel: NextPage = () => {
     const { push } = useRouter();
-    const [captionToggle, setCaptionToggle] = useState(true);
+    const [prompts, setPrompts] = useState("");
+    const [genTriggerd, setGenTriggered] = useState(false);
+    const [{ data, loading, error }, refetch] = useAxios({
+        url: `${API_ENDPOINT}/gen_img_list/${prompts}`,
+        method: 'GET'
+    }, { manual: true }
+    );
+
     const [showAlert, setShowAlert] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
     const [modalMessageType, setModalMessageType] = useState("");
 
     const [alertMessage, setAlertMessage] = useState("");
-    const [prompts, setPrompts] = useState("");
     const [title, setTitle] = useState("Patterns");
 
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
@@ -56,7 +64,7 @@ const NewSidePanel: NextPage = () => {
         (any: any) => dispatch(showImgCaption(any)),
         [dispatch]
     );
-    const onShowRowNumebr = useCallback(
+    const onSetRowNumber = useCallback(
         (any: any) => dispatch(setRowNumber(any)),
         [dispatch]
     );
@@ -68,6 +76,37 @@ const NewSidePanel: NextPage = () => {
         (any: any) => dispatch(setImageDataPayload(any)),
         [dispatch]
     );
+
+    const onSetImageColRowNumber = (totalImgNum: number, rowNum: number, columnNumber: number) => {
+        onSetImageNumber(totalImgNum > 0 ? totalImgNum : 1);
+        onSetRowNumber(rowNum > 0 ? rowNum : 1);
+        onSetColumnNumber(columnNumber > 0 ? columnNumber : 5);
+        //console.log(totalImgNum, rowNum, columnNumber);
+    }
+
+    useEffect(() => {
+        if (data) {
+            const arrangedData = arrangeDataToColumns(data, columnNumber, (totalImgNum: number, rowNum: number, columnNumber: number) => { onSetImageColRowNumber(totalImgNum, rowNum, columnNumber) });
+            onDataPayload(arrangedData);
+            setGenTriggered(false);
+        }
+    }, [data]);
+
+    const handleGenRequest = () => {
+        if (!prompts) {
+            setAlertMessage("Prompts cannot be empty!");
+            handleAlert(true);
+        } else {
+            try {
+                refetch();
+            } catch (error) {
+                alert(error);
+                console.error(error);
+            } finally {
+                setGenTriggered(true);
+            }
+        }
+    }
 
     const handleAlert = (showAlert: boolean) => {
         setShowAlert(showAlert);
@@ -83,6 +122,9 @@ const NewSidePanel: NextPage = () => {
 
         setShowModal(true);
     }
+
+    // if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error!</p>;
 
     return (
         <>
@@ -156,7 +198,7 @@ const NewSidePanel: NextPage = () => {
                     <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Caption</Text>
                     <Switch size='md'
                         isChecked={imgCaption}
-                        onChange={() => onShowImgCaption(!captionToggle)}
+                        onChange={() => onShowImgCaption(!imgCaption)}
                         overflow={"auto"}
                     />
                 </Box>
@@ -203,11 +245,12 @@ const NewSidePanel: NextPage = () => {
                 {/* Icon Button */}
                 <Box padding={'2vh'}>
                     <Button
+                        isLoading={genTriggerd}
                         colorScheme='messenger'
                         size='sm'
                         width='95%'
                         marginBottom='2px'
-                        onClick={() => { }}
+                        onClick={() => { handleGenRequest() }}
                     >
                         Generate
                     </Button>
@@ -227,13 +270,13 @@ const NewSidePanel: NextPage = () => {
                         marginBottom='2px'
                         onClick={(e) => {
                             e.preventDefault();
-                            
+
                             if (columnNumber > 6) {
                                 setAlertMessage("Grid size is too big! (max.6)");
                                 handleAlert(true);
                             } else {
                                 const rowNum = Math.ceil(imageNumber / columnNumber);
-                                onShowRowNumebr(rowNum);
+                                onSetRowNumber(rowNum);
                                 onSetColumnNumber(columnNumber);
 
                                 //TODO
