@@ -131,18 +131,18 @@ dist
 
 # python
 .vscode
-api_server/.venv
-api_server/.idea
-api_server/.env
-api_server/func/venv
-api_server/venv
-api_server/func/.python_packages
-api_server/memo.txt
-api_server/__pycache__
-api_server/util/__pycache__
-api_server/db.db
-api_server/module/__pycache__
-api_server/instance
+backend/.venv
+backend/.idea
+backend/.env
+backend/func/venv
+backend/venv
+backend/func/.python_packages
+backend/memo.txt
+backend/__pycache__
+backend/util/__pycache__
+backend/db.db
+backend/module/__pycache__
+backend/instance
 
 yarn.lock
 package-lock.json
