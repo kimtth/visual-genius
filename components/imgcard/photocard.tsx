@@ -1,8 +1,10 @@
 import type { NextPage } from "next";
 import dynamic from 'next/dynamic';
-import { Card, CardBody, Image, Flex, Box, Text, useDisclosure } from "@chakra-ui/react";
+import { Card, CardBody, Image, Flex, Text, useDisclosure, IconButton } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
 import BasicImageModal from "./modalCard";
+import { FcSpeaker } from "react-icons/fc";
+import synthesizeSpeech from "../util/speechUtil";
 
 interface PhotoProps {
     item?: any;
@@ -21,6 +23,7 @@ const Draggable = dynamic(
 
 const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
     const showImgCaption = useSelector((state: any) => state.settings.showImgCaption);
+    const showTextSpeech = useSelector((state: any) => state.settings.showTextSpeech);
     const { isOpen, onOpen, onClose } = useDisclosure();
 
     return (
@@ -52,7 +55,10 @@ const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
                                         onClick={onOpen}
                                     />
                                 </Flex>
-                                {showImgCaption && <Text fontSize='sm' as='b'>{(item.title).includes('_gen_') ? (item.title).replace('_gen_', '(🎨)') : item.title}</Text>}
+                                <Flex justifyContent={"space-between"} mt={1}>
+                                    {showImgCaption && <Text fontSize='sm' as='b'>{(item.title).includes('_gen_') ? (item.title).replace('_gen_', '(🎨)') : item.title}</Text>}
+                                    {showTextSpeech && <IconButton aria-label="Search database" size={"sm"} variant='outline' icon={<FcSpeaker />} onClick={() => synthesizeSpeech(item.title)} />}
+                                </Flex>
                             </CardBody>
                         </Card>
                     </div>

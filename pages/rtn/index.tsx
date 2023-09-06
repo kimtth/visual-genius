@@ -5,14 +5,19 @@ import ResultCard from "../../components/imgcard/searchResultCard";
 import { BiUpload } from "react-icons/bi";
 import { HiChevronLeft } from "react-icons/hi";
 import { useRouter } from "next/navigation";
-import { pathes } from "../../components/state/pathes";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 
 const SelectPage: NextPage = () => {
   const { push } = useRouter();
   const [selectAll, setSelectAll] = useState(false);
+  const UrlPathMemo = useSelector((state: any) => state.settings.setUrlPathMemo);
   const dataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
+
+  const handleBackToEdit = () => {
+    console.log(UrlPathMemo);
+    push(UrlPathMemo);
+  }
 
   return (
     <>
@@ -26,7 +31,7 @@ const SelectPage: NextPage = () => {
               variant="ghost"
               colorScheme='gray'
               icon={<HiChevronLeft />}
-              onClick={() => { push(pathes.gen) }}
+              onClick={() => { handleBackToEdit() }}
             />
             <Text fontWeight='bold' fontSize='md'>Back to Edit</Text>
           </Box>
@@ -50,7 +55,7 @@ const SelectPage: NextPage = () => {
                 size='sm'
                 colorScheme='blue'
                 borderRadius='1px'
-                onClick={() => { push(pathes.gen) }}
+                onClick={() => { alert('not implemented') }}
               >Add Photos</Button>
               <Button aria-label='Upload'
                 leftIcon={<BiUpload />}

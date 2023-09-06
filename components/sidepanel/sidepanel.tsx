@@ -1,15 +1,15 @@
 import type { NextPage } from "next";
 import { Box, Button, IconButton, Image, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon } from "@chakra-ui/react";
-import { GrFormEdit } from "react-icons/gr";
+import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
 import { VscSaveAll } from "react-icons/vsc";
-import { FC, useCallback, useEffect, useState } from "react";
+import { FC, MouseEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../../components/state/pathes";
 import { useDispatch, useSelector } from "react-redux";
-import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption } from "../state/settings";
+import { setColumnNumber, setImageNumber, setRowNumber, setUrlPathMemo, showImgCaption, showTextSpeech } from "../state/settings";
 import { setImageDataPayload } from "../state/datas";
 import useAxios from "axios-hooks";
 import { API_ENDPOINT } from "../state/const";
@@ -47,11 +47,12 @@ const NewSidePanel: NextPage = () => {
     const [modalMessageType, setModalMessageType] = useState("");
 
     const [alertMessage, setAlertMessage] = useState("");
-    const [title, setTitle] = useState("Patterns");
 
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
     const imgCaption = useSelector((state: any) => state.settings.showImgCaption);
+    const categoryTitle = useSelector((state: any) => state.settings.setCategoryTitle);
+    const textSpeech = useSelector((state: any) => state.settings.showTextSpeech);
     const rowNumber = useSelector((state: any) => state.settings.setRowNumber);
     const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
     const dispatch = useDispatch();
@@ -62,6 +63,14 @@ const NewSidePanel: NextPage = () => {
     );
     const onShowImgCaption = useCallback(
         (any: any) => dispatch(showImgCaption(any)),
+        [dispatch]
+    );
+    const onShowTextSpeech = useCallback(
+        (any: any) => dispatch(showTextSpeech(any)),
+        [dispatch]
+    );
+    const onSetUrlPathMemo = useCallback(
+        (any: any) => dispatch(setUrlPathMemo(any)),
         [dispatch]
     );
     const onSetRowNumber = useCallback(
@@ -86,7 +95,12 @@ const NewSidePanel: NextPage = () => {
 
     useEffect(() => {
         if (data) {
-            const arrangedData = arrangeDataToColumns(data, columnNumber, (totalImgNum: number, rowNum: number, columnNumber: number) => { onSetImageColRowNumber(totalImgNum, rowNum, columnNumber) });
+            const arrangedData = arrangeDataToColumns(data, columnNumber,
+                // callback function
+                (totalImgNum: number, rowNum: number, columnNumber: number) => {
+                    onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
+                }
+            );
             onDataPayload(arrangedData);
             setGenTriggered(false);
         }
@@ -123,6 +137,32 @@ const NewSidePanel: NextPage = () => {
         setShowModal(true);
     }
 
+    const handleAddPhoto = () => {
+        push(pathes.rtn);
+    }
+
+    const handleImageRearrange = (e: MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        if (columnNumber > 6) {
+            setAlertMessage("Grid size is too big! (max.6)");
+            handleAlert(true);
+        } else {
+            const rowNum = Math.ceil(imageNumber / columnNumber);
+            onSetRowNumber(rowNum);
+            onSetColumnNumber(columnNumber);
+            // console.debug(dataPayload);
+            const flatData = Object.values(dataPayload).flatMap((obj: any) => obj.items);
+            // console.log(flatData);
+            const arrangedData = arrangeDataToColumns(flatData, columnNumber,
+                // callback function
+                (totalImgNum: number, rowNum: number, columnNumber: number) => {
+                    onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
+                }
+            );
+            onDataPayload(arrangedData);
+        }
+    }
+
     // if (loading) return <p>Loading...</p>;
     if (error) return <p>Error!</p>;
 
@@ -142,18 +182,14 @@ const NewSidePanel: NextPage = () => {
             <VStack position={'fixed'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
                 <Box display="flex" alignItems="center" paddingLeft={'5px'}>
                     <Editable
-                        defaultValue={title}
+                        defaultValue={categoryTitle}
                         fontWeight='bold'
                         fontSize='2xl'
                     >
                         <EditablePreview />
                         <EditableInput />
                     </Editable>
-                    <IconButton aria-label='Edit'
-                        variant="ghost"
-                        colorScheme='gray'
-                        icon={<GrFormEdit />}
-                    />
+                    <PiCursorClickLight />
                 </Box>
                 <Box display="flex" alignItems="center">
                     <IconButton aria-label='Back to Home'
@@ -199,6 +235,14 @@ const NewSidePanel: NextPage = () => {
                     <Switch size='md'
                         isChecked={imgCaption}
                         onChange={() => onShowImgCaption(!imgCaption)}
+                        overflow={"auto"}
+                    />
+                </Box>
+                <Box display="flex" alignItems="center" justifyContent={"space-between"}>
+                    <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Text to Speech</Text>
+                    <Switch size='md'
+                        isChecked={textSpeech}
+                        onChange={() => onShowTextSpeech(!textSpeech)}
                         overflow={"auto"}
                     />
                 </Box>
@@ -259,7 +303,7 @@ const NewSidePanel: NextPage = () => {
                         width='95%'
                         variant="outline"
                         marginBottom='2px'
-                        onClick={() => { push(pathes.rtn) }}
+                        onClick={() => { handleAddPhoto() }}
                     >
                         Add my own photos
                     </Button>
@@ -268,20 +312,7 @@ const NewSidePanel: NextPage = () => {
                         width='95%'
                         variant="outline"
                         marginBottom='2px'
-                        onClick={(e) => {
-                            e.preventDefault();
-
-                            if (columnNumber > 6) {
-                                setAlertMessage("Grid size is too big! (max.6)");
-                                handleAlert(true);
-                            } else {
-                                const rowNum = Math.ceil(imageNumber / columnNumber);
-                                onSetRowNumber(rowNum);
-                                onSetColumnNumber(columnNumber);
-
-                                //TODO
-                            }
-                        }}
+                        onClick={(e) => { handleImageRearrange(e) }}
                     >
                         Rearrange cards
                     </Button>

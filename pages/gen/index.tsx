@@ -61,6 +61,7 @@ const NewPage: NextPage = () => {
     (any: any) => dispatch(setColumnNumber(any)),
     [dispatch]
   );
+
   const onDataPayload = useCallback(
     (any: any) => dispatch(setImageDataPayload(any)),
     [dispatch]
@@ -84,7 +85,12 @@ const NewPage: NextPage = () => {
 
   useEffect(() => {
     if (data) {
-      const arrangedData = arrangeDataToColumns(data, columnNumber, (totalImgNum: number, rowNum: number, columnNumber: number) => { onSetImageColRowNumber(totalImgNum, rowNum, columnNumber) });
+      const arrangedData = arrangeDataToColumns(data, columnNumber,
+        // callback function
+        (totalImgNum: number, rowNum: number, columnNumber: number) => {
+          onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
+        }
+      );
       onDataPayload(arrangedData);
     }
   }, [data]);

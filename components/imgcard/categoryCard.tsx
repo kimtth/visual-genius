@@ -2,10 +2,12 @@ import type { NextPage } from "next";
 import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack } from "@chakra-ui/react";
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../state/pathes";
+import { useDispatch } from "react-redux";
+import { setCategoryTitle, setUrlPathMemo } from "../state/settings";
 
 const footerIconsLyaoutSytle = {
     justifyContent: 'flex-end'
@@ -21,6 +23,23 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
     const [modalMessageType, setModalMessageType] = useState("");
+    const dispatch = useDispatch();
+
+    const onSetCategoryTitle = useCallback(
+        (any: any) => dispatch(setCategoryTitle(any)),
+        [dispatch]
+    );
+
+    const onSetUrlPathMemo = useCallback(
+        (any: any) => dispatch(setUrlPathMemo(any)),
+        [dispatch]
+    );
+
+    const handleCategoryClick = (categoryId: string, categoryTitle: string) => {
+        onSetCategoryTitle(categoryTitle);
+        onSetUrlPathMemo(`${pathes.gen}?categoryId=${categoryId}`);
+        push(`${pathes.gen}?categoryId=${categoryId}`);
+    }
 
     const handleModal = (modalTitle: string, modalMessageType: string) => {
         setModalTitle(modalTitle);
@@ -37,7 +56,7 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
             }
             <Card maxW='sm' key={categoryId}>
                 <CardBody
-                    onClick={() => push(`${pathes.gen}?categoryId=${categoryId}`)}
+                    onClick={() => handleCategoryClick(categoryId, item['title'])}
                 >
                     <HStack height={'12vh'} spacing='4px'>
                         <Image
