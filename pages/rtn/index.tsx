@@ -7,6 +7,7 @@ import { HiChevronLeft } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSelector } from "react-redux";
+import { pathes } from "../../components/state/pathes";
 
 const SelectPage: NextPage = () => {
   const { push } = useRouter();
@@ -15,8 +16,11 @@ const SelectPage: NextPage = () => {
   const dataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
 
   const handleBackToEdit = () => {
-    console.log(UrlPathMemo);
-    push(UrlPathMemo);
+    if (UrlPathMemo){
+      push(UrlPathMemo);
+    } else {
+      push(pathes.gen);
+    }
   }
 
   return (

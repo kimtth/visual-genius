@@ -12,7 +12,7 @@ import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import { setImageDataPayload } from "../../components/state/datas";
 
-import { setColumnNumber, setImageNumber, setRowNumber } from "../../components/state/settings";
+import { setColumnNumber, setImageNumber, setRowNumber, showGenButton } from "../../components/state/settings";
 import { arrangeDataToColumns } from "../../components/data/dataHandler";
 
 const welcomeMessage = {
@@ -44,8 +44,6 @@ const NewPage: NextPage = () => {
     `${API_ENDPOINT}/images/${categoryId}`, { manual: true }
   );
   const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
-  const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
-  const rowNumber = useSelector((state: any) => state.settings.setRowNumber);
   const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
   const dispatch = useDispatch();
 
@@ -67,11 +65,16 @@ const NewPage: NextPage = () => {
     [dispatch]
   );
 
+  const onShowGenButton = useCallback(
+    (any: any) => dispatch(showGenButton(any)),
+    [dispatch]
+  );
+
   const onSetImageColRowNumber = (totalImgNum: number, rowNum: number, columnNumber: number) => {
     onSetImageNumber(totalImgNum > 0 ? totalImgNum : 1);
     onSetRowNumber(rowNum > 0 ? rowNum : 1);
     onSetColumnNumber(columnNumber > 0 ? columnNumber : 5);
-    console.log(totalImgNum, rowNum, columnNumber);
+    //console.log(totalImgNum, rowNum, columnNumber);
   }
 
   useEffect(() => {
@@ -79,19 +82,23 @@ const NewPage: NextPage = () => {
       getData();
     } else {
       onDataPayload(null);
+      onShowGenButton(true);
       onSetImageColRowNumber(0, 0, 0);
     }
   }, [categoryId]);
 
   useEffect(() => {
     if (data) {
+      //console.log(data);
       const arrangedData = arrangeDataToColumns(data, columnNumber,
         // callback function
         (totalImgNum: number, rowNum: number, columnNumber: number) => {
           onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
         }
       );
+      //console.log(arrangedData);
       onDataPayload(arrangedData);
+      onShowGenButton(false);
     }
   }, [data]);
 

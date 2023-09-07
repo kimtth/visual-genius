@@ -30,7 +30,7 @@ const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
         <>
             {isOpen ?
                 <>
-                    <BasicImageModal title={item.title} imgPath={imgPath} isOpen={isOpen} onClose={onClose} />
+                    <BasicImageModal item={item} imgPath={imgPath} isOpen={isOpen} onClose={onClose} />
                 </>
                 : null}
             {/* The draggableId should match the key of the component */}
@@ -57,7 +57,7 @@ const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
                                 </Flex>
                                 <Flex justifyContent={"space-between"} mt={1}>
                                     {showImgCaption && <Text fontSize='sm' as='b'>{(item.title).includes('_gen_') ? (item.title).replace('_gen_', '(🎨)') : item.title}</Text>}
-                                    {showTextSpeech && <IconButton aria-label="Search database" size={"sm"} variant='outline' icon={<FcSpeaker />} onClick={() => synthesizeSpeech(item.title)} />}
+                                    {showTextSpeech && <IconButton aria-label="Text2Speech" size={"sm"} variant='outline' icon={<FcSpeaker />} onClick={() => synthesizeSpeech(item.title)} />}
                                 </Flex>
                             </CardBody>
                         </Card>

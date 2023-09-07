@@ -1,10 +1,10 @@
 import type { NextPage } from "next";
 import Header from "../../components/header/header";
 import CategoryCard from "../../components/imgcard/categoryCard";
-import { Box, Button, Center, IconButton, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
+import { Box, Button, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
 import { useSelector, useDispatch } from "react-redux";
-import { setCategoryDataPayload } from "../../components/state/datas";
-import React, { useCallback, useEffect } from "react";
+import { setCategoriesDataPayload } from "../../components/state/datas";
+import React, { useCallback, useEffect, MouseEvent } from "react";
 import useAxios from "axios-hooks";
 import { IoCreate } from "react-icons/io5";
 import { API_ENDPOINT } from "../../components/state/const";
@@ -23,11 +23,11 @@ const Home: NextPage = () => {
   const [{ data, loading, error }, refetch] = useAxios(
     `${API_ENDPOINT}/categories`
   );
-  const categoryData = useSelector((state: any) => state.datas.CategoryDataPayload);
+  const categoriesData = useSelector((state: any) => state.datas.CategoriesDataPayload);
   const dispatch = useDispatch();
 
   const onDataPayload = useCallback(
-    (any: any) => dispatch(setCategoryDataPayload(any)),
+    (any: any) => dispatch(setCategoriesDataPayload(any)),
     [dispatch]
   );
 
@@ -36,6 +36,10 @@ const Home: NextPage = () => {
       onDataPayload(data);
     }
   }, [data]);
+
+  const handleNewCategory = (e: MouseEvent<HTMLButtonElement>) => {
+    push('/gen');
+  }
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error!</p>;
@@ -51,7 +55,7 @@ const Home: NextPage = () => {
           colorScheme="twitter"
           size="sm"
           leftIcon={<IoCreate />}
-          onClick={() => push('/gen')}
+          onClick={e => handleNewCategory(e)}
         >
           New
         </Button>
@@ -65,7 +69,7 @@ const Home: NextPage = () => {
             <TabPanel>
               <SimpleGrid columns={3} spacingX='30px' spacingY='10px'>
                 {
-                  categoryData ? categoryData.map((item: any, index: any) => {
+                  categoriesData ? categoriesData.map((item: any, index: any) => {
                     return (
                       <CategoryCard key={item['id']} categoryId={item['id']} item={item} />
                     )

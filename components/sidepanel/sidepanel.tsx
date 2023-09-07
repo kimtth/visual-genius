@@ -9,12 +9,11 @@ import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../../components/state/pathes";
 import { useDispatch, useSelector } from "react-redux";
-import { setColumnNumber, setImageNumber, setRowNumber, setUrlPathMemo, showImgCaption, showTextSpeech } from "../state/settings";
+import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption, showTextSpeech } from "../state/settings";
 import { setImageDataPayload } from "../state/datas";
 import useAxios from "axios-hooks";
 import { API_ENDPOINT } from "../state/const";
 import { arrangeDataToColumns } from "../data/dataHandler";
-import { get } from "http";
 
 
 interface AlertPopupProps {
@@ -35,27 +34,35 @@ const NewSidePanel: NextPage = () => {
     const { push } = useRouter();
     const [prompts, setPrompts] = useState("");
     const [genTriggerd, setGenTriggered] = useState(false);
-    const [{ data, loading, error }, refetch] = useAxios({
-        url: `${API_ENDPOINT}/gen_img_list/${prompts}`,
-        method: 'GET'
-    }, { manual: true }
-    );
-
     const [showAlert, setShowAlert] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
+    const [categoryTitle, setCategoryTitle] = useState("New Category");
     const [modalMessageType, setModalMessageType] = useState("");
-
     const [alertMessage, setAlertMessage] = useState("");
 
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
     const imgCaption = useSelector((state: any) => state.settings.showImgCaption);
-    const categoryTitle = useSelector((state: any) => state.settings.setCategoryTitle);
+    const showGenButton = useSelector((state: any) => state.settings.showGenButton);
+    const categoryData = useSelector((state: any) => state.datas.CategoryData);
     const textSpeech = useSelector((state: any) => state.settings.showTextSpeech);
     const rowNumber = useSelector((state: any) => state.settings.setRowNumber);
     const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
     const dispatch = useDispatch();
+
+    const [{ data, loading, error }, refetch] = useAxios({
+        url: `${API_ENDPOINT}/gen_img_list/${prompts}`,
+        method: 'GET'
+    }, { manual: true }
+    );
+    const [{ data: putData, loading: putLoading, error: putError }, executePut] = useAxios(
+        {
+            url: `${API_ENDPOINT}/category/${categoryData.id}`,
+            method: 'PUT'
+        },
+        { manual: true }
+    )
 
     const onSetImageNumber = useCallback(
         (any: any) => dispatch(setImageNumber(any)),
@@ -65,12 +72,12 @@ const NewSidePanel: NextPage = () => {
         (any: any) => dispatch(showImgCaption(any)),
         [dispatch]
     );
-    const onShowTextSpeech = useCallback(
-        (any: any) => dispatch(showTextSpeech(any)),
+    const onShowGenButton = useCallback(
+        (any: any) => dispatch(showGenButton(any)),
         [dispatch]
     );
-    const onSetUrlPathMemo = useCallback(
-        (any: any) => dispatch(setUrlPathMemo(any)),
+    const onShowTextSpeech = useCallback(
+        (any: any) => dispatch(showTextSpeech(any)),
         [dispatch]
     );
     const onSetRowNumber = useCallback(
@@ -95,6 +102,7 @@ const NewSidePanel: NextPage = () => {
 
     useEffect(() => {
         if (data) {
+            //console.log(data);
             const arrangedData = arrangeDataToColumns(data, columnNumber,
                 // callback function
                 (totalImgNum: number, rowNum: number, columnNumber: number) => {
@@ -103,6 +111,7 @@ const NewSidePanel: NextPage = () => {
             );
             onDataPayload(arrangedData);
             setGenTriggered(false);
+            onShowGenButton(false);
         }
     }, [data]);
 
@@ -119,6 +128,26 @@ const NewSidePanel: NextPage = () => {
             } finally {
                 setGenTriggered(true);
             }
+        }
+    }
+
+    const handleTitleChange = (newTitle: string) => {
+        setCategoryTitle(newTitle);
+    }
+
+    const handleUpdateRequest = () => {
+        try {
+            if (Object.keys(categoryData).length !== 0) {
+                executePut({
+                    data: {
+                        ...categoryData,
+                        title: categoryTitle
+                    }
+                })
+            }
+        } catch (error) {
+            alert(error);
+            console.error(error);
         }
     }
 
@@ -144,15 +173,13 @@ const NewSidePanel: NextPage = () => {
     const handleImageRearrange = (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         if (columnNumber > 6) {
-            setAlertMessage("Grid size is too big! (max.6)");
+            alert("Grid size is too big! (max.6)");
             handleAlert(true);
         } else {
             const rowNum = Math.ceil(imageNumber / columnNumber);
             onSetRowNumber(rowNum);
             onSetColumnNumber(columnNumber);
-            // console.debug(dataPayload);
             const flatData = Object.values(dataPayload).flatMap((obj: any) => obj.items);
-            // console.log(flatData);
             const arrangedData = arrangeDataToColumns(flatData, columnNumber,
                 // callback function
                 (totalImgNum: number, rowNum: number, columnNumber: number) => {
@@ -164,7 +191,7 @@ const NewSidePanel: NextPage = () => {
     }
 
     // if (loading) return <p>Loading...</p>;
-    if (error) return <p>Error!</p>;
+    if (error || putError) return <p>Error!</p>;
 
     return (
         <>
@@ -182,9 +209,11 @@ const NewSidePanel: NextPage = () => {
             <VStack position={'fixed'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
                 <Box display="flex" alignItems="center" paddingLeft={'5px'}>
                     <Editable
-                        defaultValue={categoryTitle}
+                        defaultValue={categoryData.title ? categoryData.title : categoryTitle}
                         fontWeight='bold'
                         fontSize='2xl'
+                        onChange={(value) => { handleTitleChange(value) }}
+                        onSubmit={() => handleUpdateRequest()}
                     >
                         <EditablePreview />
                         <EditableInput />
@@ -269,6 +298,7 @@ const NewSidePanel: NextPage = () => {
                             <NumberInput
                                 size='sm'
                                 min={1}
+                                max={6}
                                 defaultValue={1}
                                 value={columnNumber}
                             >
@@ -294,6 +324,7 @@ const NewSidePanel: NextPage = () => {
                         size='sm'
                         width='95%'
                         marginBottom='2px'
+                        isDisabled={showGenButton}
                         onClick={() => { handleGenRequest() }}
                     >
                         Generate

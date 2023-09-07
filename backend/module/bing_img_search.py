@@ -132,6 +132,11 @@ async def verify_links(links: List[str]) -> List[bool]:
     return [bool(elm) for elm in _]
 
 
-async def fetch_image_from_bing(query):
-    urls = bing_image_urls(query, limit=1)
-    return urls[0]
+async def fetch_image_from_bing(query, limit=1):
+    urls = bing_image_urls(query, limit=limit)
+
+    if len(urls) == 1:
+        return urls[0]
+    elif not urls:
+        return []
+    return urls

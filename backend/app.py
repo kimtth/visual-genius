@@ -1,4 +1,5 @@
 import os
+import random
 import uuid
 from typing import List, Any
 
@@ -63,6 +64,7 @@ class CategoryModel(Base):
     difficulty = Column(String)
     imgNum = Column(Integer)
     contentUrl = Column(JSON)
+    deleteFlag = Column(Integer)
 
 
 # Pydantic model
@@ -72,6 +74,7 @@ class CategorySchema(BaseModel):
     difficulty: str
     imgNum: int
     contentUrl: List[str]
+    deleteFlag: int
 
     class Config:
         from_attributes = True
@@ -92,6 +95,7 @@ class ImageModel(Base):
     categoryId = Column(String, ForeignKey('category.id'))
     title = Column(String)
     imgPath = Column(String)
+    deleteFlag = Column(Integer)
 
 
 # Pydantic model
@@ -99,6 +103,7 @@ class ImageSchema(BaseModel):
     categoryId: str
     title: str
     imgPath: str
+    deleteFlag: int
 
     class Config:
         from_attributes = True
@@ -148,6 +153,7 @@ def update_category(id: str, category: CategorySchema, session: Session = Depend
     item = session.query(CategoryModel).get(id)
     if not item:
         raise HTTPException(status_code=404, detail="Category not found")
+
     for k, value in category.model_dump().items():
         setattr(item, k, value)
     session.commit()
@@ -242,9 +248,24 @@ def delete_image(id: str, session: Session = Depends(get_db)):
 
 @app.get('/gen_img/{query}')
 async def img_gen_handler(query: str):
-    image_url = await aoai_call.img_gen(query)
+    try:
+        image_url = await aoai_call.img_gen(query)
+    except Exception as e:
+        raise HTTPException(status_code=204, detail="No image found")
 
     return image_url
+
+
+@app.get('/bing_img/{search_query}')
+async def img_gen_handler(search_query: str):
+    img_urls = await bing_img_search.fetch_image_from_bing(search_query, 10)
+    random_idx = random.randint(1, 9)
+
+    if len(img_urls) == 0:
+        raise HTTPException(status_code=204, detail="No image found")
+    
+    img_url = img_urls[random_idx]
+    return img_url
 
 
 @app.get('/gen_img_list/{query}')

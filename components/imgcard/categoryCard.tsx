@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../state/pathes";
 import { useDispatch } from "react-redux";
-import { setCategoryTitle, setUrlPathMemo } from "../state/settings";
+import { setUrlPathMemo } from "../state/settings";
+import { setCategoryData } from "../state/datas";
 
 const footerIconsLyaoutSytle = {
     justifyContent: 'flex-end'
@@ -25,8 +26,8 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
     const [modalMessageType, setModalMessageType] = useState("");
     const dispatch = useDispatch();
 
-    const onSetCategoryTitle = useCallback(
-        (any: any) => dispatch(setCategoryTitle(any)),
+    const onCategoryData = useCallback(
+        (any: any) => dispatch(setCategoryData(any)),
         [dispatch]
     );
 
@@ -36,7 +37,7 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
     );
 
     const handleCategoryClick = (categoryId: string, categoryTitle: string) => {
-        onSetCategoryTitle(categoryTitle);
+        onCategoryData(item);
         onSetUrlPathMemo(`${pathes.gen}?categoryId=${categoryId}`);
         push(`${pathes.gen}?categoryId=${categoryId}`);
     }

@@ -1,6 +1,7 @@
 export interface DataState {
     title: string;
-    CategoryDataPayload: any;
+    CategoryData: any;
+    CategoriesDataPayload: any;
     ImageDataPayload: any;
     SearchResultPayload: any;
 }
@@ -8,7 +9,7 @@ export interface DataState {
 export interface SettingState {
     showImgCaption: boolean;
     showTextSpeech: boolean;
-    setCategoryTitle: string;
+    showGenButton: boolean;
     setUrlPathMemo: string;
     setImageNumber: number;
     setRowNumber: number;

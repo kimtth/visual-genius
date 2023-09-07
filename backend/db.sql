@@ -6,6 +6,7 @@ CREATE TABLE "category" (
 	"imgNum"	INTEGER,
 	"contentUrl"	TEXT,
 	"user_id"	TEXT DEFAULT 'sys',
+	"deleteFlag" INTEGER DEFAULT 0,
 	"created_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
     "updated_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
 	PRIMARY KEY("id")
@@ -22,6 +23,7 @@ CREATE TABLE "image" (
 	"title"	TEXT,
 	"imgPath"	TEXT,
 	"user_id"	TEXT DEFAULT 'sys',
+	"deleteFlag" INTEGER DEFAULT 0,
 	"created_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
     "updated_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
 	PRIMARY KEY("id"),

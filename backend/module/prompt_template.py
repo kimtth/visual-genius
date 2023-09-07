@@ -27,8 +27,7 @@ class ImgListPrompt(PromptType):
 
 class ImgGenPrompt(PromptType):
     imgGenPrompt = '''
-    Generate a creative and surprising cartoon-style illustration on a topic determined through reasoning based on the user query.
-    The generated image should be designed to captivate children. 
+    The generated image should be designed to captivate children based on the user query. 
     
     The user query
     {query}
