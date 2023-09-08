@@ -1,27 +1,111 @@
 import type { NextPage } from "next";
 import Header from "../../components/header/header";
-import { Button, Text, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs, Box, VStack, Divider, Checkbox, HStack, ButtonGroup, IconButton } from "@chakra-ui/react";
+import { Button, Text, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs, Box, VStack, Divider, HStack, ButtonGroup, IconButton } from "@chakra-ui/react";
 import ResultCard from "../../components/imgcard/searchResultCard";
 import { BiUpload } from "react-icons/bi";
 import { HiChevronLeft } from "react-icons/hi";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { pathes } from "../../components/state/pathes";
+import { API_ENDPOINT } from "../../components/state/const";
+import useAxios from "axios-hooks";
 
 const SelectPage: NextPage = () => {
-  const { push } = useRouter();
-  const [selectAll, setSelectAll] = useState(false);
-  const UrlPathMemo = useSelector((state: any) => state.settings.setUrlPathMemo);
-  const dataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
+  const { push, back } = useRouter();
+  const [tabIndex, setTabIndex] = useState(0)
+  const [emojiData, setEmojiData] = useState([]);
+  const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const [checkedEmojiItems, setCheckedEmojiItems] = useState<string[]>([]);
+
+  const categoryData = useSelector((state: any) => state.datas.CategoryData);
+  const searchDataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
+
+  const [{ data, loading, error }, getData] = useAxios(
+    `${API_ENDPOINT}/emojies`
+  );
+  const [{ data: postData, loading: postLoading, error: postError }, executePost] = useAxios(
+    {
+      url: `${API_ENDPOINT}/images`,
+      method: 'POST'
+    },
+    { manual: true }
+  )
+
+  useEffect(() => {
+    if (data) {
+      setEmojiData(data);
+    }
+  }, [data]);
+
+  const handleTabsChange = (index: number) => {
+    setTabIndex(index)
+  }
 
   const handleBackToEdit = () => {
-    if (UrlPathMemo){
-      push(UrlPathMemo);
-    } else {
-      push(pathes.gen);
+    back();
+  }
+
+  const handleAddPhotos = () => {
+    if (tabIndex == 0) {
+      if (checkedItems.length > 0) {
+        try {
+          const transformedDataPayload = searchDataPayload.filter((item: any) =>
+            checkedItems.includes(item['id'])).map((item: any) =>
+            ({
+              id: item['id'],
+              categoryId: categoryData['id'],
+              title: item['title'],
+              imgPath: item['imgPath']
+            }));
+          executePost({
+            data: transformedDataPayload
+          })
+          if(postData) {
+            alert("Added successfully!")
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        alert("Please select at least one photo!");
+      }
+    } else if (tabIndex == 1) {
+      if (checkedEmojiItems.length > 0) {
+        try {
+          const transformedEmojiData = emojiData.filter((item: any) =>
+            checkedEmojiItems.includes(item['id'])).map((item: any) =>
+            ({
+              id: item['id'],
+              categoryId: categoryData['id'],
+              title: item['title'],
+              imgPath: item['imgPath']
+            }));
+          executePost({
+            data: transformedEmojiData
+          })
+          if(postData) {
+            alert("Added successfully!")
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        alert("Please select at least one photo!");
+      }
     }
   }
+
+  const handleSearchResultSelectItem = (id: string, checked: boolean) => {
+    const newCheckedItems =
+      checked ? [...checkedItems, id] : checkedItems.filter((itemId) => itemId !== id);
+    setCheckedItems(newCheckedItems);
+  };
+
+  const handleEmojiSelectItem = (id: string, checked: boolean) => {
+    const newCheckedItems =
+      checked ? [...checkedEmojiItems, id] : checkedEmojiItems.filter((itemId) => itemId !== id);
+    setCheckedEmojiItems(newCheckedItems);
+  };
 
   return (
     <>
@@ -37,29 +121,16 @@ const SelectPage: NextPage = () => {
               icon={<HiChevronLeft />}
               onClick={() => { handleBackToEdit() }}
             />
-            <Text fontWeight='bold' fontSize='md'>Back to Edit</Text>
+            <Text fontWeight='bold' fontSize='md'>Back</Text>
           </Box>
-          <HStack justifyContent="space-between">
-            <Checkbox
-              size='sm'
-              colorScheme='red'
-              onChange={() => { setSelectAll(!selectAll) }}
-            >
-              <Text>Select All Photos</Text>
-            </Checkbox>
+          <HStack justifyContent="right">
             <ButtonGroup gap='1'>
-              {/* <Button aria-label='Cancel'
-                size='sm'
-                variant="outline"
-                colorScheme='gray'
-                borderRadius='1px'
-                onClick={() => { push(pathes.gen) }}
-              >Cancel</Button> */}
               <Button aria-label='Add Photos'
                 size='sm'
                 colorScheme='blue'
                 borderRadius='1px'
-                onClick={() => { alert('not implemented') }}
+                isLoading={postLoading}
+                onClick={() => { handleAddPhotos() }}
               >Add Photos</Button>
               <Button aria-label='Upload'
                 leftIcon={<BiUpload />}
@@ -67,11 +138,12 @@ const SelectPage: NextPage = () => {
                 variant="outline"
                 colorScheme='gray'
                 borderRadius='1px'
+                onClick={() => { alert("Under construction!") }}
               >Upload My own photos</Button>
             </ButtonGroup>
           </HStack>
           <Box>
-            <Tabs defaultIndex={0} width={'68vw'}>
+            <Tabs defaultIndex={0} width={'68vw'} onChange={handleTabsChange}>
               <TabList>
                 <Tab width="20vw">Search Result</Tab>
                 <Tab width="20vw">Emojis</Tab>
@@ -80,9 +152,15 @@ const SelectPage: NextPage = () => {
                 <TabPanel>
                   <SimpleGrid spacing={4} columns={5}>
                     {
-                      dataPayload.map((item: any, index: any) => {
+                      searchDataPayload.map((item: any, index: any) => {
                         return (
-                          <ResultCard key={item['id']} title={item['title']} imgPath={item['imgPath']} selectAll={selectAll} />
+                          <ResultCard
+                            key={item['id']}
+                            title={item['title']}
+                            imgPath={item['imgPath']}
+                            checked={checkedItems.includes(item['id'])}
+                            onSelect={(checked: boolean) => { handleSearchResultSelectItem(item['id'], checked) }}
+                          />
                         )
                       }
                       )
@@ -91,12 +169,20 @@ const SelectPage: NextPage = () => {
                 </TabPanel>
                 <TabPanel>
                   <SimpleGrid spacing={4} columns={5}>
-                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
-                    <ResultCard title={''} imgPath="rectangle-3469581@2x.png" selectAll={selectAll} />
+                    {
+                      emojiData.map((item: any, index: any) => {
+                        return (
+                          <ResultCard
+                            key={item['id']}
+                            title={item['title']}
+                            imgPath={item['imgPath']}
+                            checked={checkedEmojiItems.includes(item['id'])}
+                            onSelect={(checked: boolean) => { handleEmojiSelectItem(item['id'], checked) }}
+                          />
+                        )
+                      }
+                      )
+                    }
                   </SimpleGrid>
                 </TabPanel>
               </TabPanels>

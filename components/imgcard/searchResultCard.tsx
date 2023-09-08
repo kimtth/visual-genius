@@ -1,27 +1,22 @@
 import type { NextPage } from "next";
 import { Card, CardBody, Image, Text, Checkbox, Flex, Spacer, useDisclosure } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
-import BasicImageModal from "./modalCard";
+import SearchImageModal from "./searchModalCard";
 
 interface PhotoProps {
     title: string;
     imgPath: string;
-    selectAll: boolean;
+    checked: boolean;
+    onSelect: (checked: boolean) => void;
 }
 
-const ResultCard: NextPage<PhotoProps> = ({ title, imgPath, selectAll }) => {
-    const [checked, setChecked] = useState(false);
+const ResultCard: NextPage<PhotoProps> = ({ title, imgPath, checked, onSelect }) => {
     const { isOpen, onOpen, onClose } = useDisclosure();
-
-    useEffect(() => {
-        setChecked(selectAll);
-    }, [selectAll])
 
     return (
         <>
             {isOpen ?
                 <>
-                    <BasicImageModal title={title} imgPath={imgPath} isOpen={isOpen} onClose={onClose} />
+                    <SearchImageModal title={title} imgPath={imgPath} isOpen={isOpen} onClose={onClose} />
                 </>
                 : null}
             <div>
@@ -46,7 +41,7 @@ const ResultCard: NextPage<PhotoProps> = ({ title, imgPath, selectAll }) => {
                                 colorScheme='green'
                                 margin={"5px"}
                                 isChecked={checked}
-                                onChange={() => { setChecked(!checked) }}
+                                onChange={() => { onSelect(!checked) }}
                             />
                             <Text fontSize='sm' as="b" isTruncated>{title}</Text>
                         </Flex>

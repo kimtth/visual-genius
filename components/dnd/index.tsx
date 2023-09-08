@@ -3,11 +3,12 @@ import dynamic from 'next/dynamic';
 import PhotoCard from "../imgcard/photoCard";
 import { useDispatch } from "react-redux";
 import { setImageDataPayload } from "../state/datas";
+import { useReactToPrint } from 'react-to-print';
 
 
-const DndContainer = ({ children }: any) => (
-  <div style={{ display: "flex" }}>{children}</div>
-);
+const DndContainer = React.forwardRef((props: any, ref: any) => (
+  <div style={{ display: "flex" }} ref={ref}>{props.children}</div>
+));
 
 const DragDropContext = dynamic(
   async () => {
@@ -31,6 +32,10 @@ const DragDropBoard = ({ dataPayload }: any) => {
     (any: any) => dispatch(setImageDataPayload(any)),
     [dispatch]
   );
+  const componentRef = useRef();
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current || null,
+  });
 
   const onDragEnd = (result: any, columns: any, setColumns: any) => {
     if (!result.destination) return;
@@ -73,7 +78,7 @@ const DragDropBoard = ({ dataPayload }: any) => {
     <DragDropContext
       onDragEnd={(result) => onDragEnd(result, dataPayload, onDataPayload)}
     >
-      <DndContainer>
+      <DndContainer className="printArea" ref={componentRef} >
         {Object.entries(dataPayload)?.map(([columnId, column]: [string, any], index) => {
           return (
             <Droppable key={columnId} droppableId={columnId}>

@@ -10,7 +10,6 @@ export interface SettingState {
     showImgCaption: boolean;
     showTextSpeech: boolean;
     showGenButton: boolean;
-    setUrlPathMemo: string;
     setImageNumber: number;
     setRowNumber: number;
     setColumnNumber: number;

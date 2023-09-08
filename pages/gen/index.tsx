@@ -3,7 +3,7 @@ import Header from "../../components/header/header";
 import NewSidePanel from "../../components/sidepanel/sidepanel";
 import DragDropBoard from "../../components/dnd";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Box } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
 import useAxios from "axios-hooks";
@@ -14,7 +14,6 @@ import { setImageDataPayload } from "../../components/state/datas";
 
 import { setColumnNumber, setImageNumber, setRowNumber, showGenButton } from "../../components/state/settings";
 import { arrangeDataToColumns } from "../../components/data/dataHandler";
-import { useReactToPrint } from 'react-to-print';
 
 
 const welcomeMessage = {
@@ -42,7 +41,7 @@ const NewPage: NextPage = () => {
   const router = useRouter()
   const { categoryId } = router.query
   const [{ data, loading, error }, getData] = useAxios(
-    `${API_ENDPOINT}/images/${categoryId}`, { manual: true }
+    `${API_ENDPOINT}/images/${categoryId}`
   );
   const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
   const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
@@ -79,17 +78,15 @@ const NewPage: NextPage = () => {
   }
 
   useEffect(() => {
-    if (categoryId) {
-      getData();
-    } else {
+    if (data && Object.keys(data).length === 0) {
       onDataPayload(null);
       onShowGenButton(true);
       onSetImageColRowNumber(0, 0, 0);
     }
-  }, [categoryId]);
+  }, []);
 
   useEffect(() => {
-    if (data) {
+    if (data && Object.keys(data).length !== 0) {
       //console.log(data);
       const arrangedData = arrangeDataToColumns(data, columnNumber,
         // callback function

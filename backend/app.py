@@ -24,6 +24,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
 from module import cog_embed_gen, aoai_call, bing_img_search
+from module.acs_index_manage import run_indexer
 
 app = FastAPI()
 app.add_middleware(
@@ -34,9 +35,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# TODO Change Sqlite to PostgreSQL
 engine = create_engine("sqlite:///./db.db",
                        connect_args={"check_same_thread": False})
 # check_same_thread is needed only for SQLite. It's not needed for other databases.
+# engine = create_engine('postgresql+psycopg2://user:password@host/database')
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -44,6 +47,7 @@ load_dotenv()
 # Set the connection string and container name
 connection_string = os.getenv("BLOB_CONNECTION_STRING")
 container_name = os.getenv("BLOB_CONTAINER_NAME")
+emoji_container_name = os.getenv("BLOB_EMOJI_CONTAINER_NAME")
 service_endpoint = os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")
 index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
@@ -130,13 +134,13 @@ class ImageDB(ImageSchema):
         from_attributes = True
 
 
-class PromptGen(BaseModel):
-    query: str
-    completeMsg: str
-    imgUrls: list
+class Emoji(BaseModel):
+    id: str
+    title: str
+    imgPath: str
 
     class Config:
-        validate_assignment = True
+        from_attributes = True
 
 
 @app.get('/categories')
@@ -168,6 +172,9 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
     # The order in which you add objects to the session does not matter, 
     # as long as all the necessary relationships between the objects are properly set up 
     session.add(new_category)
+
+    # Trigger Vector Search Indexer to update the index
+    run_indexer()
         
     session.commit()
     return CategoryDB.model_validate(new_category)
@@ -178,11 +185,14 @@ async def upload_image(img_path: str):
     async with httpx.AsyncClient() as client:
         response = await client.get(img_path)
         image_data = response.content
-
-        file_name = img_path.split("/")[-1]
-        container_client = blob_service_client.get_container_client(container=container_name)
-        blob_client = container_client.upload_blob(name=file_name, data=image_data, overwrite=True)
-        return blob_client.url
+        # Less then 1kb will not be uploaded
+        if len(image_data) > 1024:
+            file_name = img_path.split("/")[-1]
+            container_client = blob_service_client.get_container_client(container=container_name)
+            blob_client = container_client.upload_blob(name=file_name, data=image_data, overwrite=True)
+            return blob_client.url
+        else:
+            return ""
 
 
 @app.get('/category/{id}')
@@ -218,7 +228,7 @@ def delete_category(id: str, session: Session = Depends(get_db)):
         image.deleteFlag = 1
 
     session.commit()
-    return {"message": "Category deleted successfully"}
+    return CategoryDB.model_validate(item)
 
 
 @app.get("/category/{id}/download")
@@ -235,7 +245,6 @@ async def download_images(id: str, session: Session = Depends(get_db)):
         tasks = []
         for img in images:
             img_path = getattr(img, 'imgPath')
-            print(img_path)
             tasks.append(asyncio.ensure_future(download_image(img_path)))
         image_data_list = await asyncio.gather(*tasks)
         for img, image_data in zip(images, image_data_list):
@@ -278,6 +287,29 @@ def get_images(session: Session = Depends(get_db)):
 
 
 @app.post('/images')
+def create_image(images: List[ImageSchema], session: Session = Depends(get_db)):
+    items = []
+    for image in images:
+        if not check_image_path(image.categoryId, image.imgPath, session):
+            new_image = ImageModel(**image.model_dump())
+            new_image.id = str(uuid.uuid4())
+            session.add(new_image)
+            items.append(new_image)
+
+    session.commit()
+    items_list = [ImageDB.model_validate(item) for item in items]
+    return items_list
+
+
+def check_image_path(categoryId: int, imgPath: str, session: Session) -> bool:
+    """
+    Check if the same imgPath exists based on the categoryId
+    """
+    query = session.query(ImageModel).filter(ImageModel.categoryId == categoryId, ImageModel.imgPath == imgPath)
+    return session.query(query.exists()).scalar()
+
+
+@app.post('/image')
 def create_image(image: ImageSchema, session: Session = Depends(get_db)):
     new_item = ImageModel(**image.model_dump())
     session.add(new_item)
@@ -299,19 +331,14 @@ def get_image(id: str, session: Session = Depends(get_db)):
         # primary_endpoint = f"https://{blob_service_client.account_name}.blob.core.windows.net"
         # Construct the URL for the blob
         # blob_url = f"{primary_endpoint}/{container_name}/{item.imgPath}"
-
         image_dict = ImageDB.model_validate(item)
-
-        # Set the imgPath attribute to the blob URL
-        # image_dict.imgPath = blob_url
-
         image_list.append(image_dict)
 
     return image_list
 
 
 @app.put('/images/{id}')
-def update_image(id: str, image: ImageSchema, session: Session = Depends(get_db)):
+async def update_image(id: str, image: ImageSchema, session: Session = Depends(get_db)):
     item = session.query(ImageModel).get(id)
     if not item:
         raise HTTPException(status_code=404, detail="Image not found")
@@ -319,6 +346,9 @@ def update_image(id: str, image: ImageSchema, session: Session = Depends(get_db)
     for k, value in image.model_dump().items():
         setattr(item, k, value)
 
+    # Upload the image to blob storage
+    img_path = item.imgPath
+    item.imgPath = await upload_image(img_path)
     session.commit()
 
     return ImageDB.model_validate(item)
@@ -326,26 +356,22 @@ def update_image(id: str, image: ImageSchema, session: Session = Depends(get_db)
 
 # Preventing unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
 @app.put("/images/{id}/delete")
-def delete_image(id: str, delete_flag: bool, session: Session = Depends(get_db)):
+async def delete_image(id: str, session: Session = Depends(get_db)):
     item = session.query(ImageModel).get(id)
     if not item:
         raise HTTPException(status_code=404, detail="Category not found")
-    item.deleteFlag = delete_flag
+    item.deleteFlag = 1
     session.commit()
-    return {"message": "Image deleted successfully"}
+    return ImageDB.model_validate(item)
 
 
 # @app.delete('/images/{id}')
 # def delete_image(id: str, session: Session = Depends(get_db)):
 #     item = session.query(ImageModel).get(id)
-
 #     if not item:
 #         raise HTTPException(status_code=404, detail="Image not found")
-
 #     session.delete(item)
-
 #     session.commit()
-
 #     return {"message": "Image deleted successfully"}
 
 
@@ -385,8 +411,6 @@ async def img_gen_handler(query: str):
         # Bing Search Image
         for search_query in img_queries:
             img_url = await bing_img_search.fetch_image_from_bing(search_query, 1)
-            print(img_url)
-
             img_id = str(uuid.uuid4())
             img = ImageDB(id=img_id, categoryId=category_id,
                           title=search_query, imgPath=img_url)
@@ -407,16 +431,30 @@ async def img_gen_handler(query: str):
                           title=img_query + '_gen_', imgPath=img_url)
             img_urls.append(img)
 
-    # pg = PromptGen(query=query, completeMsg=msg, imgUrls=img_urls)
     items_list = [ImageDB.model_validate(item) for item in img_urls]
     return items_list
+
+
+@app.get('/emojies')
+def emoji_handler():
+    container_client = blob_service_client.get_container_client(container=emoji_container_name)
+    emoji_list = container_client.list_blobs()
+    emoji_urls = []
+    for blob in emoji_list:
+        blob_client = container_client.get_blob_client(blob)
+        emoji_urls.append(blob_client.url)
+
+    new_emoji_list = [ (emoji_url.split('/')[-1].split('.')[0], emoji_url) for emoji_url in emoji_urls]
+    emoji_list = [Emoji(id=key.lower().replace("%20", "-"), title=key.replace("%20", " "), imgPath=emoji_url) for key, emoji_url in new_emoji_list]
+
+    return emoji_list
 
 
 @app.get('/search/{query}')
 async def search_handler(query: str, request: Request, session: Session = Depends(get_db)):
     params = request.query_params
     k_num = int(params['count']) if 'count' in params else 3
-    print(k_num)
+
     # Initialize the SearchClient
     credential = AzureKeyCredential(key)
     search_client = SearchClient(endpoint=service_endpoint,
@@ -435,7 +473,8 @@ async def search_handler(query: str, request: Request, session: Session = Depend
     # Return the search results
     img_ids = [rtn['sid'] for rtn in results]
 
-    items = session.query(ImageModel).filter(ImageModel.id.in_(img_ids)).all()
+    # Filter if deleteFlag (Soft delete) is 1. 1 equals True.
+    items = session.query(ImageModel).filter(ImageModel.id.in_(img_ids), ImageModel.deleteFlag != 1).all()
     items_list = [ImageDB.model_validate(item) for item in items]
 
     return items_list

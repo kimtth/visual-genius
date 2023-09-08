@@ -17,7 +17,7 @@ const Header: NextPage = () => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [searchTriggerd, setSearchTriggered] = useState(false);
     const [{ data, loading, error }, refetch] = useAxios({
-        url: `${API_ENDPOINT}/search/${searchKeyword}`, //`${API_ENDPOINT}/search/${searchKeyword}?count=5`
+        url: `${API_ENDPOINT}/search/${searchKeyword}?count=5`, //`${API_ENDPOINT}/search/${searchKeyword}?count=5`
         method: 'GET'
     }, { manual: true }
     );

@@ -18,8 +18,8 @@ export const setSearchResultPayload = createAction(SEARCH_RESULT_PAYLOAD, (paylo
 const initialDataState: DataState = {
     title: 'Our feelings',
     CategoryData: {},
-    CategoriesDataPayload: categoryData,
-    ImageDataPayload: ImgDataByColumn,
+    CategoriesDataPayload: [],
+    ImageDataPayload: [],
     SearchResultPayload: [],
 }
 

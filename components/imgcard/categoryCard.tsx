@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../state/pathes";
 import { useDispatch } from "react-redux";
-import { setUrlPathMemo } from "../state/settings";
 import { setCategoryData } from "../state/datas";
 import { API_ENDPOINT } from "../state/const";
 import useAxios from "axios-hooks";
@@ -50,18 +49,12 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
         [dispatch]
     );
 
-    const onSetUrlPathMemo = useCallback(
-        (any: any) => dispatch(setUrlPathMemo(any)),
-        [dispatch]
-    );
-
     useEffect(() => {
         downloadZip(downloadData);
     }, [downloadData]);
 
     const handleCategoryClick = (categoryId: string, categoryTitle: string) => {
         onCategoryData(item);
-        onSetUrlPathMemo(`${pathes.gen}?categoryId=${categoryId}`);
         push(`${pathes.gen}?categoryId=${categoryId}`);
     }
 

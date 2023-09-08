@@ -33,6 +33,12 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
   3. Run `npm run dev` to view project in browser
   4. Run `python app` to launch the backend.
 
+  Data Loading
+
+  1. Uploading your data into Azure Blob Storage
+  1. Run `backend\module\acs_index_manage.py` for trigger indexer
+  1. Run `util\acs_index_mapping_with_db.py` for syncing data between search and sql database
+
   !important: `react-beautiful-dnd` was not able to work well with `reactStrictMode: true` in NextJs.
   Turn off the option at `next.config.js`.`
 
@@ -44,17 +50,32 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
 
 ### Landing Page
 
-  <img src="./docs/home.png" alt="home" width="500"/>   
+  - Home
 
-### Generate and Search Page
+    <img src="./docs/home.png" alt="home" width="500"/>   
 
-  <img src="./docs/generate.png" alt="generate" width="500"/> 
+### Generate Canvas
+
+  - New
+
+    <img src="./docs/generate.png" alt="generate" width="500"/> 
+
+  - Edit
+  
+    <img src="./docs/gen_change_img.png" alt="generate" width="500"/> 
 
 ### Drag and Drop
 
-  <img src="./docs/dnd.png" alt="dnd" width="500"/> 
+  - Drag and Drop & Options
+
+    <img src="./docs/dnd.png" alt="dnd" width="500"/> 
 
 ### Search Result Page
 
-  <img src="./docs/select.png" alt="select" width="500"/> 
-  
+  - Search Result
+
+    <img src="./docs/select.png" alt="select" width="500"/> 
+
+  - Emoji
+
+    <img src="./docs/select_emoji.png" alt="select" width="500"/> 

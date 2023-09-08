@@ -33,7 +33,7 @@ const AlertPopup: FC<AlertPopupProps> = ({ message }) => {
 }
 
 const NewSidePanel: NextPage = () => {
-    const { push } = useRouter();
+    const { push, refresh } = useRouter();
     const router = usePath();
     const [prompts, setPrompts] = useState("");
     const [genTriggerd, setGenTriggered] = useState(false);
@@ -469,7 +469,7 @@ const NewSidePanel: NextPage = () => {
                     </Button>
                 </Box>
                 <Box display="flex" position={'fixed'} bottom={0}>
-                    <Box marginRight="5vw">
+                    <Box marginRight="9vw">
                         <IconButton aria-label='Delete'
                             variant="ghost"
                             colorScheme='red'
@@ -498,12 +498,12 @@ const NewSidePanel: NextPage = () => {
                             icon={<LiaDownloadSolid />}
                             onClick={() => { handleModal('Download', 'download') }}
                         />
-                        <IconButton aria-label='Print'
+                        {/* <IconButton aria-label='Print'
                             variant="ghost"
                             colorScheme='blue'
                             icon={<LiaPrintSolid />}
                             onClick={() => { handleModal('Print', 'print') }}
-                        />
+                        /> */}
                     </Box>
                 </Box>
                 {/* Icon Button */}

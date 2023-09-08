@@ -8,6 +8,7 @@ import { API_ENDPOINT } from "../state/const";
 import { useCallback, useEffect, useState } from "react";
 import { setImageDataPayload } from "../state/datas";
 import { useDispatch, useSelector } from "react-redux";
+import { HiOutlineTrash } from "react-icons/hi";
 
 
 interface BasicImageModalProps {
@@ -57,6 +58,13 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         }, { manual: true }
     );
 
+    const [{ data: deleteImgUrl, loading: deleteImgLoading, error: deleteImgError }, deleteImg] = useAxios(
+        {
+            url: `${API_ENDPOINT}/images/${item.id}/delete`,
+            method: 'PUT'
+        }, { manual: true }
+    );
+
     const onDataPayload = useCallback(
         (any: any) => dispatch(setImageDataPayload(any)),
         [dispatch]
@@ -77,11 +85,6 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
             }
             return obj;
         });
-
-        console.log(updatedPayload);
-        onDataPayload(updatedPayload);
-        clonedDataPayload = null;
-
         try {
             updateImg({
                 data: {
@@ -89,6 +92,9 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
                     imgPath: newImgPath
                 }
             });
+            onDataPayload(updatedPayload);
+            clonedDataPayload = null;
+            onClose();
         } catch (err) {
             console.error(err);
         }
@@ -109,6 +115,31 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         } catch (err) {
             alert("Sorry, the image generation service is not available at the moment. Please try again later.")
             console.error(err);
+        }
+    }
+
+    const handleImageDelete = async (imgId: string) => {
+        if (confirm("Are you sure you want to delete this image?")) {
+            let clonedDataPayload = JSON.parse(JSON.stringify(dataPayload));
+            const updatedPayload = Object.values(clonedDataPayload).map((obj: any) => {
+                if (obj.items) {
+                    obj.items = obj.items.filter((item: any) => item.id !== imgId);
+                    return { ...obj, items: [...obj.items] };
+                }
+                return obj;
+            });
+            try {
+                deleteImg({
+                    data: {
+                        id: imgId
+                    }
+                });
+                onDataPayload(updatedPayload);
+                clonedDataPayload = null;
+                onClose();
+            } catch (err) {
+                console.error(err);
+            }
         }
     }
 
@@ -151,6 +182,14 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
                     <ModalFooter justifyContent={"space-between"}>
                         <Text as='b'>{item.title}</Text>
                         <Flex>
+                            <IconButton
+                                variant='ghost'
+                                colorScheme='red'
+                                aria-label='Delete'
+                                size='sm'
+                                icon={<HiOutlineTrash />}
+                                onClick={() => { handleImageDelete(item.id) }}
+                            />
                             <IconButton
                                 variant='ghost'
                                 colorScheme='twitter'
