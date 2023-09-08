@@ -1,11 +1,11 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import dynamic from 'next/dynamic';
 import PhotoCard from "../imgcard/photoCard";
 import { useDispatch } from "react-redux";
 import { setImageDataPayload } from "../state/datas";
 
 
-const Container = ({ children }: any) => (
+const DndContainer = ({ children }: any) => (
   <div style={{ display: "flex" }}>{children}</div>
 );
 
@@ -67,12 +67,13 @@ const DragDropBoard = ({ dataPayload }: any) => {
       });
     }
   };
+  
   return (
     // <NoSSR>
     <DragDropContext
       onDragEnd={(result) => onDragEnd(result, dataPayload, onDataPayload)}
     >
-      <Container>
+      <DndContainer>
         {Object.entries(dataPayload)?.map(([columnId, column]: [string, any], index) => {
           return (
             <Droppable key={columnId} droppableId={columnId}>
@@ -95,7 +96,7 @@ const DragDropBoard = ({ dataPayload }: any) => {
             </Droppable>
           );
         })}
-      </Container>
+      </DndContainer>
     </DragDropContext>
     // </NoSSR>
   );

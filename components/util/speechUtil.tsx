@@ -2,7 +2,7 @@ import { SpeechSynthesizer, SpeechConfig, ResultReason } from "microsoft-cogniti
 import { SPEECH_SUBSCRIPTION_KEY, SPEECH_SERVICE_REGION } from "../state/const";
 
 const synthesizeSpeech = (title: string) => {
-    if (!SPEECH_SUBSCRIPTION_KEY && !SPEECH_SERVICE_REGION) {
+    if (!SPEECH_SUBSCRIPTION_KEY || !SPEECH_SERVICE_REGION) {
         console.error("Speech subscription key is not defined");
     } else {
         const speechConfig = SpeechConfig.fromSubscription(SPEECH_SUBSCRIPTION_KEY, SPEECH_SERVICE_REGION);

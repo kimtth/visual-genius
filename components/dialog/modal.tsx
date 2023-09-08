@@ -7,14 +7,16 @@ interface BasicModelProps {
     setOpen: (open: boolean) => void;
     title: string;
     messageType: string;
-    action?: () => void;
+    callback?: () => void;
 }
 
-const BasicModal: FC<BasicModelProps> = ({ open, setOpen, title, messageType, action }) => {
+const BasicModal: FC<BasicModelProps> = ({ open, setOpen, title, messageType, callback }) => {
     const [message, setMessage] = useState<string>('');
 
     const handleAction = () => {
-        action ? action() : () => { };
+        if (callback) {
+            callback();
+        }
         setOpen(false);
     }
 

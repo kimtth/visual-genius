@@ -1,14 +1,17 @@
 import type { NextPage } from "next";
 import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack } from "@chakra-ui/react";
 import { HiOutlineTrash } from "react-icons/hi";
-import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
-import { useCallback, useState } from "react";
+import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
+import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import BasicModal from "../dialog/modal";
 import { pathes } from "../state/pathes";
 import { useDispatch } from "react-redux";
 import { setUrlPathMemo } from "../state/settings";
 import { setCategoryData } from "../state/datas";
+import { API_ENDPOINT } from "../state/const";
+import useAxios from "axios-hooks";
+import { downloadZip, executeShareUrl } from "../util/actionUtil";
 
 const footerIconsLyaoutSytle = {
     justifyContent: 'flex-end'
@@ -26,6 +29,22 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
     const [modalMessageType, setModalMessageType] = useState("");
     const dispatch = useDispatch();
 
+    const [{ data: downloadData, loading: downloadLoading, error: downloadError }, executeDownload] = useAxios(
+        {
+            url: `${API_ENDPOINT}/category/${categoryId}/download`,
+            method: 'GET',
+            responseType: 'blob'
+        },
+        { manual: true }
+    )
+    const [{ data: deleteData, loading: deleteLoading, error: deleteError }, executeDelete] = useAxios(
+        {
+            url: `${API_ENDPOINT}/category/${categoryId}/delete`,
+            method: 'PUT'
+        },
+        { manual: true }
+    )
+
     const onCategoryData = useCallback(
         (any: any) => dispatch(setCategoryData(any)),
         [dispatch]
@@ -35,6 +54,10 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
         (any: any) => dispatch(setUrlPathMemo(any)),
         [dispatch]
     );
+
+    useEffect(() => {
+        downloadZip(downloadData);
+    }, [downloadData]);
 
     const handleCategoryClick = (categoryId: string, categoryTitle: string) => {
         onCategoryData(item);
@@ -48,11 +71,35 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
         setShowModal(true);
     }
 
+    const handleCallback = () => {
+        try {
+            if (modalMessageType === 'delete') {
+                executeDelete();
+                alert('The category has been deleted.');
+            } else if (modalMessageType === 'share') {
+                executeShareUrl(categoryId);
+            } else if (modalMessageType === 'download') {
+                executeDownload();
+                alert(deleteData);
+            } else {
+                console.log('The event is not supported.');
+            }   
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
     return (
         <>
             {showModal ?
                 <>
-                    <BasicModal key={"modal"} open={showModal} setOpen={setShowModal} title={modalTitle} messageType={modalMessageType} />
+                    <BasicModal key={"modal"}
+                        open={showModal}
+                        setOpen={setShowModal}
+                        title={modalTitle}
+                        messageType={modalMessageType}
+                        callback={handleCallback}
+                    />
                 </> : null
             }
             <Card maxW='sm' key={categoryId}>
@@ -112,16 +159,11 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
                         onClick={() => { handleModal('Share', 'share') }}
                     />
                     <IconButton aria-label='Download'
+                        isLoading={downloadLoading}
                         variant="ghost"
                         colorScheme='blue'
                         icon={<LiaDownloadSolid />}
                         onClick={() => { handleModal('Download', 'download') }}
-                    />
-                    <IconButton aria-label='Print'
-                        variant="ghost"
-                        colorScheme='blue'
-                        icon={<LiaPrintSolid />}
-                        onClick={() => { handleModal('Print', 'print') }}
                     />
                 </CardFooter>
             </Card>

@@ -3,7 +3,7 @@ import Header from "../../components/header/header";
 import NewSidePanel from "../../components/sidepanel/sidepanel";
 import DragDropBoard from "../../components/dnd";
 
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Box } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
 import useAxios from "axios-hooks";
@@ -14,6 +14,8 @@ import { setImageDataPayload } from "../../components/state/datas";
 
 import { setColumnNumber, setImageNumber, setRowNumber, showGenButton } from "../../components/state/settings";
 import { arrangeDataToColumns } from "../../components/data/dataHandler";
+import { useReactToPrint } from 'react-to-print';
+
 
 const welcomeMessage = {
   position: 'absolute',
@@ -34,7 +36,6 @@ const welcomeLabel = {
   width: '536px',
   height: '45px'
 } as React.CSSProperties;
-
 
 
 const NewPage: NextPage = () => {
@@ -120,7 +121,11 @@ const NewPage: NextPage = () => {
             // justifyContent='center' -> vertical direction
             // alignItems='center' -> horizontal direction
             // https://qiita.com/piyonakajima/items/1b48a42a7a6e44bc57c9
-            <Box display='flex' justifyContent='center' alignItems='center' mt="3vh">
+            <Box display='flex'
+              justifyContent='center'
+              alignItems='center'
+              mt="3vh"
+            >
               <DragDropBoard dataPayload={dataPayload} />
             </Box>
             :

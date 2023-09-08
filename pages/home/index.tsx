@@ -63,7 +63,7 @@ const Home: NextPage = () => {
       <Center>
         <Tabs>
           <TabList>
-            <Tab>Recent</Tab>
+            <Tab>Topics</Tab>
           </TabList>
           <TabPanels>
             <TabPanel>

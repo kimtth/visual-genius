@@ -50,6 +50,13 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         }, { manual: true }
     );
 
+    const [{ data: updateImgUrl, loading: updateImgLoading, error: updateImgError }, updateImg] = useAxios(
+        {
+            url: `${API_ENDPOINT}/images/${item.id}`,
+            method: 'PUT'
+        }, { manual: true }
+    );
+
     const onDataPayload = useCallback(
         (any: any) => dispatch(setImageDataPayload(any)),
         [dispatch]
@@ -74,6 +81,17 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         console.log(updatedPayload);
         onDataPayload(updatedPayload);
         clonedDataPayload = null;
+
+        try {
+            updateImg({
+                data: {
+                    ...item,
+                    imgPath: newImgPath
+                }
+            });
+        } catch (err) {
+            console.error(err);
+        }
     }
 
     const handleImageSearch = async () => {

@@ -59,7 +59,8 @@ def bing_image_urls(  # pylint: disable=too-many-locals
         "first": page_counter,
         "count": count,
         "adlt": adult,
-        "qft": "+filterui:imagesize-medium+filterui:color2-color+filterui:photo-photo", # +filterui:aspect-square
+        # +filterui:aspect-square
+        "qft": "+filterui:imagesize-medium+filterui:color2-color+filterui:photo-photo",
     }
 
     url = "https://www.bing.com/images/async"
@@ -126,7 +127,8 @@ async def verify_links(links: List[str]) -> List[bool]:
             except Exception:
                 res.append(None)
 
-        _ = [imghdr.what(None, elm.content) if elm is not None else elm for elm in res]
+        _ = [imghdr.what(None, elm.content)
+             if elm is not None else elm for elm in res]
     # await sess.aclose()
 
     return [bool(elm) for elm in _]
@@ -135,8 +137,13 @@ async def verify_links(links: List[str]) -> List[bool]:
 async def fetch_image_from_bing(query, limit=1):
     urls = bing_image_urls(query, limit=limit)
 
-    if len(urls) == 1:
+    if limit == 1 and len(urls) >= 1:
         return urls[0]
-    elif not urls:
+    
+    if limit == 1 and len(urls) == 0:
+        return ""
+    
+    if limit > 1 and len(urls) > 0:
+        return urls
+    else:
         return []
-    return urls

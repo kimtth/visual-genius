@@ -4,16 +4,18 @@ import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
 import { VscSaveAll } from "react-icons/vsc";
-import { FC, MouseEvent, useCallback, useEffect, useState } from "react";
+import { FC, MouseEvent, use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRouter as usePath } from 'next/router';
 import BasicModal from "../dialog/modal";
 import { pathes } from "../../components/state/pathes";
 import { useDispatch, useSelector } from "react-redux";
-import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption, showTextSpeech } from "../state/settings";
-import { setImageDataPayload } from "../state/datas";
+import { setColumnNumber, setImageNumber, setRowNumber, showGenButton, showImgCaption, showTextSpeech } from "../state/settings";
+import { setCategoryData, setImageDataPayload } from "../state/datas";
 import useAxios from "axios-hooks";
 import { API_ENDPOINT } from "../state/const";
 import { arrangeDataToColumns } from "../data/dataHandler";
+import { downloadZip, executeShareUrl } from "../util/actionUtil";
 
 
 interface AlertPopupProps {
@@ -32,11 +34,13 @@ const AlertPopup: FC<AlertPopupProps> = ({ message }) => {
 
 const NewSidePanel: NextPage = () => {
     const { push } = useRouter();
+    const router = usePath();
     const [prompts, setPrompts] = useState("");
     const [genTriggerd, setGenTriggered] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
+    const [categoryId, setCategoryId] = useState("");
     const [categoryTitle, setCategoryTitle] = useState("New Category");
     const [modalMessageType, setModalMessageType] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
@@ -44,7 +48,7 @@ const NewSidePanel: NextPage = () => {
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
     const imgCaption = useSelector((state: any) => state.settings.showImgCaption);
-    const showGenButton = useSelector((state: any) => state.settings.showGenButton);
+    const showGenButtonVar = useSelector((state: any) => state.settings.showGenButton);
     const categoryData = useSelector((state: any) => state.datas.CategoryData);
     const textSpeech = useSelector((state: any) => state.settings.showTextSpeech);
     const rowNumber = useSelector((state: any) => state.settings.setRowNumber);
@@ -56,9 +60,34 @@ const NewSidePanel: NextPage = () => {
         method: 'GET'
     }, { manual: true }
     );
+    const [{ data: categoryFetchedData, loading: categoryLoading, error: categoryError }, getCategoryData] = useAxios(
+        `${API_ENDPOINT}/category/${categoryId}`, { manual: true }
+    );
+    const [{ data: postData, loading: postLoading, error: postError }, executePost] = useAxios(
+        {
+            url: `${API_ENDPOINT}/category`,
+            method: 'POST'
+        },
+        { manual: true }
+    )
     const [{ data: putData, loading: putLoading, error: putError }, executePut] = useAxios(
         {
             url: `${API_ENDPOINT}/category/${categoryData.id}`,
+            method: 'PUT'
+        },
+        { manual: true }
+    )
+    const [{ data: downloadData, loading: downloadLoading, error: downloadError }, executeDownload] = useAxios(
+        {
+            url: `${API_ENDPOINT}/category/${categoryData.id}/download`,
+            method: 'GET',
+            responseType: 'blob'
+        },
+        { manual: true }
+    )
+    const [{ data: deleteData, loading: deleteLoading, error: deleteError }, executeDelete] = useAxios(
+        {
+            url: `${API_ENDPOINT}/category/${categoryData.id}/delete`,
             method: 'PUT'
         },
         { manual: true }
@@ -88,6 +117,10 @@ const NewSidePanel: NextPage = () => {
         (any: any) => dispatch(setColumnNumber(any)),
         [dispatch]
     );
+    const onCategoryData = useCallback(
+        (any: any) => dispatch(setCategoryData(any)),
+        [dispatch]
+    );
     const onDataPayload = useCallback(
         (any: any) => dispatch(setImageDataPayload(any)),
         [dispatch]
@@ -99,6 +132,32 @@ const NewSidePanel: NextPage = () => {
         onSetColumnNumber(columnNumber > 0 ? columnNumber : 5);
         //console.log(totalImgNum, rowNum, columnNumber);
     }
+
+    useEffect(() => {
+        downloadZip(downloadData);
+    }, [downloadData]);
+
+    useEffect(() => {
+        if (Object.keys(categoryData).length === 0) {
+            const currentURL = router.asPath;
+            const urlParams = new URLSearchParams(currentURL.split('?')[1]);
+            const categoryId = urlParams.get('categoryId');
+
+            if (categoryId) {
+                setCategoryId(categoryId);
+            }
+        }
+    }, [categoryData]);
+
+    useEffect(() => {
+        if (categoryId) {
+            getCategoryData();
+        }
+        if (categoryFetchedData) {
+            onCategoryData(categoryFetchedData);
+            setCategoryTitle(categoryFetchedData.title);
+        }
+    }, [categoryId, categoryFetchedData]);
 
     useEffect(() => {
         if (data) {
@@ -159,19 +218,14 @@ const NewSidePanel: NextPage = () => {
         }, 2000);
     }
 
-    const handleModal = (modalTitle: string, modalMessageType: string) => {
-        setModalTitle(modalTitle);
-        setModalMessageType(modalMessageType);
-
-        setShowModal(true);
-    }
-
     const handleAddPhoto = () => {
         push(pathes.rtn);
     }
 
     const handleImageRearrange = (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
+        // console.log(categoryData);
+        // console.log(dataPayload);
         if (columnNumber > 6) {
             alert("Grid size is too big! (max.6)");
             handleAlert(true);
@@ -190,6 +244,66 @@ const NewSidePanel: NextPage = () => {
         }
     }
 
+    const handlePostCategory = () => {
+        try {
+            if (Object.keys(categoryData).length === 0) {
+                if (!dataPayload){
+                    alert("Please generate the category first!")
+                    return;
+                }
+                const flatData = Object.values(dataPayload).flatMap((obj: any) => obj.items);
+                const newCategoryId = flatData[0].categoryId;
+                const newCategory = {
+                    id: newCategoryId,
+                    title: categoryTitle,
+                    category: "Object Recognition",
+                    difficulty: "Medium",
+                    imgNum: imageNumber,
+                    contentUrl: []
+                }
+                executePost({    
+                data: {
+                    category: newCategory,
+                    images: flatData
+                }})
+            } else {
+                alert("The category already exists!")
+            }
+            onShowGenButton(false);
+        } catch (error) {
+            alert(error);
+            console.error(error);
+        }
+    }
+
+    const handleModal = (modalTitle: string, modalMessageType: string) => {
+        setModalTitle(modalTitle);
+        setModalMessageType(modalMessageType);
+        setShowModal(true);
+    }
+
+    const handleCallback = () => {
+        try {
+            if (modalMessageType === 'delete') {
+                executeDelete();
+                alert('The category has been deleted.');
+            } else if (modalMessageType === 'save') {
+                handlePostCategory();
+            } else if (modalMessageType === 'share') {
+                executeShareUrl(categoryData.id);
+            } else if (modalMessageType === 'download') {
+                executeDownload();
+                alert(deleteData);
+            } else if (modalMessageType === 'print') {
+                alert('Under construction');
+            } else {
+                console.log('The event is not supported.');
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
     // if (loading) return <p>Loading...</p>;
     if (error || putError) return <p>Error!</p>;
 
@@ -203,7 +317,13 @@ const NewSidePanel: NextPage = () => {
             }
             {showModal ?
                 <>
-                    <BasicModal open={showModal} setOpen={setShowModal} title={modalTitle} messageType={modalMessageType} />
+                    <BasicModal
+                        open={showModal}
+                        setOpen={setShowModal}
+                        title={modalTitle}
+                        messageType={modalMessageType}
+                        callback={handleCallback}
+                    />
                 </> : null
             }
             <VStack position={'fixed'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
@@ -324,7 +444,7 @@ const NewSidePanel: NextPage = () => {
                         size='sm'
                         width='95%'
                         marginBottom='2px'
-                        isDisabled={showGenButton}
+                        isDisabled={showGenButtonVar}
                         onClick={() => { handleGenRequest() }}
                     >
                         Generate
@@ -359,6 +479,7 @@ const NewSidePanel: NextPage = () => {
                     </Box>
                     <Box>
                         <IconButton aria-label='Save'
+                            isLoading={postLoading}
                             variant="ghost"
                             colorScheme='blue'
                             icon={<VscSaveAll />}
@@ -371,6 +492,7 @@ const NewSidePanel: NextPage = () => {
                             onClick={() => { handleModal('Share', 'share') }}
                         />
                         <IconButton aria-label='Download'
+                            isLoading={downloadLoading}
                             variant="ghost"
                             colorScheme='blue'
                             icon={<LiaDownloadSolid />}
