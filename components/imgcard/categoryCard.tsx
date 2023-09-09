@@ -3,14 +3,14 @@ import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconB
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
 import { useEffect, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
-import BasicModal from "../dialog/modal";
+import BasicModal from "./basicModal";
 import { pathes } from "../state/pathes";
 import { useDispatch } from "react-redux";
 import { setCategoryData } from "../state/datas";
 import { API_ENDPOINT } from "../state/const";
 import useAxios from "axios-hooks";
 import { downloadZip, executeShareUrl } from "../util/actionUtil";
+import { useRouter } from "next/router";
 
 const footerIconsLyaoutSytle = {
     justifyContent: 'flex-end'
@@ -34,14 +34,14 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
             method: 'GET',
             responseType: 'blob'
         },
-        { manual: true }
+        { manual: true, autoCancel: false }
     )
     const [{ data: deleteData, loading: deleteLoading, error: deleteError }, executeDelete] = useAxios(
         {
             url: `${API_ENDPOINT}/category/${categoryId}/delete`,
             method: 'PUT'
         },
-        { manual: true }
+        { manual: true, autoCancel: false }
     )
 
     const onCategoryData = useCallback(
@@ -53,9 +53,12 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
         downloadZip(downloadData);
     }, [downloadData]);
 
-    const handleCategoryClick = (categoryId: string, categoryTitle: string) => {
+    const handleCategoryClick = (categoryId: string) => {
         onCategoryData(item);
+        //console.log(categoryId);
         push(`${pathes.gen}?categoryId=${categoryId}`);
+        //window.location.href= `${pathes.gen}?categoryId=${categoryId}`;
+        
     }
 
     const handleModal = (modalTitle: string, modalMessageType: string) => {
@@ -97,7 +100,7 @@ const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
             }
             <Card maxW='sm' key={categoryId}>
                 <CardBody
-                    onClick={() => handleCategoryClick(categoryId, item['title'])}
+                    onClick={() => handleCategoryClick(categoryId)}
                 >
                     <HStack height={'12vh'} spacing='4px'>
                         <Image

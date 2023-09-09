@@ -6,13 +6,13 @@ import DragDropBoard from "../../components/dnd";
 import React, { useCallback, useEffect } from "react";
 import { Box } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
-import useAxios from "axios-hooks";
+import Axios from "axios";
 import { API_ENDPOINT } from "../../components/state/const";
 import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import { setImageDataPayload } from "../../components/state/datas";
 
-import { setColumnNumber, setImageNumber, setRowNumber, showGenButton } from "../../components/state/settings";
+import { setColumnNumber, setImageNumber, setRowNumber } from "../../components/state/settings";
 import { arrangeDataToColumns } from "../../components/data/dataHandler";
 
 
@@ -39,10 +39,9 @@ const welcomeLabel = {
 
 const NewPage: NextPage = () => {
   const router = useRouter()
-  const { categoryId } = router.query
-  const [{ data, loading, error }, getData] = useAxios(
-    `${API_ENDPOINT}/images/${categoryId}`
-  );
+  const [categoryIdstate, setCategoryId] = React.useState("");
+  const [disableGenButton, setDisableGenButton] = React.useState(false);
+
   const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
   const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
   const dispatch = useDispatch();
@@ -65,11 +64,6 @@ const NewPage: NextPage = () => {
     [dispatch]
   );
 
-  const onShowGenButton = useCallback(
-    (any: any) => dispatch(showGenButton(any)),
-    [dispatch]
-  );
-
   const onSetImageColRowNumber = (totalImgNum: number, rowNum: number, columnNumber: number) => {
     onSetImageNumber(totalImgNum > 0 ? totalImgNum : 1);
     onSetRowNumber(rowNum > 0 ? rowNum : 1);
@@ -78,30 +72,37 @@ const NewPage: NextPage = () => {
   }
 
   useEffect(() => {
-    if (data && Object.keys(data).length === 0) {
+    if (categoryIdstate) {
+      Axios.get(`${API_ENDPOINT}/images/${categoryIdstate}`).then((result: any) => {
+        const data = result.data;
+        if (data && Object.keys(data).length !== 0) {
+          const arrangedData = arrangeDataToColumns(data, columnNumber,
+            // callback function
+            (totalImgNum: number, rowNum: number, columnNumber: number) => {
+              onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
+            }
+          );
+          //console.log(arrangedData);
+          onDataPayload(arrangedData);
+          setDisableGenButton(true);
+        }
+      }).catch((error: any) => {
+        console.log(error);
+      });
+    } else {
       onDataPayload(null);
-      onShowGenButton(true);
+      setDisableGenButton(false);
       onSetImageColRowNumber(0, 0, 0);
     }
-  }, []);
+  }, [categoryIdstate]);
 
   useEffect(() => {
-    if (data && Object.keys(data).length !== 0) {
-      //console.log(data);
-      const arrangedData = arrangeDataToColumns(data, columnNumber,
-        // callback function
-        (totalImgNum: number, rowNum: number, columnNumber: number) => {
-          onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
-        }
-      );
-      //console.log(arrangedData);
-      onDataPayload(arrangedData);
-      onShowGenButton(false);
+    if (router.isReady) {
+      const { categoryId } = router.query;
+      const categoryIdStr = categoryId as string;
+      setCategoryId(categoryIdStr);
     }
-  }, [data]);
-
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error!</p>;
+  }, [router.isReady, router.query]);
 
   return (
     <>
@@ -110,7 +111,7 @@ const NewPage: NextPage = () => {
       </Box>
       <Box minHeight="100vh" overflow="auto" zIndex="10" display='flex'>
         <div style={{ width: '20vw' }}>
-          <NewSidePanel />
+          <NewSidePanel disableGenButton={disableGenButton} setDisableGenButton={setDisableGenButton}/>
         </div>
         <div style={{ width: '80vw' }}>
           {dataPayload != null ?

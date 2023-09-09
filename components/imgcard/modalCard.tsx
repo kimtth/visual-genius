@@ -41,28 +41,28 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         {
             url: `${API_ENDPOINT}/bing_img/${item.title}`,
             method: 'GET'
-        }, { manual: true }
+        }, { manual: true, autoCancel: false }
     );
 
     const [{ data: genImgUrl, loading: genImgLoading, error: genImgError }, getGenImg] = useAxios(
         {
             url: `${API_ENDPOINT}/gen_img/${item.title}`,
             method: 'GET'
-        }, { manual: true }
+        }, { manual: true, autoCancel: false }
     );
 
     const [{ data: updateImgUrl, loading: updateImgLoading, error: updateImgError }, updateImg] = useAxios(
         {
             url: `${API_ENDPOINT}/images/${item.id}`,
             method: 'PUT'
-        }, { manual: true }
+        }, { manual: true, autoCancel: false }
     );
 
     const [{ data: deleteImgUrl, loading: deleteImgLoading, error: deleteImgError }, deleteImg] = useAxios(
         {
             url: `${API_ENDPOINT}/images/${item.id}/delete`,
             method: 'PUT'
-        }, { manual: true }
+        }, { manual: true, autoCancel: false }
     );
 
     const onDataPayload = useCallback(
@@ -70,7 +70,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         [dispatch]
     );
 
-    const handleImageUpdate = async (imgId: string) => {
+    const handleImageUpdate = (imgId: string) => {
         const newImgPath = imgPath;
         let clonedDataPayload = JSON.parse(JSON.stringify(dataPayload));
         const updatedPayload = Object.values(clonedDataPayload).map((obj: any) => {
@@ -85,6 +85,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
             }
             return obj;
         });
+        // TODO: Need to check whether the image is exist or not
         try {
             updateImg({
                 data: {
@@ -100,25 +101,25 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         }
     }
 
-    const handleImageSearch = async () => {
+    const handleImageSearch = () => {
         try {
-            await getBingImg();
+            getBingImg();
         } catch (err) {
             console.error(err);
         }
     }
 
-    const handleImageGenerate = async () => {
+    const handleImageGenerate = () => {
         try {
             setIsGenLoading(true);
-            await getGenImg();
+            getGenImg();
         } catch (err) {
             alert("Sorry, the image generation service is not available at the moment. Please try again later.")
             console.error(err);
         }
     }
 
-    const handleImageDelete = async (imgId: string) => {
+    const handleImageDelete = (imgId: string) => {
         if (confirm("Are you sure you want to delete this image?")) {
             let clonedDataPayload = JSON.parse(JSON.stringify(dataPayload));
             const updatedPayload = Object.values(clonedDataPayload).map((obj: any) => {

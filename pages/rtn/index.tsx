@@ -4,14 +4,15 @@ import { Button, Text, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs, Box,
 import ResultCard from "../../components/imgcard/searchResultCard";
 import { BiUpload } from "react-icons/bi";
 import { HiChevronLeft } from "react-icons/hi";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { API_ENDPOINT } from "../../components/state/const";
 import useAxios from "axios-hooks";
+//!important: use useAxios with { manual:true, autoCancel: false } to prevent infinite request loop and cancel requests during a server processing.
 
 const SelectPage: NextPage = () => {
-  const { push, back } = useRouter();
+  const { back } = useRouter();
   const [tabIndex, setTabIndex] = useState(0)
   const [emojiData, setEmojiData] = useState([]);
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
@@ -21,14 +22,15 @@ const SelectPage: NextPage = () => {
   const searchDataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
 
   const [{ data, loading, error }, getData] = useAxios(
-    `${API_ENDPOINT}/emojies`
+    `${API_ENDPOINT}/emojies`,
+    { manual: true, autoCancel: false }
   );
   const [{ data: postData, loading: postLoading, error: postError }, executePost] = useAxios(
     {
       url: `${API_ENDPOINT}/images`,
       method: 'POST'
     },
-    { manual: true }
+    { manual: true, autoCancel: false }
   )
 
   useEffect(() => {
@@ -36,6 +38,19 @@ const SelectPage: NextPage = () => {
       setEmojiData(data);
     }
   }, [data]);
+
+  useEffect(() => {
+    if (tabIndex == 1) {
+      getData();
+    }
+  }, [tabIndex]);
+
+  useEffect(() => {
+    if (postData) {
+      console.log(postData);
+      alert("Added successfully!")
+    }
+  }, [postData]);
 
   const handleTabsChange = (index: number) => {
     setTabIndex(index)
@@ -60,9 +75,6 @@ const SelectPage: NextPage = () => {
           executePost({
             data: transformedDataPayload
           })
-          if(postData) {
-            alert("Added successfully!")
-          }
         } catch (error) {
           console.error(error);
         }
@@ -83,9 +95,6 @@ const SelectPage: NextPage = () => {
           executePost({
             data: transformedEmojiData
           })
-          if(postData) {
-            alert("Added successfully!")
-          }
         } catch (error) {
           console.error(error);
         }

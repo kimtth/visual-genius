@@ -145,7 +145,7 @@ class Emoji(BaseModel):
 
 @app.get('/categories')
 def get_categories(session: Session = Depends(get_db)):
-    items = session.query(CategoryModel).filter(CategoryModel.deleteFlag != 1).all()
+    items = session.query(CategoryModel).filter(CategoryModel.deleteFlag == 0).all()
     return [CategoryDB.model_validate(item) for item in items]
 
 
@@ -157,7 +157,7 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
     contentUrlImgs = []
     for idx, image in enumerate(images):
         new_image = ImageModel(**image.model_dump())
-        
+
         # Upload the image to blob storage
         img_path = new_image.imgPath
         new_image.imgPath = await upload_image(img_path)
@@ -166,16 +166,16 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
 
         if idx < 3:
             contentUrlImgs.append(new_image.imgPath)
-    
+
     # First 3 images URLs from updated images list
     new_category.contentUrl = contentUrlImgs
-    # The order in which you add objects to the session does not matter, 
-    # as long as all the necessary relationships between the objects are properly set up 
+    # The order in which you add objects to the session does not matter,
+    # as long as all the necessary relationships between the objects are properly set up
     session.add(new_category)
 
     # Trigger Vector Search Indexer to update the index
     run_indexer()
-        
+
     session.commit()
     return CategoryDB.model_validate(new_category)
 
@@ -188,8 +188,10 @@ async def upload_image(img_path: str):
         # Less then 1kb will not be uploaded
         if len(image_data) > 1024:
             file_name = img_path.split("/")[-1]
-            container_client = blob_service_client.get_container_client(container=container_name)
-            blob_client = container_client.upload_blob(name=file_name, data=image_data, overwrite=True)
+            container_client = blob_service_client.get_container_client(
+                container=container_name)
+            blob_client = container_client.upload_blob(
+                name=file_name, data=image_data, overwrite=True)
             return blob_client.url
         else:
             return ""
@@ -212,6 +214,7 @@ def update_category(id: str, category: CategorySchema, session: Session = Depend
     for k, value in category.model_dump().items():
         setattr(item, k, value)
     session.commit()
+    session.refresh(item)
     return CategoryDB.model_validate(item)
 
 
@@ -228,7 +231,8 @@ def delete_category(id: str, session: Session = Depends(get_db)):
         image.deleteFlag = 1
 
     session.commit()
-    return CategoryDB.model_validate(item)
+    session.refresh(item)
+    return {"message": "Category deleted successfully"}
 
 
 @app.get("/category/{id}/download")
@@ -305,7 +309,8 @@ def check_image_path(categoryId: int, imgPath: str, session: Session) -> bool:
     """
     Check if the same imgPath exists based on the categoryId
     """
-    query = session.query(ImageModel).filter(ImageModel.categoryId == categoryId, ImageModel.imgPath == imgPath)
+    query = session.query(ImageModel).filter(
+        ImageModel.categoryId == categoryId, ImageModel.imgPath == imgPath, ImageModel.deleteFlag != 1)
     return session.query(query.exists()).scalar()
 
 
@@ -321,7 +326,8 @@ def create_image(image: ImageSchema, session: Session = Depends(get_db)):
 def get_image(id: str, session: Session = Depends(get_db)):
     if not id:
         return []
-    items = session.query(ImageModel).filter_by(categoryId=id)
+    items = session.query(ImageModel).filter_by(
+        categoryId=id, deleteFlag=0).all()
     if not items:
         raise HTTPException(status_code=404, detail="Image not found")
 
@@ -341,7 +347,8 @@ def get_image(id: str, session: Session = Depends(get_db)):
 async def update_image(id: str, image: ImageSchema, session: Session = Depends(get_db)):
     item = session.query(ImageModel).get(id)
     if not item:
-        raise HTTPException(status_code=404, detail="Image not found")
+        return {"message": "Image not found"} # TODO: Back to HTTPException after done UI.
+        # raise HTTPException(status_code=404, detail="Image not found")
 
     for k, value in image.model_dump().items():
         setattr(item, k, value)
@@ -350,7 +357,7 @@ async def update_image(id: str, image: ImageSchema, session: Session = Depends(g
     img_path = item.imgPath
     item.imgPath = await upload_image(img_path)
     session.commit()
-
+    session.refresh(item)
     return ImageDB.model_validate(item)
 
 
@@ -362,7 +369,8 @@ async def delete_image(id: str, session: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Category not found")
     item.deleteFlag = 1
     session.commit()
-    return ImageDB.model_validate(item)
+    session.refresh(item)
+    return {"message": "Image deleted successfully"}
 
 
 # @app.delete('/images/{id}')
@@ -437,15 +445,18 @@ async def img_gen_handler(query: str):
 
 @app.get('/emojies')
 def emoji_handler():
-    container_client = blob_service_client.get_container_client(container=emoji_container_name)
+    container_client = blob_service_client.get_container_client(
+        container=emoji_container_name)
     emoji_list = container_client.list_blobs()
     emoji_urls = []
     for blob in emoji_list:
         blob_client = container_client.get_blob_client(blob)
         emoji_urls.append(blob_client.url)
 
-    new_emoji_list = [ (emoji_url.split('/')[-1].split('.')[0], emoji_url) for emoji_url in emoji_urls]
-    emoji_list = [Emoji(id=key.lower().replace("%20", "-"), title=key.replace("%20", " "), imgPath=emoji_url) for key, emoji_url in new_emoji_list]
+    new_emoji_list = [(emoji_url.split('/')[-1].split('.')[0], emoji_url)
+                      for emoji_url in emoji_urls]
+    emoji_list = [Emoji(id=key.lower().replace("%20", "-"), title=key.replace(
+        "%20", " "), imgPath=emoji_url) for key, emoji_url in new_emoji_list]
 
     return emoji_list
 
@@ -474,7 +485,8 @@ async def search_handler(query: str, request: Request, session: Session = Depend
     img_ids = [rtn['sid'] for rtn in results]
 
     # Filter if deleteFlag (Soft delete) is 1. 1 equals True.
-    items = session.query(ImageModel).filter(ImageModel.id.in_(img_ids), ImageModel.deleteFlag != 1).all()
+    items = session.query(ImageModel).filter(
+        ImageModel.id.in_(img_ids), ImageModel.deleteFlag != 1).all()
     items_list = [ImageDB.model_validate(item) for item in items]
 
     return items_list

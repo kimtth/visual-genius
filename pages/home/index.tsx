@@ -4,11 +4,12 @@ import CategoryCard from "../../components/imgcard/categoryCard";
 import { Box, Button, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
 import { useSelector, useDispatch } from "react-redux";
 import { setCategoriesDataPayload } from "../../components/state/datas";
-import React, { useCallback, useEffect, MouseEvent, use } from "react";
+import React, { useCallback, useEffect, MouseEvent } from "react";
 import useAxios from "axios-hooks";
 import { IoCreate } from "react-icons/io5";
 import { API_ENDPOINT } from "../../components/state/const";
-import { useRouter } from "next/navigation";
+import { pathes } from "../../components/state/pathes";
+
 
 const kbStyles = {
   display: 'flex',
@@ -19,7 +20,8 @@ const kbStyles = {
 }
 
 const Home: NextPage = () => {
-  const { push, refresh } = useRouter();
+  // https://stackoverflow.com/questions/65146878/nextjs-router-seems-very-slow-compare-to-react-router
+  //const { push, refresh } = useRouter();
   const [{ data, loading, error }, refetch] = useAxios(
     `${API_ENDPOINT}/categories`
   );
@@ -38,7 +40,8 @@ const Home: NextPage = () => {
   }, [data]);
 
   const handleNewCategory = (e: MouseEvent<HTMLButtonElement>) => {
-    push('/gen');
+    //push('/gen');
+    window.location.href= `${pathes.gen}`;
   }
 
   if (loading) return <p>Loading...</p>;

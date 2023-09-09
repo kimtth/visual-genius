@@ -2,7 +2,6 @@ import type { NextPage } from "next";
 import { HStack, Box, Text, Input, InputGroup, Image, InputRightElement, Icon, IconButton } from "@chakra-ui/react";
 import { SiMicrosoftbing } from 'react-icons/si';
 import { FiSearch } from "react-icons/fi";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { pathes } from "../../components/state/pathes";
 import { API_ENDPOINT } from "../state/const";
@@ -10,6 +9,7 @@ import useAxios from "axios-hooks";
 import { MouseEvent, KeyboardEvent } from "react";
 import { useDispatch } from "react-redux";
 import { setSearchResultPayload } from "../state/datas";
+import { useRouter } from "next/router";
 
 
 const Header: NextPage = () => {
@@ -17,9 +17,9 @@ const Header: NextPage = () => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [searchTriggerd, setSearchTriggered] = useState(false);
     const [{ data, loading, error }, refetch] = useAxios({
-        url: `${API_ENDPOINT}/search/${searchKeyword}?count=5`, //`${API_ENDPOINT}/search/${searchKeyword}?count=5`
+        url: `${API_ENDPOINT}/search/${searchKeyword}?count=5`,
         method: 'GET'
-    }, { manual: true }
+    }, { manual: true, autoCancel: false }
     );
 
     const dispatch = useDispatch();
@@ -33,6 +33,7 @@ const Header: NextPage = () => {
             onDataPayload(data);
             setSearchTriggered(false);
             push(pathes.rtn);
+            //window.location.href= `${pathes.rtn}`;
         }
     }, [data]);
 

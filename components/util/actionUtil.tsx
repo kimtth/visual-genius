@@ -7,7 +7,7 @@ export const executeShareUrl = (categoryId: string) => {
 }
 
 
-export const downloadZip = async (downloadData: any) => {
+export const downloadZip = (downloadData: any) => {
     if (downloadData) {
         try {
             const url = window.URL.createObjectURL(new Blob([downloadData]));

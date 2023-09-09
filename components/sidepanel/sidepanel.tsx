@@ -1,25 +1,30 @@
 import type { NextPage } from "next";
-import { Box, Button, IconButton, Image, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon } from "@chakra-ui/react";
+import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon } from "@chakra-ui/react";
 import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
 import { VscSaveAll } from "react-icons/vsc";
-import { FC, MouseEvent, use, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useRouter as usePath } from 'next/router';
-import BasicModal from "../dialog/modal";
+import { FC, MouseEvent, useCallback, useEffect, useState } from "react";
+import { useRouter as usePath, useRouter } from 'next/router';
+import BasicModal from "../imgcard/basicModal";
 import { pathes } from "../../components/state/pathes";
 import { useDispatch, useSelector } from "react-redux";
-import { setColumnNumber, setImageNumber, setRowNumber, showGenButton, showImgCaption, showTextSpeech } from "../state/settings";
+import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption, showTextSpeech } from "../state/settings";
 import { setCategoryData, setImageDataPayload } from "../state/datas";
 import useAxios from "axios-hooks";
 import { API_ENDPOINT } from "../state/const";
 import { arrangeDataToColumns } from "../data/dataHandler";
 import { downloadZip, executeShareUrl } from "../util/actionUtil";
+import Axios from "axios";
 
 
 interface AlertPopupProps {
     message: string;
+}
+
+interface NewSidePanelProps {
+    disableGenButton: boolean;
+    setDisableGenButton: (disableGenButton: boolean) => void;
 }
 
 const AlertPopup: FC<AlertPopupProps> = ({ message }) => {
@@ -32,15 +37,15 @@ const AlertPopup: FC<AlertPopupProps> = ({ message }) => {
     )
 }
 
-const NewSidePanel: NextPage = () => {
-    const { push, refresh } = useRouter();
+const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisableGenButton }) => {
+    const { push } = useRouter();
     const router = usePath();
     const [prompts, setPrompts] = useState("");
     const [genTriggerd, setGenTriggered] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
-    const [categoryId, setCategoryId] = useState("");
+    const [categoryIdState, setCategoryId] = useState("");
     const [categoryTitle, setCategoryTitle] = useState("New Category");
     const [modalMessageType, setModalMessageType] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
@@ -48,7 +53,6 @@ const NewSidePanel: NextPage = () => {
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
     const imgCaption = useSelector((state: any) => state.settings.showImgCaption);
-    const showGenButtonVar = useSelector((state: any) => state.settings.showGenButton);
     const categoryData = useSelector((state: any) => state.datas.CategoryData);
     const textSpeech = useSelector((state: any) => state.settings.showTextSpeech);
     const rowNumber = useSelector((state: any) => state.settings.setRowNumber);
@@ -58,24 +62,21 @@ const NewSidePanel: NextPage = () => {
     const [{ data, loading, error }, refetch] = useAxios({
         url: `${API_ENDPOINT}/gen_img_list/${prompts}`,
         method: 'GET'
-    }, { manual: true }
-    );
-    const [{ data: categoryFetchedData, loading: categoryLoading, error: categoryError }, getCategoryData] = useAxios(
-        `${API_ENDPOINT}/category/${categoryId}`, { manual: true }
+    }, { manual: true, autoCancel: false }
     );
     const [{ data: postData, loading: postLoading, error: postError }, executePost] = useAxios(
         {
             url: `${API_ENDPOINT}/category`,
             method: 'POST'
         },
-        { manual: true }
+        { manual: true, autoCancel: false }
     )
     const [{ data: putData, loading: putLoading, error: putError }, executePut] = useAxios(
         {
             url: `${API_ENDPOINT}/category/${categoryData.id}`,
             method: 'PUT'
         },
-        { manual: true }
+        { manual: true, autoCancel: false }
     )
     const [{ data: downloadData, loading: downloadLoading, error: downloadError }, executeDownload] = useAxios(
         {
@@ -83,14 +84,14 @@ const NewSidePanel: NextPage = () => {
             method: 'GET',
             responseType: 'blob'
         },
-        { manual: true }
+        { manual: true, autoCancel: false }
     )
     const [{ data: deleteData, loading: deleteLoading, error: deleteError }, executeDelete] = useAxios(
         {
             url: `${API_ENDPOINT}/category/${categoryData.id}/delete`,
             method: 'PUT'
         },
-        { manual: true }
+        { manual: true, autoCancel: false }
     )
 
     const onSetImageNumber = useCallback(
@@ -99,10 +100,6 @@ const NewSidePanel: NextPage = () => {
     );
     const onShowImgCaption = useCallback(
         (any: any) => dispatch(showImgCaption(any)),
-        [dispatch]
-    );
-    const onShowGenButton = useCallback(
-        (any: any) => dispatch(showGenButton(any)),
         [dispatch]
     );
     const onShowTextSpeech = useCallback(
@@ -138,26 +135,23 @@ const NewSidePanel: NextPage = () => {
     }, [downloadData]);
 
     useEffect(() => {
-        if (Object.keys(categoryData).length === 0) {
-            const currentURL = router.asPath;
-            const urlParams = new URLSearchParams(currentURL.split('?')[1]);
-            const categoryId = urlParams.get('categoryId');
-
-            if (categoryId) {
-                setCategoryId(categoryId);
+        if (router.isReady) {
+            const { categoryId } = router.query;
+            setCategoryId(categoryId as string);
+            if (categoryIdState) {
+                Axios.get(`${API_ENDPOINT}/category/${categoryId}`).then((result: any) => {
+                    const data = result.data;
+                    onCategoryData(data);
+                    setCategoryTitle(data.title);
+                    if (data && Object.keys(data).length !== 0) {
+                        setDisableGenButton(true);
+                    }
+                }).catch((error: any) => {
+                    console.log(error);
+                });
             }
         }
-    }, [categoryData]);
-
-    useEffect(() => {
-        if (categoryId) {
-            getCategoryData();
-        }
-        if (categoryFetchedData) {
-            onCategoryData(categoryFetchedData);
-            setCategoryTitle(categoryFetchedData.title);
-        }
-    }, [categoryId, categoryFetchedData]);
+    }, [router.isReady, router.query, categoryIdState]);
 
     useEffect(() => {
         if (data) {
@@ -170,7 +164,7 @@ const NewSidePanel: NextPage = () => {
             );
             onDataPayload(arrangedData);
             setGenTriggered(false);
-            onShowGenButton(false);
+            setDisableGenButton(true);
         }
     }, [data]);
 
@@ -220,6 +214,7 @@ const NewSidePanel: NextPage = () => {
 
     const handleAddPhoto = () => {
         push(pathes.rtn);
+        //window.location.href = `${pathes.rtn}`;
     }
 
     const handleImageRearrange = (e: MouseEvent<HTMLButtonElement>) => {
@@ -247,7 +242,7 @@ const NewSidePanel: NextPage = () => {
     const handlePostCategory = () => {
         try {
             if (Object.keys(categoryData).length === 0) {
-                if (!dataPayload){
+                if (!dataPayload) {
                     alert("Please generate the category first!")
                     return;
                 }
@@ -256,20 +251,21 @@ const NewSidePanel: NextPage = () => {
                 const newCategory = {
                     id: newCategoryId,
                     title: categoryTitle,
-                    category: "Object Recognition",
-                    difficulty: "Medium",
+                    category: "Object Recognition", //TODO: change to dynamic
+                    difficulty: "Medium",  //TODO: change to dynamic
                     imgNum: imageNumber,
                     contentUrl: []
                 }
-                executePost({    
-                data: {
-                    category: newCategory,
-                    images: flatData
-                }})
+                executePost({
+                    data: {
+                        category: newCategory,
+                        images: flatData
+                    }
+                })
             } else {
                 alert("The category already exists!")
             }
-            onShowGenButton(false);
+            setDisableGenButton(true);
         } catch (error) {
             alert(error);
             console.error(error);
@@ -293,7 +289,6 @@ const NewSidePanel: NextPage = () => {
                 executeShareUrl(categoryData.id);
             } else if (modalMessageType === 'download') {
                 executeDownload();
-                alert(deleteData);
             } else if (modalMessageType === 'print') {
                 alert('Under construction');
             } else {
@@ -302,6 +297,10 @@ const NewSidePanel: NextPage = () => {
         } catch (error) {
             console.error(error);
         }
+    }
+
+    const handleMoveHome = () => {
+        window.location.href = `${pathes.home}`;
     }
 
     // if (loading) return <p>Loading...</p>;
@@ -329,10 +328,10 @@ const NewSidePanel: NextPage = () => {
             <VStack position={'fixed'} top={'50px'} left={'3px'} width={'20vw'} padding={'5px'} alignItems="left">
                 <Box display="flex" alignItems="center" paddingLeft={'5px'}>
                     <Editable
-                        defaultValue={categoryData.title ? categoryData.title : categoryTitle}
+                        value={categoryTitle}
                         fontWeight='bold'
                         fontSize='2xl'
-                        onChange={(value) => { handleTitleChange(value) }}
+                        onChange={(value: string) => { handleTitleChange(value) }}
                         onSubmit={() => handleUpdateRequest()}
                     >
                         <EditablePreview />
@@ -345,7 +344,7 @@ const NewSidePanel: NextPage = () => {
                         variant="ghost"
                         colorScheme='gray'
                         icon={<HiChevronLeft />}
-                        onClick={() => { push(pathes.home) }}
+                        onClick={() => { handleMoveHome() }}
                     />
                     <Text fontWeight='bold' fontSize='md'>Back to Home</Text>
                 </Box>
@@ -358,7 +357,7 @@ const NewSidePanel: NextPage = () => {
                         variant={'filled'}
                         resize="none"
                         value={prompts}
-                        onChange={(e) => { setPrompts(e.target.value) }}
+                        onChange={(e: any) => { setPrompts(e.target.value) }}
                     />
                 </Box>
                 {/* Number of cards */}
@@ -413,7 +412,6 @@ const NewSidePanel: NextPage = () => {
                                 <NumberInputField />
                             </NumberInput>
                         </Box>
-                        <Image alt="" src="/dismiss.svg" />
                         <Box>
                             <NumberInput
                                 size='sm'
@@ -444,7 +442,7 @@ const NewSidePanel: NextPage = () => {
                         size='sm'
                         width='95%'
                         marginBottom='2px'
-                        isDisabled={showGenButtonVar}
+                        isDisabled={disableGenButton}
                         onClick={() => { handleGenRequest() }}
                     >
                         Generate
