@@ -25,6 +25,25 @@ class ImgListPrompt(PromptType):
         super().__init__('imgList', self.imgListPrompt)
 
 
+class ImgStepPrompt(PromptType):
+    imgStepPrompt = '''
+    Please generate steps list based on the user's query or a topic within it. 
+    Each step should be concise and clear, less than 20 characters suitable for assisting children educations.
+    This output will be used for image searches, so please consider that. 
+    Output should be comma-separated string without any additional explanation.
+    
+    The user query
+    {query}
+
+    Example of output
+    Look at the picture, Read the text, Listen to the audio, Repeat the word, Repeat the sentence
+    '''
+
+    def __init__(self):
+        super().__init__('imgStep', self.imgStepPrompt)
+
+
+
 class ImgGenPrompt(PromptType):
     imgGenPrompt = '''
     The generated image should be designed to captivate children based on the user query. 
@@ -40,6 +59,7 @@ class ImgGenPrompt(PromptType):
 def return_prompt(prompt_type):
     prompt_types = {
         'imgGen': ImgGenPrompt,
+        'imgStep': ImgStepPrompt,
         'imgList': ImgListPrompt
     }
 

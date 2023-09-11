@@ -406,8 +406,13 @@ async def img_gen_handler(search_query: str):
 
 
 @app.get('/gen_img_list/{query}')
-async def img_gen_handler(query: str):
-    msg = await aoai_call.img_list_gen(query)
+async def img_gen_handler(query: str, request: Request):
+    params = request.query_params
+    mode = params['mode'] if 'mode' in params else ''
+    if mode == 'step':
+        msg = await aoai_call.img_step_gen(query)
+    else:
+        msg = await aoai_call.img_list_gen(query)
 
     img_urls: list[str | Any] = []
     substrings = ['sorry', 'unable']
@@ -426,7 +431,7 @@ async def img_gen_handler(query: str):
             img_urls.append(img)
 
         # Generative Image
-        img_query = img_queries[1]
+        img_query = img_queries[-1]
         img_id = str(uuid.uuid4())
         try:
             img_url = await aoai_call.img_gen(img_query)

@@ -1,10 +1,10 @@
 import type { NextPage } from "next";
-import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon } from "@chakra-ui/react";
+import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select } from "@chakra-ui/react";
 import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
 import { VscSaveAll } from "react-icons/vsc";
-import { FC, MouseEvent, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, FC, MouseEvent, useCallback, useEffect, useState } from "react";
 import { useRouter as usePath, useRouter } from 'next/router';
 import BasicModal from "../imgcard/basicModal";
 import { pathes } from "../../components/state/pathes";
@@ -49,6 +49,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     const [categoryTitle, setCategoryTitle] = useState("New Category");
     const [modalMessageType, setModalMessageType] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
+    const [mode, setMode] = useState("list");
 
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
@@ -60,7 +61,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     const dispatch = useDispatch();
 
     const [{ data, loading, error }, refetch] = useAxios({
-        url: `${API_ENDPOINT}/gen_img_list/${prompts}`,
+        url: `${API_ENDPOINT}/gen_img_list/${prompts}?mode=${mode}`,
         method: 'GET'
     }, { manual: true, autoCancel: false }
     );
@@ -303,6 +304,10 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
         window.location.href = `${pathes.home}`;
     }
 
+    const handleModeSelect = (e: ChangeEvent<HTMLSelectElement>) => {
+        setMode(e.target.value);
+    }
+
     // if (loading) return <p>Loading...</p>;
     if (error || putError) return <p>Error!</p>;
 
@@ -347,6 +352,12 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                         onClick={() => { handleMoveHome() }}
                     />
                     <Text fontWeight='bold' fontSize='md'>Back to Home</Text>
+                </Box>
+                <Box>
+                    <Select placeholder='Select option' size='xs' onChange={(e)=>{handleModeSelect(e)}} >
+                        <option value='list'>Generate List</option>
+                        <option value='step'>Generate Steps</option>
+                    </Select>
                 </Box>
                 <Box>
                     <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Prompts</Text>
