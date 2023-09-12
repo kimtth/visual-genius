@@ -25,7 +25,7 @@ cursor = conn.cursor()
 
 async def sync_search_db():
     # Query your SQLite3 database for the data you want to merge with your search index
-    query = 'SELECT id, imgPath FROM image Where deleteFlag != 1'
+    query = 'SELECT sid, imgPath FROM image Where deleteFlag != 1'
     cursor.execute(query)
     rows = cursor.fetchall()
 

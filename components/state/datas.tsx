@@ -1,6 +1,4 @@
 import { createAction, handleActions } from 'redux-actions';
-import { categoryData } from '../data/homeData';
-import { ImgDataByColumn } from '../data/ImgGenData';
 import { DataState } from './type';
 
 const TITLE = 'datas/TITLE';

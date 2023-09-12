@@ -1,15 +1,16 @@
+-- Local Database for development
+
 CREATE TABLE "category" (
-	"id" TEXT,
+	"sid" TEXT, 
 	"category"	TEXT,
 	"title"	TEXT,
 	"difficulty"	TEXT,
 	"imgNum"	INTEGER,
-	"contentUrl"	TEXT,
 	"user_id"	TEXT DEFAULT 'sys',
 	"deleteFlag" INTEGER DEFAULT 0,
 	"created_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
     "updated_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
-	PRIMARY KEY("id")
+	PRIMARY KEY("sid")
 );
 
 CREATE TRIGGER trigger_category_updated_at AFTER UPDATE ON "category"
@@ -18,7 +19,7 @@ BEGIN
 END;
 
 CREATE TABLE "image" (
-	"id" TEXT,
+	"sid" TEXT,
 	"categoryId"	TEXT,
 	"title"	TEXT,
 	"imgPath"	TEXT,
@@ -26,8 +27,8 @@ CREATE TABLE "image" (
 	"deleteFlag" INTEGER DEFAULT 0,
 	"created_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
     "updated_at" TEXT NOT NULL DEFAULT (DATETIME('now', 'localtime')),
-	PRIMARY KEY("id"),
-	FOREIGN KEY("categoryId") REFERENCES "category"("id")
+	PRIMARY KEY("sid"),
+	FOREIGN KEY("categoryId") REFERENCES "category"("sid")
 );
 
 CREATE TRIGGER trigger_image_updated_at AFTER UPDATE ON "image"

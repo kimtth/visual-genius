@@ -8,3 +8,4 @@ python-dotenv~=1.0.0
 bing-image-urls
 Pillow~=10.0.0
 httpx~=0.23.3
+psycopg2-binary

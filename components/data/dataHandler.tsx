@@ -6,7 +6,7 @@ export const arrangeDataToColumns = (data: any, columnNumber: number, callback: 
     const prematureImgs = data.length > 0 ? data : [];
     // Draggable requires a [string] draggableId.
     const imgs = prematureImgs.map((img: any) => {
-        img.id = img.id.toString();
+        img.sid = img.sid.toString();
         return img;
     });
 

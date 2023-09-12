@@ -23,6 +23,9 @@ import re
 import httpx
 
 
+load_dotenv()
+bing_search_subscription_key = os.getenv("BING_IMAGE_SEARCH_KEY")
+
 # fmt: off
 def bing_image_urls(  # pylint: disable=too-many-locals
         query: str,
@@ -63,19 +66,21 @@ def bing_image_urls(  # pylint: disable=too-many-locals
         "qft": "+filterui:imagesize-medium+filterui:color2-color+filterui:photo-photo",
     }
 
-    url = "https://www.bing.com/images/async"
-    # url1 = f"{url}?{urllib.parse.urlencode(data)}"
+    search_url = "https://api.bing.microsoft.com/v7.0/images/search"
+    headers = {"Ocp-Apim-Subscription-Key": bing_search_subscription_key}
 
     try:
         # resp = httpx.get(url1)
-        resp = httpx.get(url, params=data)
+        resp = httpx.get(search_url, headers=headers, params=data)
         resp.raise_for_status()
     except Exception as exc:
         print(exc)
         raise
 
     try:
-        links = re.findall(r"murl&quot;:&quot;(.*?)&quot;", resp.text)
+        # links = re.findall(r"murl&quot;:&quot;(.*?)&quot;", resp.text)
+        search_results = resp.json()["value"]
+        links = [url["contentUrl"] for url in search_results]
     except Exception as exc:
         print(exc)
         raise

@@ -22,7 +22,7 @@ type Item = {
     categoryId: string;
     title: string;
     imgPath: string;
-    id: string;
+    sid: string;
 };
 
 type DataPayload = {
@@ -53,14 +53,14 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
 
     const [{ data: updateImgUrl, loading: updateImgLoading, error: updateImgError }, updateImg] = useAxios(
         {
-            url: `${API_ENDPOINT}/images/${item.id}`,
+            url: `${API_ENDPOINT}/images/${item.sid}`,
             method: 'PUT'
         }, { manual: true, autoCancel: false }
     );
 
     const [{ data: deleteImgUrl, loading: deleteImgLoading, error: deleteImgError }, deleteImg] = useAxios(
         {
-            url: `${API_ENDPOINT}/images/${item.id}/delete`,
+            url: `${API_ENDPOINT}/images/${item.sid}/delete`,
             method: 'PUT'
         }, { manual: true, autoCancel: false }
     );
@@ -76,7 +76,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
         const updatedPayload = Object.values(clonedDataPayload).map((obj: any) => {
             if (obj.items) {
                 obj.items = obj.items.map((item: any) => {
-                    if (item.id === imgId) {
+                    if (item.sid === imgId) {
                         return { ...item, imgPath: newImgPath };
                     }
                     return item;
@@ -124,7 +124,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
             let clonedDataPayload = JSON.parse(JSON.stringify(dataPayload));
             const updatedPayload = Object.values(clonedDataPayload).map((obj: any) => {
                 if (obj.items) {
-                    obj.items = obj.items.filter((item: any) => item.id !== imgId);
+                    obj.items = obj.items.filter((item: any) => item.sid !== imgId);
                     return { ...obj, items: [...obj.items] };
                 }
                 return obj;
@@ -132,7 +132,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
             try {
                 deleteImg({
                     data: {
-                        id: imgId
+                        sid: imgId
                     }
                 });
                 onDataPayload(updatedPayload);
@@ -189,7 +189,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
                                 aria-label='Delete'
                                 size='sm'
                                 icon={<HiOutlineTrash />}
-                                onClick={() => { handleImageDelete(item.id) }}
+                                onClick={() => { handleImageDelete(item.sid) }}
                             />
                             <IconButton
                                 variant='ghost'
@@ -197,7 +197,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
                                 aria-label='Save'
                                 size='sm'
                                 icon={<VscSaveAll />}
-                                onClick={() => { handleImageUpdate(item.id) }}
+                                onClick={() => { handleImageUpdate(item.sid) }}
                             />
                             <IconButton
                                 ml={2}

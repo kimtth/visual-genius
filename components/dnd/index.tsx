@@ -83,7 +83,7 @@ const DragDropBoard = ({ dataPayload }: any) => {
                 >
                   {column.items.map((item: any, index: any) => (
                     <PhotoCard
-                      key={item.id}
+                      key={item.sid}
                       item={item}
                       index={index}
                       imgPath={item.imgPath}

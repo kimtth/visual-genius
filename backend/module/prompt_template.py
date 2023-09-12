@@ -10,12 +10,15 @@ class PromptType:
 class ImgListPrompt(PromptType):
     imgListPrompt = '''
     Please generate a list of 10 to 15 words suitable for assisting children in learning a new language. 
-    The list should be inspired by the user's query or a topic within it. 
+    The list should be inspired by the user's query or a topic within it and persona. 
     This output will be used for image searches, so please consider that. 
     Provide the list as a comma-separated string without any additional explanation.
     
     The user query
     {query}
+
+    The user persona
+    {persona}
 
     Example of output
     Dog, Cat, Cow, Sheep, Chicken, Frog, Duck, Pig, Horse
@@ -27,13 +30,16 @@ class ImgListPrompt(PromptType):
 
 class ImgStepPrompt(PromptType):
     imgStepPrompt = '''
-    Please generate steps list based on the user's query or a topic within it. 
-    Each step should be concise and clear, less than 20 characters suitable for assisting children educations.
+    Please generate steps list based on the user's query or a topic within it and persona.
+    Each step should be concise and clear, less than 20 characters suitable for assisting children's education.
     This output will be used for image searches, so please consider that. 
-    Output should be comma-separated string without any additional explanation.
+    The output should be a comma-separated string without any additional explanation.
     
     The user query
     {query}
+
+    The user persona
+    {persona}
 
     Example of output
     Look at the picture, Read the text, Listen to the audio, Repeat the word, Repeat the sentence
@@ -46,7 +52,8 @@ class ImgStepPrompt(PromptType):
 
 class ImgGenPrompt(PromptType):
     imgGenPrompt = '''
-    The generated image should be designed to captivate children based on the user query. 
+    The generated image should be designed to captivate children based on the user query.
+    This output will be used for an input text for the image generation, so please consider that. 
     
     The user query
     {query}

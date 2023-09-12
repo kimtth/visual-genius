@@ -74,7 +74,7 @@ const Home: NextPage = () => {
                 {
                   categoriesData ? categoriesData.map((item: any, index: any) => {
                     return (
-                      <CategoryCard key={item['id']} categoryId={item['id']} item={item} />
+                      <CategoryCard key={item['sid']} categoryId={item['sid']} item={item} />
                     )
                   }
                   ) : ""

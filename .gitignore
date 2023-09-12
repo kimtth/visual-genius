@@ -136,7 +136,11 @@ backend/.idea
 backend/.env
 backend/func/venv
 backend/venv
-backend/func/.python_packages
+backend/func/delete_func/.python_packages
+backend/func/delete_func/.vscode
+backend/func/delete_func/local.settings.json
+backend/func/acs_indexer/.python_packages
+backend/func/acs_indexer/.vscode
 backend/memo.txt
 backend/__pycache__
 backend/util/__pycache__
@@ -146,3 +150,4 @@ backend/instance
 .env
 yarn.lock
 package-lock.json
+db.7z

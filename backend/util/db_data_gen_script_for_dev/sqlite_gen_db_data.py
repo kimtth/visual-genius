@@ -56,10 +56,10 @@ def update_category(conn):
 
     # Query to get the number of images and the first 3 image paths for each category
     query = '''
-        SELECT c.id, COUNT(i.id), GROUP_CONCAT(i.imgPath)
+        SELECT c.sid, COUNT(i.sid)
         FROM category c
-        LEFT JOIN image i ON c.id = i.categoryId
-        GROUP BY c.id
+        LEFT JOIN image i ON c.sid = i.categoryId
+        GROUP BY c.sid
     '''
 
     # Execute the query
@@ -72,14 +72,12 @@ def update_category(conn):
     for row in results:
         category_id = row[0]
         img_num = row[1]
-        img_paths = row[2].split(',')[:3]
-        content_url = json.dumps(img_paths)
 
         # Update query
         update_query = '''
             UPDATE category
             SET imgNum = ?, contentUrl = ?
-            WHERE id = ?
+            WHERE sid = ?
         '''
 
         # Execute the update query
@@ -127,7 +125,7 @@ for i, file_name in enumerate(cls_animal):
         category_id_list.append(cls_uuid)
     # Create a dictionary for the image
     image_dict = {
-        'id': str(uuid.uuid4()),
+        'sid': str(uuid.uuid4()),
         'title': img_name.title(),
         'categoryId': cls_uuid,
         'imgPath': blob_url
@@ -155,7 +153,7 @@ for i, file_name in enumerate(cls_everyday_life):
         category_id_list.append(cls_uuid)
     # Create a dictionary for the image
     image_dict = {
-        'id': str(uuid.uuid4()),
+        'sid': str(uuid.uuid4()),
         'title': img_name.title(),
         'categoryId': cls_uuid,  # get_cls_id(i, file_name),
         'imgPath': blob_url
@@ -169,57 +167,51 @@ print(image_list_2)
 print(len(image_list_2))
 
 cls_1 = {
-    'id': category_id_list[0],
+    'sid': category_id_list[0],
     'category': 'Object Recognition',
     'title': 'Animals #1',
     'difficulty': 'Easy',
     'imgNum': 8,
-    'contentUrl': ''
 }
 
 cls_2 = {
-    'id': category_id_list[1],
+    'sid': category_id_list[1],
     'category': 'Object Recognition',
     'title': 'Animals #2',
     'difficulty': 'Medium',
     'imgNum': 8,
-    'contentUrl': ''
 }
 
 cls_3 = {
-    'id': category_id_list[2],
+    'sid': category_id_list[2],
     'category': 'Object Recognition',
     'title': 'Animals #3',
     'difficulty': 'Easy',
     'imgNum': 8,
-    'contentUrl': ''
 }
 
 cls_4 = {
-    'id': category_id_list[3],
+    'sid': category_id_list[3],
     'category': 'Pattern Recognition',
     'title': 'Everyday Life',
     'difficulty': 'Medium',
     'imgNum': 8,
-    'contentUrl': ''
 }
 
 cls_5 = {
-    'id': category_id_list[4],
+    'sid': category_id_list[4],
     'category': 'Pattern Recognition',
     'title': 'Everyday Life',
     'difficulty': 'Medium',
     'imgNum': 8,
-    'contentUrl': ''
 }
 
 cls_6 = {
-    'id': category_id_list[5],
+    'sid': category_id_list[5],
     'category': 'Pattern Recognition',
     'title': 'Everyday Life',
     'difficulty': 'Medium',
     'imgNum': 8,
-    'contentUrl': ''
 }
 
 category_data = [cls_1, cls_2, cls_3, cls_4, cls_5, cls_6]

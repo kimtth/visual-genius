@@ -5,7 +5,7 @@ import ResultCard from "../../components/imgcard/searchResultCard";
 import { BiUpload } from "react-icons/bi";
 import { HiChevronLeft } from "react-icons/hi";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { ChangeEvent, MouseEvent, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { API_ENDPOINT } from "../../components/state/const";
 import useAxios from "axios-hooks";
@@ -65,10 +65,10 @@ const SelectPage: NextPage = () => {
       if (checkedItems.length > 0) {
         try {
           const transformedDataPayload = searchDataPayload.filter((item: any) =>
-            checkedItems.includes(item['id'])).map((item: any) =>
+            checkedItems.includes(item['sid'])).map((item: any) =>
             ({
-              id: item['id'],
-              categoryId: categoryData['id'],
+              sid: item['sid'],
+              categoryId: categoryData['sid'],
               title: item['title'],
               imgPath: item['imgPath']
             }));
@@ -85,10 +85,10 @@ const SelectPage: NextPage = () => {
       if (checkedEmojiItems.length > 0) {
         try {
           const transformedEmojiData = emojiData.filter((item: any) =>
-            checkedEmojiItems.includes(item['id'])).map((item: any) =>
+            checkedEmojiItems.includes(item['sid'])).map((item: any) =>
             ({
-              id: item['id'],
-              categoryId: categoryData['id'],
+              sid: item['sid'],
+              categoryId: categoryData['sid'],
               title: item['title'],
               imgPath: item['imgPath']
             }));
@@ -104,17 +104,34 @@ const SelectPage: NextPage = () => {
     }
   }
 
-  const handleSearchResultSelectItem = (id: string, checked: boolean) => {
+  const handleSearchResultSelectItem = (sid: string, checked: boolean) => {
     const newCheckedItems =
-      checked ? [...checkedItems, id] : checkedItems.filter((itemId) => itemId !== id);
+      checked ? [...checkedItems, sid] : checkedItems.filter((itemId) => itemId !== sid);
     setCheckedItems(newCheckedItems);
   };
 
-  const handleEmojiSelectItem = (id: string, checked: boolean) => {
+  const handleEmojiSelectItem = (sid: string, checked: boolean) => {
     const newCheckedItems =
-      checked ? [...checkedEmojiItems, id] : checkedEmojiItems.filter((itemId) => itemId !== id);
+      checked ? [...checkedEmojiItems, sid] : checkedEmojiItems.filter((itemId) => itemId !== sid);
     setCheckedEmojiItems(newCheckedItems);
   };
+
+  // Mutiple file upload
+  function handleFileUpload(event: ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files;
+    if (files) {
+      for (let i = 0; i < files.length; i++) {
+        console.log(`Selected file: ${files[i].name}`);
+      }
+    }
+  }
+
+  const handleFileClick = (e: MouseEvent<HTMLButtonElement>) => {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+      fileInput.click();
+    }
+  }
 
   return (
     <>
@@ -141,13 +158,14 @@ const SelectPage: NextPage = () => {
                 isLoading={postLoading}
                 onClick={() => { handleAddPhotos() }}
               >Add Photos</Button>
+              <input type='file' id='fileInput' style={{ display: 'none' }} onChange={handleFileUpload} multiple />
               <Button aria-label='Upload'
                 leftIcon={<BiUpload />}
                 size='sm'
                 variant="outline"
                 colorScheme='gray'
                 borderRadius='1px'
-                onClick={() => { alert("Under construction!") }}
+                onClick={handleFileClick}
               >Upload My own photos</Button>
             </ButtonGroup>
           </HStack>
@@ -164,11 +182,11 @@ const SelectPage: NextPage = () => {
                       searchDataPayload.map((item: any, index: any) => {
                         return (
                           <ResultCard
-                            key={item['id']}
+                            key={item['sid']}
                             title={item['title']}
                             imgPath={item['imgPath']}
-                            checked={checkedItems.includes(item['id'])}
-                            onSelect={(checked: boolean) => { handleSearchResultSelectItem(item['id'], checked) }}
+                            checked={checkedItems.includes(item['sid'])}
+                            onSelect={(checked: boolean) => { handleSearchResultSelectItem(item['sid'], checked) }}
                           />
                         )
                       }
@@ -182,11 +200,11 @@ const SelectPage: NextPage = () => {
                       emojiData.map((item: any, index: any) => {
                         return (
                           <ResultCard
-                            key={item['id']}
+                            key={item['sid']}
                             title={item['title']}
                             imgPath={item['imgPath']}
-                            checked={checkedEmojiItems.includes(item['id'])}
-                            onSelect={(checked: boolean) => { handleEmojiSelectItem(item['id'], checked) }}
+                            checked={checkedEmojiItems.includes(item['sid'])}
+                            onSelect={(checked: boolean) => { handleEmojiSelectItem(item['sid'], checked) }}
                           />
                         )
                       }

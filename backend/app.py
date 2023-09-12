@@ -36,10 +36,19 @@ app.add_middleware(
 )
 
 # TODO Change Sqlite to PostgreSQL
-engine = create_engine("sqlite:///./db.db",
-                       connect_args={"check_same_thread": False})
+# engine = create_engine("sqlite:///./db.db",
+#                       connect_args={"check_same_thread": False})
 # check_same_thread is needed only for SQLite. It's not needed for other databases.
-# engine = create_engine('postgresql+psycopg2://user:password@host/database')
+
+postgre_host = os.getenv("POSTGRE_HOST")
+postgre_user = os.getenv("POSTGRE_USER")
+postgre_port = os.getenv("POSTGRE_PORT")
+postgre_db = os.getenv("POSTGRE_DATABASE")
+postgre_pwd = os.getenv("POSTGRE_PASSWORD")
+
+print(f'postgresql://{postgre_user}:{postgre_pwd}@{postgre_host}:{postgre_port}/{postgre_db}')
+
+engine = create_engine(f'postgresql://{postgre_user}:{postgre_pwd}@{postgre_host}:{postgre_port}/{postgre_db}')
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -70,26 +79,26 @@ def get_db():
 # SQLAlchemy model
 class CategoryModel(Base):
     __tablename__ = "category"
-    id = Column(String, primary_key=True, index=True)
+    sid = Column(String, primary_key=True, index=True)
     title = Column(String, index=True)
     category = Column(String)
     difficulty = Column(String)
     imgNum = Column(Integer)
-    contentUrl = Column(JSON)
+    # contentUrl = Column(JSON)
     deleteFlag = Column(Integer, default=0)
 
-    # The "category" in backref="parent" and ForeignKey('category.id') should be the same.
+    # The "category" in backref="parent" and ForeignKey('category.sid') should be the same.
     images = relationship("ImageModel", backref="category")
 
 
 # Pydantic model - request body
 class CategorySchema(BaseModel):
-    id: str
+    sid: str
     title: str
     category: str
     difficulty: str
     imgNum: int
-    contentUrl: List[str]
+    contentUrl: Optional[List[str]] = []
     deleteFlag: Optional[int] = 0
 
     class Config:
@@ -98,7 +107,7 @@ class CategorySchema(BaseModel):
 
 # Pydantic model - response body
 class CategoryDB(CategorySchema):
-    id: str
+    sid: str
 
     class Config:
         from_attributes = True
@@ -107,8 +116,8 @@ class CategoryDB(CategorySchema):
 # SQLAlchemy model
 class ImageModel(Base):
     __tablename__ = "image"
-    id = Column(String, primary_key=True)
-    categoryId = Column(String, ForeignKey('category.id'))
+    sid = Column(String, primary_key=True)
+    categoryId = Column(String, ForeignKey('category.sid'))
     title = Column(String)
     imgPath = Column(String)
     deleteFlag = Column(Integer, default=0)
@@ -116,7 +125,7 @@ class ImageModel(Base):
 
 # Pydantic model - request body
 class ImageSchema(BaseModel):
-    id: str
+    sid: str
     categoryId: str
     title: str
     imgPath: str
@@ -128,14 +137,14 @@ class ImageSchema(BaseModel):
 
 # Pydantic model - response body
 class ImageDB(ImageSchema):
-    id: str
+    sid: str
 
     class Config:
         from_attributes = True
 
 
 class Emoji(BaseModel):
-    id: str
+    sid: str
     title: str
     imgPath: str
 
@@ -146,6 +155,10 @@ class Emoji(BaseModel):
 @app.get('/categories')
 def get_categories(session: Session = Depends(get_db)):
     items = session.query(CategoryModel).filter(CategoryModel.deleteFlag == 0).all()
+    # First 3 images for each category
+    for item in items:
+        imgs = item.images[0:3]
+        item.contentUrl = [img.imgPath for img in imgs]
     return [CategoryDB.model_validate(item) for item in items]
 
 
@@ -154,8 +167,7 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
     new_category = CategoryModel(**category.model_dump())
 
     # Create the associated images
-    contentUrlImgs = []
-    for idx, image in enumerate(images):
+    for image in images:
         new_image = ImageModel(**image.model_dump())
 
         # Upload the image to blob storage
@@ -164,11 +176,6 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
 
         session.add(new_image)
 
-        if idx < 3:
-            contentUrlImgs.append(new_image.imgPath)
-
-    # First 3 images URLs from updated images list
-    new_category.contentUrl = contentUrlImgs
     # The order in which you add objects to the session does not matter,
     # as long as all the necessary relationships between the objects are properly set up
     session.add(new_category)
@@ -197,17 +204,17 @@ async def upload_image(img_path: str):
             return ""
 
 
-@app.get('/category/{id}')
-def get_category(id: str, session: Session = Depends(get_db)):
-    item = session.query(CategoryModel).get(id)
+@app.get('/category/{sid}')
+def get_category(sid: str, session: Session = Depends(get_db)):
+    item = session.query(CategoryModel).get(sid)
     if not item:
         raise HTTPException(status_code=404, detail="Category not found")
     return CategoryDB.model_validate(item)
 
 
-@app.put('/category/{id}')
-def update_category(id: str, category: CategorySchema, session: Session = Depends(get_db)):
-    item = session.query(CategoryModel).get(id)
+@app.put('/category/{sid}')
+def update_category(sid: str, category: CategorySchema, session: Session = Depends(get_db)):
+    item = session.query(CategoryModel).get(sid)
     if not item:
         raise HTTPException(status_code=404, detail="Category not found")
 
@@ -219,9 +226,9 @@ def update_category(id: str, category: CategorySchema, session: Session = Depend
 
 
 # Preventing unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
-@app.put("/category/{id}/delete")
-def delete_category(id: str, session: Session = Depends(get_db)):
-    item = session.query(CategoryModel).get(id)
+@app.put("/category/{sid}/delete")
+def delete_category(sid: str, session: Session = Depends(get_db)):
+    item = session.query(CategoryModel).get(sid)
     if not item:
         raise HTTPException(status_code=404, detail="Category not found")
     item.deleteFlag = 1
@@ -235,9 +242,9 @@ def delete_category(id: str, session: Session = Depends(get_db)):
     return {"message": "Category deleted successfully"}
 
 
-@app.get("/category/{id}/download")
-async def download_images(id: str, session: Session = Depends(get_db)):
-    item = session.query(CategoryModel).get(id)
+@app.get("/category/{sid}/download")
+async def download_images(sid: str, session: Session = Depends(get_db)):
+    item = session.query(CategoryModel).get(sid)
     if not item:
         raise HTTPException(status_code=404, detail="Category not found")
     images = item.images
@@ -265,9 +272,9 @@ async def download_image(img_path: str):
         response = await client.get(img_path)
         return response.content
 
-# @app.delete('/category/{id}')
-# def delete_category(id: str, session: Session = Depends(get_db)):
-#     item = session.query(CategoryModel).get(id)
+# @app.delete('/category/{sid}')
+# def delete_category(sid: str, session: Session = Depends(get_db)):
+#     item = session.query(CategoryModel).get(sid)
 #     if not item:
 #         raise HTTPException(status_code=404, detail="Category not found")
 #     session.delete(item)
@@ -296,7 +303,7 @@ def create_image(images: List[ImageSchema], session: Session = Depends(get_db)):
     for image in images:
         if not check_image_path(image.categoryId, image.imgPath, session):
             new_image = ImageModel(**image.model_dump())
-            new_image.id = str(uuid.uuid4())
+            new_image.sid = str(uuid.uuid4())
             session.add(new_image)
             items.append(new_image)
 
@@ -322,12 +329,12 @@ def create_image(image: ImageSchema, session: Session = Depends(get_db)):
     return ImageDB.model_validate(new_item)
 
 
-@app.get('/images/{id}')
-def get_image(id: str, session: Session = Depends(get_db)):
-    if not id:
+@app.get('/images/{sid}')
+def get_image(sid: str, session: Session = Depends(get_db)):
+    if not sid:
         return []
     items = session.query(ImageModel).filter_by(
-        categoryId=id, deleteFlag=0).all()
+        categoryId=sid, deleteFlag=0).all()
     if not items:
         raise HTTPException(status_code=404, detail="Image not found")
 
@@ -343,9 +350,9 @@ def get_image(id: str, session: Session = Depends(get_db)):
     return image_list
 
 
-@app.put('/images/{id}')
-async def update_image(id: str, image: ImageSchema, session: Session = Depends(get_db)):
-    item = session.query(ImageModel).get(id)
+@app.put('/images/{sid}')
+async def update_image(sid: str, image: ImageSchema, session: Session = Depends(get_db)):
+    item = session.query(ImageModel).get(sid)
     if not item:
         return {"message": "Image not found"} # TODO: Back to HTTPException after done UI.
         # raise HTTPException(status_code=404, detail="Image not found")
@@ -362,9 +369,9 @@ async def update_image(id: str, image: ImageSchema, session: Session = Depends(g
 
 
 # Preventing unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
-@app.put("/images/{id}/delete")
-async def delete_image(id: str, session: Session = Depends(get_db)):
-    item = session.query(ImageModel).get(id)
+@app.put("/images/{sid}/delete")
+async def delete_image(sid: str, session: Session = Depends(get_db)):
+    item = session.query(ImageModel).get(sid)
     if not item:
         raise HTTPException(status_code=404, detail="Category not found")
     item.deleteFlag = 1
@@ -409,13 +416,17 @@ async def img_gen_handler(search_query: str):
 async def img_gen_handler(query: str, request: Request):
     params = request.query_params
     mode = params['mode'] if 'mode' in params else ''
+    persona = params['persona'] if 'persona' in params else ''
+
     if mode == 'step':
-        msg = await aoai_call.img_step_gen(query)
+        msg = await aoai_call.img_step_gen(query, persona)
+    elif mode == 'explicit':
+        msg = ','.join(query.split(os.linesep))
     else:
-        msg = await aoai_call.img_list_gen(query)
+        msg = await aoai_call.img_list_gen(query, persona)
 
     img_urls: list[str | Any] = []
-    substrings = ['sorry', 'unable']
+    substrings = [] # TODO: Add more keywords to filter out the prompt.
 
     category_id = str(uuid.uuid4())
     if msg and not any(substring in msg.lower() for substring in substrings):
@@ -425,7 +436,7 @@ async def img_gen_handler(query: str, request: Request):
         for search_query in img_queries:
             img_url = await bing_img_search.fetch_image_from_bing(search_query, 1)
             img_id = str(uuid.uuid4())
-            img = ImageDB(id=img_id, categoryId=category_id,
+            img = ImageDB(sid=img_id, categoryId=category_id,
                           title=search_query, imgPath=img_url)
 
             img_urls.append(img)
@@ -435,12 +446,12 @@ async def img_gen_handler(query: str, request: Request):
         img_id = str(uuid.uuid4())
         try:
             img_url = await aoai_call.img_gen(img_query)
-            img = ImageDB(id=img_id, categoryId=category_id,
+            img = ImageDB(sid=img_id, categoryId=category_id,
                           title=img_query + '_gen_', imgPath=img_url)
             img_urls.append(img)
         except Exception as e:
             img_url = await bing_img_search.fetch_image_from_bing(img_query)
-            img = ImageDB(id=img_id, categoryId=category_id,
+            img = ImageDB(sid=img_id, categoryId=category_id,
                           title=img_query + '_gen_', imgPath=img_url)
             img_urls.append(img)
 
@@ -460,7 +471,7 @@ def emoji_handler():
 
     new_emoji_list = [(emoji_url.split('/')[-1].split('.')[0], emoji_url)
                       for emoji_url in emoji_urls]
-    emoji_list = [Emoji(id=key.lower().replace("%20", "-"), title=key.replace(
+    emoji_list = [Emoji(sid=key.lower().replace("%20", "-"), title=key.replace(
         "%20", " "), imgPath=emoji_url) for key, emoji_url in new_emoji_list]
 
     return emoji_list
@@ -491,7 +502,7 @@ async def search_handler(query: str, request: Request, session: Session = Depend
 
     # Filter if deleteFlag (Soft delete) is 1. 1 equals True.
     items = session.query(ImageModel).filter(
-        ImageModel.id.in_(img_ids), ImageModel.deleteFlag != 1).all()
+        ImageModel.sid.in_(img_ids), ImageModel.deleteFlag != 1).all()
     items_list = [ImageDB.model_validate(item) for item in items]
 
     return items_list

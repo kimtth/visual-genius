@@ -1,5 +1,5 @@
 import type { NextPage } from "next";
-import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select } from "@chakra-ui/react";
+import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select, Flex } from "@chakra-ui/react";
 import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
@@ -50,6 +50,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     const [modalMessageType, setModalMessageType] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
     const [mode, setMode] = useState("list");
+    const [persona, setPersona] = useState("any");
 
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
@@ -61,7 +62,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     const dispatch = useDispatch();
 
     const [{ data, loading, error }, refetch] = useAxios({
-        url: `${API_ENDPOINT}/gen_img_list/${prompts}?mode=${mode}`,
+        url: `${API_ENDPOINT}/gen_img_list/${prompts}?mode=${mode}&persona=${persona}`,
         method: 'GET'
     }, { manual: true, autoCancel: false }
     );
@@ -74,14 +75,14 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     )
     const [{ data: putData, loading: putLoading, error: putError }, executePut] = useAxios(
         {
-            url: `${API_ENDPOINT}/category/${categoryData.id}`,
+            url: `${API_ENDPOINT}/category/${categoryData.sid}`,
             method: 'PUT'
         },
         { manual: true, autoCancel: false }
     )
     const [{ data: downloadData, loading: downloadLoading, error: downloadError }, executeDownload] = useAxios(
         {
-            url: `${API_ENDPOINT}/category/${categoryData.id}/download`,
+            url: `${API_ENDPOINT}/category/${categoryData.sid}/download`,
             method: 'GET',
             responseType: 'blob'
         },
@@ -89,7 +90,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     )
     const [{ data: deleteData, loading: deleteLoading, error: deleteError }, executeDelete] = useAxios(
         {
-            url: `${API_ENDPOINT}/category/${categoryData.id}/delete`,
+            url: `${API_ENDPOINT}/category/${categoryData.sid}/delete`,
             method: 'PUT'
         },
         { manual: true, autoCancel: false }
@@ -165,14 +166,13 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
             );
             onDataPayload(arrangedData);
             setGenTriggered(false);
-            setDisableGenButton(true);
         }
     }, [data]);
 
     const handleGenRequest = () => {
         if (!prompts) {
-            setAlertMessage("Prompts cannot be empty!");
-            handleAlert(true);
+            alert("Prompts cannot be empty!");
+            //handleAlert(true);
         } else {
             try {
                 refetch();
@@ -250,7 +250,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                 const flatData = Object.values(dataPayload).flatMap((obj: any) => obj.items);
                 const newCategoryId = flatData[0].categoryId;
                 const newCategory = {
-                    id: newCategoryId,
+                    sid: newCategoryId,
                     title: categoryTitle,
                     category: "Object Recognition", //TODO: change to dynamic
                     difficulty: "Medium",  //TODO: change to dynamic
@@ -287,7 +287,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
             } else if (modalMessageType === 'save') {
                 handlePostCategory();
             } else if (modalMessageType === 'share') {
-                executeShareUrl(categoryData.id);
+                executeShareUrl(categoryData.sid);
             } else if (modalMessageType === 'download') {
                 executeDownload();
             } else if (modalMessageType === 'print') {
@@ -306,6 +306,10 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
 
     const handleModeSelect = (e: ChangeEvent<HTMLSelectElement>) => {
         setMode(e.target.value);
+    }
+
+    const handlePersonaSelect = (e: ChangeEvent<HTMLSelectElement>) => {
+        setPersona(e.target.value);
     }
 
     // if (loading) return <p>Loading...</p>;
@@ -354,10 +358,36 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                     <Text fontWeight='bold' fontSize='md'>Back to Home</Text>
                 </Box>
                 <Box>
-                    <Select placeholder='Select option' size='xs' onChange={(e)=>{handleModeSelect(e)}} >
-                        <option value='list'>Generate List</option>
-                        <option value='step'>Generate Steps</option>
-                    </Select>
+                    <Flex ml={2}>
+                        <Text fontWeight='bold' fontSize='sm' mr={1} width='30%'>Persona</Text>
+                        <Select
+                            placeholder='Select option'
+                            size='xs'
+                            onChange={(e) => { handlePersonaSelect(e) }}
+                            maxWidth={'60%'}
+                            defaultValue={'any'}
+                        >
+                            <option value='parent'>Parent/care giver</option>
+                            <option value='child'>Child</option>
+                            <option value='any'>Any</option>
+                        </Select>
+                    </Flex>
+                </Box>
+                <Box>
+                    <Flex ml={2}>
+                        <Text fontWeight='bold' fontSize='sm' mr={1} width='30%'>Mode</Text>
+                        <Select
+                            placeholder='Select option'
+                            size='xs'
+                            onChange={(e) => { handleModeSelect(e) }}
+                            maxWidth={'60%'}
+                            defaultValue={'list'}
+                        >
+                            <option value='list'>Generate List</option>
+                            <option value='step'>Generate Steps</option>
+                            <option value='explicit'>Explicit (Newline seperated)</option>
+                        </Select>
+                    </Flex>
                 </Box>
                 <Box>
                     <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Prompts</Text>
@@ -372,7 +402,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                     />
                 </Box>
                 {/* Number of cards */}
-                <Box>
+                {/* <Box>
                     <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Number of cards</Text>
                     <Box>
                         <NumberInput
@@ -386,7 +416,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                             <NumberInputField />
                         </NumberInput>
                     </Box>
-                </Box>
+                </Box> */}
                 {/* Number of cards */}
                 {/* Toggle */}
                 <Box display="flex" alignItems="center" justifyContent={"space-between"}>

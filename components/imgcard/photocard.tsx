@@ -34,7 +34,7 @@ const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
                 </>
                 : null}
             {/* The draggableId should match the key of the component */}
-            <Draggable key={item.id} draggableId={item.id} index={index}>
+            <Draggable key={item.sid} draggableId={item.sid} index={index}>
                 {(provided) => (
                     <div
                         ref={provided.innerRef}
