@@ -446,12 +446,12 @@ async def img_gen_handler(query: str, request: Request):
         try:
             img_url = await aoai_call.img_gen(img_query)
             img = ImageDB(sid=img_id, categoryId=category_id,
-                          title=img_query + '_gen_', imgPath=img_url)
+                          title=img_query, imgPath=img_url)
             img_urls.append(img)
         except Exception as e:
             img_url = await bing_img_search.fetch_image_from_bing(img_query)
             img = ImageDB(sid=img_id, categoryId=category_id,
-                          title=img_query + '_gen_', imgPath=img_url)
+                          title=img_query, imgPath=img_url)
             img_urls.append(img)
 
     items_list = [ImageDB.model_validate(item) for item in img_urls]

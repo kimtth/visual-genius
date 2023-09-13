@@ -181,7 +181,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
                         />
                     </ModalBody>
                     <ModalFooter justifyContent={"space-between"}>
-                        <Text as='b'>{(item.title).includes('_gen_') ? (item.title).replace('_gen_', '') : item.title}</Text>
+                        <Text as='b'>{item.title}</Text>
                         <Flex>
                             <IconButton
                                 variant='ghost'

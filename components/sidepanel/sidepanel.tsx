@@ -65,6 +65,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
     const imgCaption = useSelector((state: any) => state.settings.showImgCaption);
     const categoryData = useSelector((state: any) => state.datas.CategoryData);
+    const imageData = useSelector((state: any) => state.datas.ImageDataPayload);
     const textSpeech = useSelector((state: any) => state.settings.showTextSpeech);
     const rowNumber = useSelector((state: any) => state.settings.setRowNumber);
     const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
@@ -351,7 +352,20 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     }
 
     const handleMotionRendering = () => {
-        alert('Under construction');
+        console.log(imageData);
+        let newItems: any = [];
+        for (const key in imageData) {
+            const items = imageData[key].items;
+            for (const item of items) {
+                const { sid, imgPath, title } = item;
+                const newItem = { imgPath, title };
+                newItems.push(newItem);
+            }
+        }
+        const duration = newItems.length > 1 ? newItems.length * 50 : 200;
+        localStorage.setItem('Images', JSON.stringify(newItems));
+        localStorage.setItem('duration', JSON.stringify(duration));
+        window.open('/motion', '_blank');
     }
 
     // if (loading) return <p>Loading...</p>;
@@ -458,9 +472,9 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                                                 <IconButton
                                                     aria-label={'history-remove'}
                                                     size={'xs'}
-                                                    icon={<DeleteIcon />} 
+                                                    icon={<DeleteIcon />}
                                                     onClick={() => { handleDeleteSearchHistory(item) }}
-                                                    />
+                                                />
                                             </MenuItem>
                                         )
                                     })}
