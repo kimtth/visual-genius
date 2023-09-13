@@ -9,6 +9,7 @@ export interface DataState {
 export interface SettingState {
     showImgCaption: boolean;
     showTextSpeech: boolean;
+    showNumbering: boolean;
     setImageNumber: number;
     setRowNumber: number;
     setColumnNumber: number;

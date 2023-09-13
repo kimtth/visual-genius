@@ -1,21 +1,27 @@
 import type { NextPage } from "next";
-import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select, Flex } from "@chakra-ui/react";
+import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select, Flex, ButtonGroup, Menu, MenuButton, MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
 import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
-import { LiaShareSquareSolid, LiaDownloadSolid, LiaPrintSolid } from "react-icons/lia";
+import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
+import { BiSort, BiImageAdd } from "react-icons/bi";
+import { GoHistory } from "react-icons/go";
+import { MdPlaylistRemove } from "react-icons/md";
+import { RiAiGenerate } from "react-icons/ri";
+import { TbNumbers, TbVideo } from "react-icons/tb";
 import { VscSaveAll } from "react-icons/vsc";
 import { ChangeEvent, FC, MouseEvent, useCallback, useEffect, useState } from "react";
 import { useRouter as usePath, useRouter } from 'next/router';
 import BasicModal from "../imgcard/basicModal";
 import { pathes } from "../../components/state/pathes";
 import { useDispatch, useSelector } from "react-redux";
-import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption, showTextSpeech } from "../state/settings";
+import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption, showNumbering, showTextSpeech } from "../state/settings";
 import { setCategoryData, setImageDataPayload } from "../state/datas";
 import useAxios from "axios-hooks";
 import { API_ENDPOINT } from "../state/const";
 import { arrangeDataToColumns } from "../data/dataHandler";
 import { downloadZip, executeShareUrl } from "../util/actionUtil";
 import Axios from "axios";
+import { HamburgerIcon, AddIcon, ExternalLinkIcon, RepeatIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 
 
 interface AlertPopupProps {
@@ -43,12 +49,15 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     const [prompts, setPrompts] = useState("");
     const [genTriggerd, setGenTriggered] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
     const [categoryIdState, setCategoryId] = useState("");
     const [categoryTitle, setCategoryTitle] = useState("New Category");
     const [modalMessageType, setModalMessageType] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
+    const [showNumberingSt, setShowNumberingSt] = useState(false);
+    const [searchHistoryList, setSearchHistoryList] = useState<string[]>([]);
     const [mode, setMode] = useState("list");
     const [persona, setPersona] = useState("any");
 
@@ -106,6 +115,10 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     );
     const onShowTextSpeech = useCallback(
         (any: any) => dispatch(showTextSpeech(any)),
+        [dispatch]
+    );
+    const onShowNumbering = useCallback(
+        (any: any) => dispatch(showNumbering(any)),
         [dispatch]
     );
     const onSetRowNumber = useCallback(
@@ -181,6 +194,16 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                 console.error(error);
             } finally {
                 setGenTriggered(true);
+                const searchHistory = localStorage.getItem('searchHistory');
+                const searchHistoryList = searchHistory ? JSON.parse(searchHistory) : [];
+
+                if (!searchHistoryList.includes(prompts)) {
+                    searchHistoryList.push(prompts);
+                    localStorage.setItem('searchHistory', JSON.stringify(searchHistoryList));
+                    console.log('The search history has been saved.');
+                } else {
+                    console.log('The same text already exists in the list');
+                }
             }
         }
     }
@@ -255,8 +278,9 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                     category: "Object Recognition", //TODO: change to dynamic
                     difficulty: "Medium",  //TODO: change to dynamic
                     imgNum: imageNumber,
-                    contentUrl: []
+                    //contentUrl: []
                 }
+                console.log(newCategory);
                 executePost({
                     data: {
                         category: newCategory,
@@ -312,16 +336,37 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
         setPersona(e.target.value);
     }
 
+    const handleShowhHistory = (e: MouseEvent<HTMLButtonElement>) => {
+        const searchHistory = localStorage.getItem('searchHistory');
+        if (searchHistory) {
+            const searchHistoryList = JSON.parse(searchHistory);
+            setSearchHistoryList(searchHistoryList);
+        }
+    }
+
+    const handleDeleteSearchHistory = (item: string) => {
+        const updatedList = searchHistoryList.filter((historyItem: string) => historyItem !== item);
+        setSearchHistoryList(updatedList);
+        localStorage.setItem('searchHistory', JSON.stringify(updatedList));
+    }
+
+    const handleMotionRendering = () => {
+        alert('Under construction');
+    }
+
     // if (loading) return <p>Loading...</p>;
     if (error || putError) return <p>Error!</p>;
 
     return (
         <>
-            {showAlert ?
+            {showAlert ? // Change the alert to toast
                 <>
                     <AlertPopup message={alertMessage} />
                 </>
                 : null
+            }
+            {
+
             }
             {showModal ?
                 <>
@@ -390,7 +435,39 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                     </Flex>
                 </Box>
                 <Box>
-                    <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Prompts</Text>
+                    <Flex>
+                        <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Prompts</Text>
+                        <Menu>
+                            <MenuButton
+                                as={IconButton}
+                                aria-label='History'
+                                icon={<GoHistory />}
+                                size='xs' onClick={handleShowhHistory}
+                                isRound
+                            />
+                            <MenuList>
+                                <MenuOptionGroup title='Search History' type='radio'>
+                                    {searchHistoryList.map((item: string, index: number) => {
+                                        return (
+                                            <MenuItem
+                                                key={index}
+                                                maxW={'20vw'}
+                                                fontSize={'xs'}
+                                            >
+                                                <Text onClick={() => { setPrompts(item) }}>{item}</Text>
+                                                <IconButton
+                                                    aria-label={'history-remove'}
+                                                    size={'xs'}
+                                                    icon={<DeleteIcon />} 
+                                                    onClick={() => { handleDeleteSearchHistory(item) }}
+                                                    />
+                                            </MenuItem>
+                                        )
+                                    })}
+                                </MenuOptionGroup>
+                            </MenuList>
+                        </Menu>
+                    </Flex>
                     <Textarea
                         margin={'5px'}
                         placeholder='Hint'
@@ -476,36 +553,58 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                 </Box>
                 {/* Grid Size */}
                 {/* Icon Button */}
-                <Box padding={'2vh'}>
+                <Box margin={2} overflow={"auto"} textAlign={"center"}>
                     <Button
                         isLoading={genTriggerd}
+                        leftIcon={<RiAiGenerate />}
                         colorScheme='messenger'
                         size='sm'
                         width='95%'
-                        marginBottom='2px'
+                        marginBottom={1}
                         isDisabled={disableGenButton}
                         onClick={() => { handleGenRequest() }}
                     >
-                        Generate
+                        Generate Cards
                     </Button>
                     <Button colorScheme='twitter'
+                        leftIcon={<BiImageAdd />}
                         size='sm'
                         width='95%'
                         variant="outline"
-                        marginBottom='2px'
+                        marginBottom={1}
                         onClick={() => { handleAddPhoto() }}
                     >
                         Add my own photos
                     </Button>
-                    <Button colorScheme='whatsapp'
-                        size='sm'
-                        width='95%'
-                        variant="outline"
-                        marginBottom='2px'
-                        onClick={(e) => { handleImageRearrange(e) }}
-                    >
-                        Rearrange cards
-                    </Button>
+                    <ButtonGroup>
+                        <Button
+                            colorScheme='teal'
+                            leftIcon={<BiSort />}
+                            size='xs'
+                            marginBottom={1}
+                            onClick={(e) => { handleImageRearrange(e) }}
+                        >
+                            Rearrange
+                        </Button>
+                        <Button
+                            colorScheme='teal'
+                            leftIcon={<TbNumbers />}
+                            size='xs'
+                            marginBottom={1}
+                            onClick={() => { onShowNumbering(!showNumberingSt) }}
+                        >
+                            Number
+                        </Button>
+                        <Button
+                            colorScheme='twitter'
+                            leftIcon={<TbVideo />}
+                            size='xs'
+                            marginBottom={1}
+                            onClick={() => { handleMotionRendering() }}
+                        >
+                            Motion
+                        </Button>
+                    </ButtonGroup>
                 </Box>
                 <Box display="flex" position={'fixed'} bottom={0}>
                     <Box marginRight="9vw">

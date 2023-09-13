@@ -84,7 +84,6 @@ class CategoryModel(Base):
     category = Column(String)
     difficulty = Column(String)
     imgNum = Column(Integer)
-    # contentUrl = Column(JSON)
     deleteFlag = Column(Integer, default=0)
 
     # The "category" in backref="parent" and ForeignKey('category.sid') should be the same.
@@ -98,7 +97,6 @@ class CategorySchema(BaseModel):
     category: str
     difficulty: str
     imgNum: int
-    contentUrl: Optional[List[str]] = []
     deleteFlag: Optional[int] = 0
 
     class Config:
@@ -108,6 +106,7 @@ class CategorySchema(BaseModel):
 # Pydantic model - response body
 class CategoryDB(CategorySchema):
     sid: str
+    contentUrl: Optional[List[str]] = []
 
     class Config:
         from_attributes = True

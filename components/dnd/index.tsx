@@ -66,14 +66,14 @@ const DragDropBoard = ({ dataPayload }: any) => {
       });
     }
   };
-  
+
   return (
     // <NoSSR>
     <DragDropContext
       onDragEnd={(result) => onDragEnd(result, dataPayload, onDataPayload)}
     >
       <DndContainer>
-        {Object.entries(dataPayload)?.map(([columnId, column]: [string, any], index) => {
+        {Object.entries(dataPayload)?.map(([columnId, column]: [string, any], idx) => {
           return (
             <Droppable key={columnId} droppableId={columnId}>
               {(provided) => (
@@ -86,6 +86,7 @@ const DragDropBoard = ({ dataPayload }: any) => {
                       key={item.sid}
                       item={item}
                       index={index}
+                      number={(idx * column.items.length + index + 1)}
                       imgPath={item.imgPath}
                     />
                   ))}

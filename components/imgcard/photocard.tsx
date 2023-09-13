@@ -9,6 +9,7 @@ import synthesizeSpeech from "../util/speechUtil";
 interface PhotoProps {
     item?: any;
     index?: any;
+    number?: number;
     imgPath: string;
 }
 
@@ -21,9 +22,10 @@ const Draggable = dynamic(
 );
 
 
-const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
+const PhotoCard: NextPage<PhotoProps> = ({ item, index, number, imgPath }) => {
     const showImgCaption = useSelector((state: any) => state.settings.showImgCaption);
     const showTextSpeech = useSelector((state: any) => state.settings.showTextSpeech);
+    const showNumbering = useSelector((state: any) => state.settings.showNumbering);
     const { isOpen, onOpen, onClose } = useDisclosure();
 
     return (
@@ -56,7 +58,7 @@ const PhotoCard: NextPage<PhotoProps> = ({ item, index, imgPath }) => {
                                     />
                                 </Flex>
                                 <Flex justifyContent={"space-between"} mt={1}>
-                                    {showImgCaption && <Text fontSize='sm' as='b'>{(item.title).includes('_gen_') ? (item.title).replace('_gen_', '(🎨)') : item.title}</Text>}
+                                    {showImgCaption && <Text fontSize='sm' as='b'>{showNumbering && `${number}.`}{(item.title).includes('_gen_') ? (item.title).replace('_gen_', '(🎨)') : item.title}</Text>}
                                     {showTextSpeech && <IconButton aria-label="Text2Speech" size={"sm"} variant='outline' icon={<FcSpeaker />} onClick={() => synthesizeSpeech(item.title)} />}
                                 </Flex>
                             </CardBody>
