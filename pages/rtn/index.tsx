@@ -9,19 +9,22 @@ import { ChangeEvent, MouseEvent, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { API_ENDPOINT } from "../../components/state/const";
 import useAxios from "axios-hooks";
+import { UPLOAD_CATEGORY_ID } from "../../components/state/const";
 //!important: use useAxios with { manual:true, autoCancel: false } to prevent infinite request loop and cancel requests during a server processing.
 
 const SelectPage: NextPage = () => {
   const { back } = useRouter();
   const [tabIndex, setTabIndex] = useState(0)
   const [emojiData, setEmojiData] = useState([]);
+  const [myPhotoData, setMyPhotoData] = useState([]);
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [checkedEmojiItems, setCheckedEmojiItems] = useState<string[]>([]);
+  const [checkedMyPhotoItems, setCheckedMyPhotoItems] = useState<string[]>([]);
 
   const categoryData = useSelector((state: any) => state.datas.CategoryData);
   const searchDataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
 
-  const [{ data, loading, error }, getData] = useAxios(
+  const [{ data: emojiD, loading, error }, getEmojiData] = useAxios(
     `${API_ENDPOINT}/emojies`,
     { manual: true, autoCancel: false }
   );
@@ -32,22 +35,34 @@ const SelectPage: NextPage = () => {
     },
     { manual: true, autoCancel: false }
   )
+  const [{ data: upImageData, loading: upImageLoading, error: upImageError }, getUpImageData] = useAxios(
+    `${API_ENDPOINT}/images?categoryId=${UPLOAD_CATEGORY_ID}`,
+    { manual: true, autoCancel: false }
+  );
 
   useEffect(() => {
-    if (data) {
-      setEmojiData(data);
+    if (emojiD) {
+      setEmojiData(emojiD);
     }
-  }, [data]);
+  }, [emojiD]);
+
+  useEffect(() => {
+    if (upImageData) {
+      setMyPhotoData(upImageData);
+    }
+  }, [upImageData]);
 
   useEffect(() => {
     if (tabIndex == 1) {
-      getData();
+      getEmojiData();
+    } else if (tabIndex == 2) {
+      getUpImageData();
     }
   }, [tabIndex]);
 
   useEffect(() => {
     if (postData) {
-      console.log(postData);
+      //console.log(postData);
       alert("Added successfully!")
     }
   }, [postData]);
@@ -101,6 +116,25 @@ const SelectPage: NextPage = () => {
       } else {
         alert("Please select at least one photo!");
       }
+    } else if (tabIndex == 2) {
+      if (checkedMyPhotoItems.length > 0) {
+        try {
+          const transformedMyPhotoData = myPhotoData.filter((item: any) =>
+            checkedMyPhotoItems.includes(item['sid'])).map((item: any) =>
+            ({
+              sid: item['sid'],
+              categoryId: categoryData['sid'],
+              title: item['title'],
+              imgPath: item['imgPath']
+            }));
+          console.log(transformedMyPhotoData);
+          executePost({
+            data: transformedMyPhotoData
+          })
+        } catch (error) {
+          console.error(error);
+        }
+      }
     }
   }
 
@@ -116,13 +150,36 @@ const SelectPage: NextPage = () => {
     setCheckedEmojiItems(newCheckedItems);
   };
 
+  const handleMyPhotoSelectItem = (sid: string, checked: boolean) => {
+    const newCheckedItems =
+      checked ? [...checkedMyPhotoItems, sid] : checkedMyPhotoItems.filter((itemId) => itemId !== sid);
+    setCheckedMyPhotoItems(newCheckedItems);
+  };
+
   // Mutiple file upload
   function handleFileUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = event.target.files;
     if (files) {
+      const formData = new FormData();
       for (let i = 0; i < files.length; i++) {
-        console.log(`Selected file: ${files[i].name}`);
+        formData.append('files', files[i]);
       }
+
+      fetch(`${API_ENDPOINT}/file_upload`, {
+        method: 'POST',
+        body: formData
+      })
+        .then(response => {
+          if (response.ok) {
+            getUpImageData();
+            alert('Files uploaded successfully');
+          } else {
+            throw new Error('Something went wrong..');
+          }
+        })
+        .catch(error => {
+          console.error(error);
+        });
     }
   }
 
@@ -158,7 +215,7 @@ const SelectPage: NextPage = () => {
                 isLoading={postLoading}
                 onClick={() => { handleAddPhotos() }}
               >Add Photos</Button>
-              <input type='file' id='fileInput' style={{ display: 'none' }} onChange={handleFileUpload} multiple />
+              <input type='file' id='fileInput' style={{ display: 'none' }} onChange={handleFileUpload} multiple accept="image/png, image/jpeg" />
               <Button aria-label='Upload'
                 leftIcon={<BiUpload />}
                 size='sm'
@@ -174,6 +231,7 @@ const SelectPage: NextPage = () => {
               <TabList>
                 <Tab width="20vw">Search Result</Tab>
                 <Tab width="20vw">Emojis</Tab>
+                <Tab width="20vw">My Photos</Tab>
               </TabList>
               <TabPanels height={'72vh'}>
                 <TabPanel>
@@ -197,14 +255,33 @@ const SelectPage: NextPage = () => {
                 <TabPanel>
                   <SimpleGrid spacing={4} columns={5}>
                     {
-                      emojiData.map((item: any, index: any) => {
+                      Array.isArray(emojiData) ?
+                        emojiData.map((item: any, index: any) => {
+                          return (
+                            <ResultCard
+                              key={item['sid']}
+                              title={item['title']}
+                              imgPath={item['imgPath']}
+                              checked={checkedEmojiItems.includes(item['sid'])}
+                              onSelect={(checked: boolean) => { handleEmojiSelectItem(item['sid'], checked) }}
+                            />
+                          )
+                        }
+                        ) : null
+                    }
+                  </SimpleGrid>
+                </TabPanel>
+                <TabPanel>
+                  <SimpleGrid spacing={4} columns={5}>
+                    {
+                      myPhotoData.map((item: any, index: any) => {
                         return (
                           <ResultCard
                             key={item['sid']}
                             title={item['title']}
                             imgPath={item['imgPath']}
-                            checked={checkedEmojiItems.includes(item['sid'])}
-                            onSelect={(checked: boolean) => { handleEmojiSelectItem(item['sid'], checked) }}
+                            checked={checkedMyPhotoItems.includes(item['sid'])}
+                            onSelect={(checked: boolean) => { handleMyPhotoSelectItem(item['sid'], checked) }}
                           />
                         )
                       }

@@ -73,30 +73,37 @@ const DragDropBoard = ({ dataPayload }: any) => {
       onDragEnd={(result) => onDragEnd(result, dataPayload, onDataPayload)}
     >
       <DndContainer>
-        {Object.entries(dataPayload)?.map(([columnId, column]: [string, any], idx) => {
-          return (
-            <Droppable key={columnId} droppableId={columnId}>
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                >
-                  {column.items.map((item: any, index: any) => (
-                    <PhotoCard
-                      key={item.sid}
-                      item={item}
-                      index={index}
-                      number={(idx * column.items.length + index + 1)}
-                      imgPath={item.imgPath}
-                    />
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          );
-        })}
+        {(() => {
+          let counter = 0;
+          return Object.entries(dataPayload)?.map(([columnId, column]: [string, any], idx) => {
+            return (
+              <Droppable key={columnId} droppableId={columnId}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                  >
+                    {column.items.map((item: any, index: any) => {
+                      counter += 1;
+                      return (
+                        <PhotoCard
+                          key={item.sid}
+                          item={item}
+                          index={index}
+                          number={counter}
+                          imgPath={item.imgPath}
+                        />
+                      );
+                    })}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            );
+          });
+        })()}
       </DndContainer>
+
     </DragDropContext>
     // </NoSSR>
   );

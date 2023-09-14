@@ -9,19 +9,23 @@ class PromptType:
 
 class ImgListPrompt(PromptType):
     imgListPrompt = '''
-    Please generate a list of 10 to 15 words suitable for assisting children in learning a new language. 
-    The list should be inspired by the user's query or a topic within it and persona. 
-    This output will be used for image searches, so please consider that. 
-    Provide the list as a comma-separated string without any additional explanation.
+    ###
+    User query: {query}
+
+    You are a {persona}. As a {persona}, you are asked to generate a list of words.
+    The list should be inspired by the user query and "{persona}". 
     
-    The user query
-    {query}
+    1. Please generate a list of words related to the user query.
+    2. If there is a mention of a specific object, please include that.
+    3. Provide the list as a comma-separated string without any additional explanation.
+    4. Don't add a comma in each word.
+    5. Must generate a list of up to 20 words. Don't include more words if there is no guidance in the user's query.
+    
+    Desired format must a single line of string without tagging.
 
-    The user persona
-    {persona}
-
-    Example of output
+    Desired format:
     Dog, Cat, Cow, Sheep, Chicken, Frog, Duck, Pig, Horse
+    ###
     '''
 
     def __init__(self):
@@ -30,19 +34,24 @@ class ImgListPrompt(PromptType):
 
 class ImgStepPrompt(PromptType):
     imgStepPrompt = '''
-    Please generate steps list based on the user's query or a topic within it and persona.
-    Each step should be concise and clear, less than 20 characters suitable for assisting children's education.
-    This output will be used for image searches, so please consider that. 
-    The output should be a comma-separated string without any additional explanation.
+    ###
+    User query: {query}
+
+    You are a {persona}. As a {persona}, you are asked to generate a list of steps.
+    The list should be inspired by the user query and "{persona}". 
+
+    1. Please generate steps related to the user query.
+    2. If there is a mention of a specific step, please include that.
+    3. Steps should consider sequence order.
+    4. Provide the list as a comma-separated string without any additional explanation.
+    5. Don't add a comma in each step.
+    6. Must generate a list of up to 15 steps. Don't include more steps if there is no guidance in the user's query.
     
-    The user query
-    {query}
+    Desired format must a single line of string.
 
-    The user persona
-    {persona}
-
-    Example of output
+    Desired format:
     Look at the picture, Read the text, Listen to the audio, Repeat the word, Repeat the sentence
+    ###
     '''
 
     def __init__(self):
@@ -52,8 +61,9 @@ class ImgStepPrompt(PromptType):
 
 class ImgGenPrompt(PromptType):
     imgGenPrompt = '''
-    The generated image should be designed to captivate children based on the user query.
-    This output will be used for an input text for the image generation, so please consider that. 
+    Please depict the user query in a sentence. Each sentence should be concise and clear. 
+    This output will be used for an input text for the image generation. 
+    Don't add any text to your generating picture.
     
     The user query
     {query}

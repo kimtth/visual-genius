@@ -1,7 +1,6 @@
 import logging
 import os
 
-from azure.storage.blob.aio import BlobServiceClient
 from bing_image_urls import bing_image_urls
 from dotenv import load_dotenv
 
@@ -63,7 +62,7 @@ def bing_image_urls(  # pylint: disable=too-many-locals
         "count": count,
         "adlt": adult,
         # +filterui:aspect-square
-        "qft": "+filterui:imagesize-medium+filterui:color2-color+filterui:photo-photo",
+        "qft": "+filterui:imagesize-medium+filterui:color2-color+filterui:photo-photo+filterui:minFileSize-1024+filterui:maxFileSize-1048576",
     }
 
     search_url = "https://api.bing.microsoft.com/v7.0/images/search"
@@ -137,6 +136,26 @@ async def verify_links(links: List[str]) -> List[bool]:
     # await sess.aclose()
 
     return [bool(elm) for elm in _]
+
+
+async def verify_links2(links: List[str]) -> List[bool]:
+    """Verify if link hosts image content."""
+
+    async with httpx.AsyncClient() as sess:
+        tasks = (sess.get(link) for link in links)
+
+        res = []
+        for task in asyncio.as_completed(tasks, timeout=120):
+            try:
+                response = await task
+                if response.status_code == 200 and imghdr.what(None, response.content):
+                    res.append(True)
+                else:
+                    res.append(False)
+            except Exception:
+                res.append(False)
+
+    return res
 
 
 async def fetch_image_from_bing(query, limit=1):

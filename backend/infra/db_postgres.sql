@@ -43,3 +43,7 @@ CREATE TRIGGER update_image_modtime
 BEFORE UPDATE ON image
 FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
+
+INSERT INTO public.category
+(sid, category, title, difficulty, "imgNum", user_id, "deleteFlag", created_at, updated_at)
+VALUES('file_upload', '-', '-', '-', 0, 'sys'::character varying, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

@@ -1,5 +1,5 @@
 import type { NextPage } from "next";
-import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select, Flex, ButtonGroup, Menu, MenuButton, MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
+import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select, Flex, ButtonGroup, Menu, MenuButton, MenuItem, MenuList, MenuOptionGroup, useDisclosure } from "@chakra-ui/react";
 import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
@@ -60,6 +60,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
     const [searchHistoryList, setSearchHistoryList] = useState<string[]>([]);
     const [mode, setMode] = useState("list");
     const [persona, setPersona] = useState("any");
+    const { isOpen, onOpen, onClose } = useDisclosure();
 
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
@@ -444,14 +445,14 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                         >
                             <option value='list'>Generate List</option>
                             <option value='step'>Generate Steps</option>
-                            <option value='explicit'>Explicit (Newline seperated)</option>
+                            <option value='explicit'>Explicit (Comma seperated)</option>
                         </Select>
                     </Flex>
                 </Box>
                 <Box>
                     <Flex>
                         <Text padding={'5px'} fontWeight='bold' fontSize='sm'>Prompts</Text>
-                        <Menu>
+                        <Menu isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
                             <MenuButton
                                 as={IconButton}
                                 aria-label='History'

@@ -32,6 +32,7 @@ type DataPayload = {
 };
 
 const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose }) => {
+    const categoryPayload = useSelector((state: any) => state.datas.CategoryData);
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const [imgPath, setImgPath] = useState("");
     const [isGenLoading, setIsGenLoading] = useState(false);
@@ -39,7 +40,7 @@ const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose
 
     const [{ data: bingImgUrl, loading: bingImgLoading, error: bingImgError }, getBingImg] = useAxios(
         {
-            url: `${API_ENDPOINT}/bing_img/${item.title}`,
+            url: `${API_ENDPOINT}/bing_img/${item.title}?title=${categoryPayload.title}`,
             method: 'GET'
         }, { manual: true, autoCancel: false }
     );

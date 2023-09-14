@@ -4,6 +4,7 @@ export interface DataState {
     CategoriesDataPayload: any;
     ImageDataPayload: any;
     SearchResultPayload: any;
+    ImageUploadedPayload: any;
 }
 
 export interface SettingState {
