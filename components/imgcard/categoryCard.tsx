@@ -21,7 +21,14 @@ interface CategoryCardProps {
     item: any;
 }
 
-const CategoryCard: NextPage<CategoryCardProps> = ({ categoryId, item }) => {
+import { FC } from "react";
+
+interface CategoryCardProps {
+    categoryId: string;
+    item: any;
+}
+
+const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
     const { push } = useRouter();
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");

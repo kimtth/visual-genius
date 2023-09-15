@@ -18,7 +18,7 @@ from azure.storage.blob.aio import BlobServiceClient
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, Request, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, JSON
 from sqlalchemy.orm import sessionmaker
@@ -212,18 +212,16 @@ async def upload_image(img_path: str):
     async with httpx.AsyncClient() as client:
         response = await client.get(img_path)
         image_data = response.content
-        # Less then 1kb will not be uploaded
-        if len(image_data) > 1024:
-            file_name = img_path.split("/")[-1]
-            blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-            container_client = blob_service_client.get_container_client(container_name)
-            blob_client = container_client.get_blob_client(file_name)
-            await blob_client.upload_blob(image_data, overwrite=True)
-            await client.aclose()  # Close the client session
-            return blob_client.url
-        else:
-            await client.aclose()  # Close the client session
-            return "-"
+
+        file_name = img_path.split("/")[-1]
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string)
+        container_client = blob_service_client.get_container_client(
+            container_name)
+        blob_client = container_client.get_blob_client(file_name)
+        await blob_client.upload_blob(image_data, overwrite=True)
+
+        return blob_client.url
 
 
 @app.get('/category/{sid}')
@@ -275,7 +273,7 @@ def delete_category(sid: str, session: Session = Depends(get_db)):
 
         session.commit()
         session.refresh(item)
-        return {"message": "Category deleted successfully"}
+        return JSONResponse(content={"message": "Category deleted successfully"})
     except Exception as e:
         print(e)
         return HTTPException(500, "Failed to delete an category")
@@ -283,22 +281,30 @@ def delete_category(sid: str, session: Session = Depends(get_db)):
 
 @app.get("/category/{sid}/download")
 async def download_images(sid: str, session: Session = Depends(get_db)):
-    # TODO: Very slow... Need to improve the performance.
     try:
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string)
+        container_client = blob_service_client.get_container_client(
+            container_name)
+
         item = session.query(CategoryModel).get(sid)
         if not item:
             raise HTTPException(status_code=404, detail="Category not found")
         images = item.images
         if not images:
-            raise HTTPException(status_code=404, detail="No images found for this category")
-        
+            raise HTTPException(
+                status_code=404, detail="No images found for this category")
+
         in_memory_zip = io.BytesIO()
         with zipfile.ZipFile(in_memory_zip, mode="w") as zipf:
             tasks = []
             for img in images:
                 img_path = getattr(img, 'imgPath')
-                tasks.append(asyncio.ensure_future(download_image(img_path)))
+                tasks.append(asyncio.ensure_future(
+                    download_image(container_client, img_path)))
             image_data_list = await asyncio.gather(*tasks)
+            # filter out None
+            image_data_list = [x for x in image_data_list if x]
             for img, image_data in zip(images, image_data_list):
                 img_path = getattr(img, 'imgPath')
                 zipf.writestr(img_path.split("/")[-1], image_data)
@@ -311,11 +317,16 @@ async def download_images(sid: str, session: Session = Depends(get_db)):
 
 
 # Speed up the download process by using async
-async def download_image(img_path: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(img_path)
-        client.aclose()  # Close the client session
-        return response.content
+async def download_image(container_client, img_path: str):
+    try:
+        file_name = img_path.split("/")[-1]
+        blob_client = container_client.get_blob_client(file_name)
+        stream = await blob_client.download_blob(max_concurrency=2)
+        rtn = await stream.readall()
+        return rtn
+    except Exception as e:
+        # print(f"The blob {img_path} was not found. {e}")
+        return None
 
 
 @app.get('/images')
@@ -382,7 +393,7 @@ def check_image_path(category_id: str, img_path: str, session: Session) -> bool:
     Check if the same imgPath exists based on the categoryId
     """
     query = session.query(ImageModel).filter(
-        ImageModel.categoryId == category_id, ImageModel.categoryId != 'file_upload', ImageModel.imgPath == img_path, ImageModel.deleteFlag != 1)
+        ImageModel.categoryId == category_id, ImageModel.imgPath == img_path, ImageModel.deleteFlag != 1)
     return session.query(query.exists()).scalar()
 
 
@@ -430,7 +441,7 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
         item = session.query(ImageModel).get(sid)
         if not item:
             # TODO: Back to HTTPException after done UI.
-            return {"message": "Image not found"}
+            return JSONResponse(content={"message": "Image not found"})
             # raise HTTPException(status_code=404, detail="Image not found")
 
         for k, value in image.model_dump().items():
@@ -438,7 +449,9 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
 
         # Upload the image to blob storage
         img_path = item.imgPath
+        blob_exist_check_delete_image(img_path)
         item.imgPath = await upload_image(img_path)
+
         session.commit()
         session.refresh(item)
 
@@ -450,6 +463,22 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
     except Exception as e:
         print(e)
         return HTTPException(500, "Failed to update an image")
+
+
+def blob_exist_check_delete_image(img_path: str):
+    try:
+        file_name = img_path.split("/")[-1]
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string)
+        container_client = blob_service_client.get_container_client(
+            container_name)
+        blob_client = container_client.get_blob_client(file_name)
+
+        if blob_client.exists():
+            # Delete the blob
+            blob_client.delete_blob()
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 # Preventing unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
@@ -464,7 +493,7 @@ async def delete_image(sid: str, session: Session = Depends(get_db)):
         session.refresh(item)
 
         delete_acs_document([item.sid])
-        return {"message": "Image deleted successfully"}
+        return JSONResponse(content={"message": "Image deleted successfully"})
     except Exception as e:
         print(e)
         return HTTPException(500, "Failed to delete an image")
@@ -484,7 +513,8 @@ async def img_gen_handler(search_query: str, request: Request):
     try:
         params = request.query_params
         title = params['title'] if 'title' in params else ''
-        search_query = search_query + ' in ' + title # Add category title for searching more better output.
+        # Add category title for searching more better output.
+        search_query = search_query + ' in ' + title
         img_urls = await bing_img_search.fetch_image_from_bing(search_query, 15)
         random_idx = random.randint(0, 14)
 
@@ -554,8 +584,10 @@ async def img_gen_handler(query: str, request: Request):
 @app.get('/emojies')
 async def emoji_handler():
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-        container_client = blob_service_client.get_container_client(emoji_container_name)
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string)
+        container_client = blob_service_client.get_container_client(
+            emoji_container_name)
 
         emoji_urls = []
         # List blobs in the container
@@ -564,7 +596,7 @@ async def emoji_handler():
             emoji_urls.append(blob_client.url)
 
         new_emoji_list = [(emoji_url.split('/')[-1].split('.')
-                        [0], emoji_url) for emoji_url in emoji_urls]
+                           [0], emoji_url) for emoji_url in emoji_urls]
         emoji_list = [Emoji(sid=key.lower().replace("%20", "-"), title=key.replace(
             "%20", " "), imgPath=emoji_url) for key, emoji_url in new_emoji_list]
 
@@ -572,7 +604,6 @@ async def emoji_handler():
     except Exception as e:
         print(e)
         return HTTPException(500, "Failed to find images")
-
 
 
 @app.get('/search/{query}')
@@ -613,8 +644,10 @@ async def search_handler(query: str, request: Request, session: Session = Depend
 @app.post('/file_upload')
 async def file_upload(files: List[UploadFile], session: Session = Depends(get_db)):
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-        container_client = blob_service_client.get_container_client(container_name)
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string)
+        container_client = blob_service_client.get_container_client(
+            container_name)
         acs_items = list()
         category_id = 'file_upload'
         primary_endpoint = f"https://{blob_service_client.account_name}.blob.core.windows.net"
@@ -627,7 +660,8 @@ async def file_upload(files: List[UploadFile], session: Session = Depends(get_db
                 await blob_client.upload_blob(contents, overwrite=True)
 
                 filename_without_extension = os.path.splitext(file.filename)[0]
-                new_item = ImageModel(sid=str(uuid.uuid4()), categoryId=category_id, imgPath=blob_client.url, title=filename_without_extension)
+                new_item = ImageModel(sid=str(uuid.uuid4(
+                )), categoryId=category_id, imgPath=blob_client.url, title=filename_without_extension)
                 session.add(new_item)
                 session.commit()
 
@@ -637,11 +671,10 @@ async def file_upload(files: List[UploadFile], session: Session = Depends(get_db
         if acs_items:
             insert_acs_document(acs_items)
 
-        return "Files uploaded successfully"
+        return JSONResponse(content={"message": "Files uploaded successfully except existing files"})
     except Exception as e:
         print(e)
         raise HTTPException(401, "Something went wrong..")
-
 
 
 def gen_acs_document(new_item: ImageModel):
@@ -666,9 +699,8 @@ def insert_acs_document(acs_items: List[dict]):
 
         if result:
             print(result[0].succeeded)
-            return "Files uploaded successfully"
     except Exception as e:
-        print('>>>>', e)
+        print('Azure Cognitive Search index: ', e)
         return HTTPException(500, "Failed to upload files to Azure Cognitive Search index")
 
 
@@ -681,9 +713,9 @@ def delete_acs_document(acs_items: List[dict]):
 
         for acs_item in acs_items:
             if search_client.get_document_count(documents=acs_item) > 0:
-                result = search_client.delete_documents(documents=acs_item)
+                result = search_client.delete_documents(documents=[acs_item])
 
-        print("Delete new document succeeded: {}".format(result))
+                print("Delete new document succeeded: {}".format(result))
     except Exception as e:
         print(e)
         return HTTPException(500, "Failed to delete files to Azure Cognitive Search index")

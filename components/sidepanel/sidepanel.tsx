@@ -1,11 +1,9 @@
-import type { NextPage } from "next";
 import { Box, Button, IconButton, Text, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Switch, Textarea, VStack, Editable, EditableInput, EditablePreview, Alert, AlertDescription, AlertIcon, Select, Flex, ButtonGroup, Menu, MenuButton, MenuItem, MenuList, MenuOptionGroup, useDisclosure } from "@chakra-ui/react";
 import { PiCursorClickLight } from "react-icons/pi";
 import { HiChevronLeft, HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
 import { BiSort, BiImageAdd } from "react-icons/bi";
 import { GoHistory } from "react-icons/go";
-import { MdPlaylistRemove } from "react-icons/md";
 import { RiAiGenerate } from "react-icons/ri";
 import { TbNumbers, TbVideo } from "react-icons/tb";
 import { VscSaveAll } from "react-icons/vsc";
@@ -21,7 +19,7 @@ import { API_ENDPOINT } from "../state/const";
 import { arrangeDataToColumns } from "../data/dataHandler";
 import { downloadZip, executeShareUrl } from "../util/actionUtil";
 import Axios from "axios";
-import { HamburgerIcon, AddIcon, ExternalLinkIcon, RepeatIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { DeleteIcon } from "@chakra-ui/icons";
 
 
 interface AlertPopupProps {
@@ -43,7 +41,7 @@ const AlertPopup: FC<AlertPopupProps> = ({ message }) => {
     )
 }
 
-const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisableGenButton }) => {
+const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenButton }) => {
     const { push } = useRouter();
     const router = usePath();
     const [prompts, setPrompts] = useState("");

@@ -61,11 +61,12 @@ const SelectPage: NextPage = () => {
   }, [tabIndex]);
 
   useEffect(() => {
+    console.log(postData, postError);
     if (postData) {
       //console.log(postData);
       alert("Added successfully!")
     }
-  }, [postData]);
+  }, [postLoading]);
 
   const handleTabsChange = (index: number) => {
     setTabIndex(index)
@@ -172,7 +173,9 @@ const SelectPage: NextPage = () => {
         .then(response => {
           if (response.ok) {
             getUpImageData();
-            alert('Files uploaded successfully');
+            response.json().then(data => {
+              alert(data.message);
+            });
           } else {
             throw new Error('Something went wrong..');
           }

@@ -1,5 +1,6 @@
 import { Text, Image, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalOverlay } from "@chakra-ui/react"
 import { NextPage } from "next";
+import { FC } from "react";
 
 interface SearchImageModalProps {
     title: string;
@@ -8,7 +9,7 @@ interface SearchImageModalProps {
     onClose: () => void;
 }
 
-const SearchImageModal: NextPage<SearchImageModalProps> = ({ title, imgPath, isOpen, onClose }) => {
+const SearchImageModal: FC<SearchImageModalProps> = ({ title, imgPath, isOpen, onClose }) => {
 
     return (
         <>

@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import BasicImageModal from "./modalCard";
 import { FcSpeaker } from "react-icons/fc";
 import synthesizeSpeech from "../util/speechUtil";
+import { FC } from "react";
 
 interface PhotoProps {
     item?: any;
@@ -22,7 +23,7 @@ const Draggable = dynamic(
 );
 
 
-const PhotoCard: NextPage<PhotoProps> = ({ item, index, number, imgPath }) => {
+const PhotoCard: FC<PhotoProps> = ({ item, index, number, imgPath }) => {
     const showImgCaption = useSelector((state: any) => state.settings.showImgCaption);
     const showTextSpeech = useSelector((state: any) => state.settings.showTextSpeech);
     const showNumbering = useSelector((state: any) => state.settings.showNumbering);

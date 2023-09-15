@@ -152,3 +152,6 @@ yarn.lock
 package-lock.json
 db.7z
 docs/demo.mp4
+.env.development 
+.env.production
+build

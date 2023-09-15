@@ -12,7 +12,7 @@ import { setSearchResultPayload } from "../state/datas";
 import { useRouter } from "next/router";
 
 
-const Header: NextPage = () => {
+const Header = () => {
     const { push } = useRouter();
     const [searchKeyword, setSearchKeyword] = useState('');
     const [searchTriggerd, setSearchTriggered] = useState(false);

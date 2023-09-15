@@ -5,7 +5,7 @@ import { FaPaintBrush } from "react-icons/fa";
 import { VscSaveAll } from "react-icons/vsc";
 import useAxios from "axios-hooks";
 import { API_ENDPOINT } from "../state/const";
-import { useCallback, useEffect, useState } from "react";
+import { FC, useCallback, useEffect, useState } from "react";
 import { setImageDataPayload } from "../state/datas";
 import { useDispatch, useSelector } from "react-redux";
 import { HiOutlineTrash } from "react-icons/hi";
@@ -31,7 +31,7 @@ type DataPayload = {
     };
 };
 
-const BasicImageModal: NextPage<BasicImageModalProps> = ({ item, isOpen, onClose }) => {
+const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) => {
     const categoryPayload = useSelector((state: any) => state.datas.CategoryData);
     const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const [imgPath, setImgPath] = useState("");

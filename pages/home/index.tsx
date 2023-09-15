@@ -19,12 +19,12 @@ const kbStyles = {
   margin: 'auto 15vw auto',
 }
 
-const Home: NextPage = () => {
+console.log(`${API_ENDPOINT}/categories`);
+
+const Home = () => {
   // https://stackoverflow.com/questions/65146878/nextjs-router-seems-very-slow-compare-to-react-router
   //const { push, refresh } = useRouter();
-  const [{ data, loading, error }, refetch] = useAxios(
-    `${API_ENDPOINT}/categories`
-  );
+  const [{ data, loading, error }, refetch] = useAxios(`${API_ENDPOINT}/categories`, { manual: true, autoCancel: false });
   const categoriesData = useSelector((state: any) => state.datas.CategoriesDataPayload);
   const dispatch = useDispatch();
 
@@ -34,6 +34,15 @@ const Home: NextPage = () => {
   );
 
   useEffect(() => {
+    try {
+      refetch();
+    } catch (error) {
+      alert(error);
+      console.error(error);
+    }
+  }, []);
+
+  useEffect(() => {
     if (data) {
       onDataPayload(data);
     }
@@ -41,7 +50,7 @@ const Home: NextPage = () => {
 
   const handleNewCategory = (e: MouseEvent<HTMLButtonElement>) => {
     //push('/gen');
-    window.location.href= `${pathes.gen}`;
+    window.location.href = `${pathes.gen}`;
   }
 
   if (loading) return <p>Loading...</p>;

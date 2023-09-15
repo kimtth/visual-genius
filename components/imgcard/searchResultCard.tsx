@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
 import { Card, CardBody, Image, Text, Checkbox, Flex, Spacer, useDisclosure } from "@chakra-ui/react";
 import SearchImageModal from "./searchModalCard";
+import { FC } from "react";
 
 interface PhotoProps {
     title: string;
@@ -9,7 +10,7 @@ interface PhotoProps {
     onSelect: (checked: boolean) => void;
 }
 
-const ResultCard: NextPage<PhotoProps> = ({ title, imgPath, checked, onSelect }) => {
+const ResultCard: FC<PhotoProps> = ({ title, imgPath, checked, onSelect }) => {
     const { isOpen, onOpen, onClose } = useDisclosure();
 
     return (

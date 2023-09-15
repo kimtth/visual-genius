@@ -37,7 +37,7 @@ const welcomeLabel = {
 } as React.CSSProperties;
 
 
-const NewPage: NextPage = () => {
+const NewPage = () => {
   const router = useRouter()
   const [categoryIdstate, setCategoryId] = React.useState("");
   const [disableGenButton, setDisableGenButton] = React.useState(false);
