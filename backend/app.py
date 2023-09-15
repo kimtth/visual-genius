@@ -507,7 +507,7 @@ async def img_gen_handler(query: str, request: Request):
 
         if mode == 'step':
             msg = await aoai_call.img_step_gen(query, persona)
-        elif mode == 'explicit':
+        elif mode == 'manual':
             msg = ','.join([x.strip() for x in query.split(',')])
         else:
             msg = await aoai_call.img_list_gen(query, persona)

@@ -48,34 +48,6 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
 
 ## Design
 
-### Landing Page
-
-  - Home
-
-    <img src="./docs/home.png" alt="home" width="500"/>   
-
-### Generate Canvas
-
-  - New
-
-    <img src="./docs/generate.png" alt="generate" width="500"/> 
-
-  - Edit
-  
-    <img src="./docs/gen_change_img.png" alt="generate" width="500"/> 
-
-### Drag and Drop
-
-  - Drag and Drop & Options
-
-    <img src="./docs/dnd.png" alt="dnd" width="500"/> 
-
-### Search Result Page
-
-  - Search Result
-
-    <img src="./docs/select.png" alt="select" width="500"/> 
-
-  - Emoji
-
-    <img src="./docs/select_emoji.png" alt="select" width="500"/> 
+<video width="640" height="480" controls>
+  <source src="./docs/demo.mp4" type="video/mp4">
+</video>

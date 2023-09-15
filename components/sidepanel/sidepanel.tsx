@@ -445,7 +445,7 @@ const NewSidePanel: NextPage<NewSidePanelProps> = ({ disableGenButton, setDisabl
                         >
                             <option value='list'>Generate List</option>
                             <option value='step'>Generate Steps</option>
-                            <option value='explicit'>Explicit (Comma seperated)</option>
+                            <option value='manual'>Manual (Comma seperated)</option>
                         </Select>
                     </Flex>
                 </Box>
