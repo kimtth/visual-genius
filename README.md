@@ -1,5 +1,5 @@
 
-# VisualGenius: Communication Assistant (WIP)
+# VisualGenius: Communication Assistant
 
 Most children with autism spectrum disorders (ASD) are visual learners. They tend to comprehend visual information better than auditory input, making visual supports more effective for their learning process.
 
@@ -36,8 +36,10 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
   Data Loading
 
   1. Uploading your data into Azure Blob Storage
-  1. Run `backend\module\acs_index_manage.py` for trigger indexer
-  1. Run `util\acs_index_mapping_with_db.py` for syncing data between search and sql database
+  1. Image search requies to create Azure Cognitive Search Index
+  1. Image and Category are managed on SQL Database.
+
+Data creation for development and Dataset. Please find that in `dataset` and `backend\util` directories.
 
   !important: `react-beautiful-dnd` was not able to work well with `reactStrictMode: true` in NextJs.
   Turn off the option at `next.config.js`.`
@@ -46,7 +48,9 @@ Most children with autism spectrum disorders (ASD) are visual learners. They ten
 
   http://localhost:5000/docs
 
-## Design
+## Preview
+
+https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-c288df2bc766
 
 <video width="640" height="480" controls>
   <source src="./docs/demo.mp4" type="video/mp4">
