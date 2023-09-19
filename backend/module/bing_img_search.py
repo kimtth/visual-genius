@@ -1,6 +1,7 @@
 import logging
 import os
-
+from io import BytesIO
+from PIL import Image
 from bing_image_urls import bing_image_urls
 from dotenv import load_dotenv
 
@@ -15,18 +16,17 @@ based on https://github.com/gurugaurav/bing_image_downloader/blob/master/bing_im
 from typing import Iterator, List, Union  # , Optional
 
 import asyncio
-import imghdr
-import re
 
 # import urllib
 import httpx
 
 
-load_dotenv()
+if os.getenv('ENV_TYPE') == 'dev':
+    load_dotenv()
 bing_search_subscription_key = os.getenv("BING_IMAGE_SEARCH_KEY")
 
 # fmt: off
-def bing_image_urls(  # pylint: disable=too-many-locals
+async def bing_image_urls(  # pylint: disable=too-many-locals
         query: str,
         page_counter: int = 0,
         limit: int = 20,
@@ -69,9 +69,9 @@ def bing_image_urls(  # pylint: disable=too-many-locals
     headers = {"Ocp-Apim-Subscription-Key": bing_search_subscription_key}
 
     try:
-        # resp = httpx.get(url1)
-        resp = httpx.get(search_url, headers=headers, params=data)
-        resp.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(search_url, headers=headers, params=data)
+            resp.raise_for_status()
     except Exception as exc:
         print(exc)
         raise
@@ -113,53 +113,33 @@ async def verify_status(links: List[str]) -> Union[Iterator[bool], List[bool]]:
 
 
 async def verify_links(links: List[str]) -> List[bool]:
-    """ verify link hosts image content.
-
-    res = httpx.get(link)
-    return
-        True: if imghdr.what(None, res.content) return "jpeg|png|etc.
-        False: if imghdr.what(None, res.content) return None or res == None
-    """
-
+    """ verify link hosts image content. """
+    res = []
     async with httpx.AsyncClient() as sess:
         futs = (asyncio.ensure_future(sess.get(link)) for link in links)
 
-        res = []
         for fut in asyncio.as_completed([*futs], timeout=120):
             try:
-                res.append(await fut)
+                resp = await fut
+                # Verify whether the Image link is broken.
+                img = Image.open(BytesIO(resp.content))
+                img.verify()
+                # res.append(resp)
+                res.append(img.format is not None)
             except Exception:
-                res.append(None)
-
-        _ = [imghdr.what(None, elm.content)
-             if elm is not None else elm for elm in res]
-    # await sess.aclose()
-
-    return [bool(elm) for elm in _]
-
-
-async def verify_links2(links: List[str]) -> List[bool]:
-    """Verify if link hosts image content."""
-
-    async with httpx.AsyncClient() as sess:
-        tasks = (sess.get(link) for link in links)
-
-        res = []
-        for task in asyncio.as_completed(tasks, timeout=120):
-            try:
-                response = await task
-                if response.status_code == 200 and imghdr.what(None, response.content):
-                    res.append(True)
-                else:
-                    res.append(False)
-            except Exception:
+                # res.append(None)
                 res.append(False)
 
-    return res
+        # Deprecated since version 3.11, will be removed in version 3.13: The imghdr module is deprecated
+        # res.append(img.format is not None)
+        # _ = [imghdr.what(None, elm.content)
+        #      if elm is not None else elm for elm in res]
+    # await sess.aclose()
+    return res # [bool(elm) for elm in _]
 
 
 async def fetch_image_from_bing(query, limit=1):
-    urls = bing_image_urls(query, limit=limit)
+    urls = await bing_image_urls(query, limit=limit)
 
     if limit == 1 and len(urls) >= 1:
         return urls[0]

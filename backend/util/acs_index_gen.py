@@ -24,7 +24,8 @@ from dotenv import load_dotenv
 # https://github.com/Azure/cognitive-search-vector-pr
 # demo-python/code/azure-search-vector-image-python-sample.ipynb
 
-load_dotenv()
+if os.getenv('ENV_TYPE') == 'dev':
+    load_dotenv()
 service_endpoint = os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")
 index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
@@ -84,8 +85,8 @@ print(f' {skillset.name} created')
 index_client = SearchIndexClient(
     endpoint=service_endpoint, credential=credential)
 fields = [
-    SimpleField(name="id", type=SearchFieldDataType.String, key=True, sortable=True, filterable=True, facetable=True),
-    SimpleField(name="sid", type=SearchFieldDataType.String, sortable=True, filterable=True, facetable=True), # uuid in the sql
+    # SimpleField(name="id", type=SearchFieldDataType.String, key=True, sortable=True, filterable=True, facetable=True),
+    SimpleField(name="sid", type=SearchFieldDataType.String, key=True, sortable=True, filterable=True, facetable=True), # uuid in the sql
     SimpleField(name="imgPath", type=SearchFieldDataType.String, filterable=True, retrievable=True),
     SearchableField(name="title", type=SearchFieldDataType.String, searchable=True, retrievable=True),
     SearchField(

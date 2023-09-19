@@ -344,7 +344,8 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         }
     }
 
-    const handleDeleteSearchHistory = (item: string) => {
+    const handleDeleteSearchHistory = (e: MouseEvent<HTMLButtonElement>, item: string) => {
+        e.preventDefault();
         const updatedList = searchHistoryList.filter((historyItem: string) => historyItem !== item);
         setSearchHistoryList(updatedList);
         localStorage.setItem('searchHistory', JSON.stringify(updatedList));
@@ -455,7 +456,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                                 as={IconButton}
                                 aria-label='History'
                                 icon={<GoHistory />}
-                                size='xs' onClick={handleShowhHistory}
+                                size='xs' onClick={(e) => handleShowhHistory(e)}
                                 isRound
                             />
                             <MenuList>
@@ -472,7 +473,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                                                     aria-label={'history-remove'}
                                                     size={'xs'}
                                                     icon={<DeleteIcon />}
-                                                    onClick={() => { handleDeleteSearchHistory(item) }}
+                                                    onClick={(e) => { handleDeleteSearchHistory(e, item) }}
                                                 />
                                             </MenuItem>
                                         )

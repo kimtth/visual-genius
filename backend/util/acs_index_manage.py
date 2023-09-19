@@ -3,7 +3,9 @@ from azure.core.credentials import AzureKeyCredential
 from azure.search.documents.indexes import SearchIndexerClient
 from dotenv import load_dotenv
 
-load_dotenv()
+
+if os.getenv('ENV_TYPE') == 'dev':
+    load_dotenv()
 key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
 index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 service_endpoint = os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")

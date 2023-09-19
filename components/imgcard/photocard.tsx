@@ -51,7 +51,7 @@ const PhotoCard: FC<PhotoProps> = ({ item, index, number, imgPath }) => {
                             <CardBody>
                                 <Flex align="center">
                                     <Image
-                                        src={imgPath ? imgPath : ""}
+                                        src={imgPath ? imgPath : "none.png"}
                                         borderRadius='lg'
                                         objectFit='cover'
                                         maxW={{ sm: '10vw' }}

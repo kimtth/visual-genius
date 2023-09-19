@@ -27,9 +27,9 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
 from module import cog_embed_gen, aoai_call, bing_img_search
-from module.acs_index_manage import run_indexer
 
 app = FastAPI()
+# if os.getenv('ENV_TYPE') == 'dev':
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,10 +38,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# TODO Change Sqlite to PostgreSQL
-# engine = create_engine("sqlite:///./db.db",
-#                       connect_args={"check_same_thread": False})
+# Changed Sqlite (local) to PostgreSQL
+# engine = create_engine("sqlite:///./db.db", connect_args={"check_same_thread": False})
 # check_same_thread is needed only for SQLite. It's not needed for other databases.
+
+if os.getenv('ENV_TYPE') == 'dev':
+    load_dotenv()
 
 postgre_host = os.getenv("POSTGRE_HOST")
 postgre_user = os.getenv("POSTGRE_USER")
@@ -54,7 +56,6 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-load_dotenv()
 # Set the connection string and container name
 connection_string = os.getenv("BLOB_CONNECTION_STRING")
 container_name = os.getenv("BLOB_CONTAINER_NAME")
@@ -180,10 +181,10 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
 
             # Upload the image to blob storage
             img_path = remove_query_params(new_image.imgPath)
-            new_image.imgPath = await upload_image(img_path)
+            new_image.imgPath, image_data = await upload_image(img_path)
 
             session.add(new_image)
-            acs_doc_item = gen_acs_document(new_image)
+            acs_doc_item = await gen_acs_document(new_image, image_data)
             acs_items.append(acs_doc_item)
 
         # The order in which you add objects to the session does not matter,
@@ -209,25 +210,25 @@ def remove_query_params(url: str):
 
 # Speed up the upload process by using async
 async def upload_image(img_path: str):
+    container_client = blob_service_client.get_container_client(container_name)
+
+    file_name = img_path.split("/")[-1]
+    blob_client = container_client.get_blob_client(file_name)
+
     async with httpx.AsyncClient() as client:
         response = await client.get(img_path)
         image_data = response.content
 
-        file_name = img_path.split("/")[-1]
-        blob_service_client = BlobServiceClient.from_connection_string(
-            connection_string)
-        container_client = blob_service_client.get_container_client(
-            container_name)
-        blob_client = container_client.get_blob_client(file_name)
-        await blob_client.upload_blob(image_data, overwrite=True)
+        async with blob_client:
+            await blob_client.upload_blob(image_data, overwrite=True)
 
-        return blob_client.url
+    return blob_client.url, image_data
 
 
 @app.get('/category/{sid}')
 def get_category(sid: str, session: Session = Depends(get_db)):
     try:
-        item = session.query(CategoryModel).get(sid)
+        item = session.get(CategoryModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Category not found")
         return CategoryDB.model_validate(item)
@@ -239,7 +240,7 @@ def get_category(sid: str, session: Session = Depends(get_db)):
 @app.put('/category/{sid}')
 def update_category(sid: str, category: CategorySchema, session: Session = Depends(get_db)):
     try:
-        item = session.query(CategoryModel).get(sid)
+        item = session.get(CategoryModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Category not found")
 
@@ -257,7 +258,7 @@ def update_category(sid: str, category: CategorySchema, session: Session = Depen
 @app.put("/category/{sid}/delete")
 def delete_category(sid: str, session: Session = Depends(get_db)):
     try:
-        item = session.query(CategoryModel).get(sid)
+        item = session.get(CategoryModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Category not found")
         item.deleteFlag = 1
@@ -282,12 +283,10 @@ def delete_category(sid: str, session: Session = Depends(get_db)):
 @app.get("/category/{sid}/download")
 async def download_images(sid: str, session: Session = Depends(get_db)):
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(
-            connection_string)
         container_client = blob_service_client.get_container_client(
             container_name)
 
-        item = session.query(CategoryModel).get(sid)
+        item = session.get(CategoryModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Category not found")
         images = item.images
@@ -321,9 +320,10 @@ async def download_image(container_client, img_path: str):
     try:
         file_name = img_path.split("/")[-1]
         blob_client = container_client.get_blob_client(file_name)
-        stream = await blob_client.download_blob(max_concurrency=2)
-        rtn = await stream.readall()
-        return rtn
+        async with blob_client:
+            stream = await blob_client.download_blob(max_concurrency=2)
+            rtn = await stream.readall()
+            return rtn
     except Exception as e:
         # print(f"The blob {img_path} was not found. {e}")
         return None
@@ -361,7 +361,7 @@ def get_images(request: Request, session: Session = Depends(get_db)):
 
 
 @app.post('/images')
-def create_image(images: List[ImageSchema], session: Session = Depends(get_db)):
+async def create_image(images: List[ImageSchema], session: Session = Depends(get_db)):
     try:
         items = []
         acs_items = list()
@@ -372,7 +372,7 @@ def create_image(images: List[ImageSchema], session: Session = Depends(get_db)):
                 session.add(new_image)
                 items.append(new_image)
 
-            acs_doc_item = gen_acs_document(new_image)
+            acs_doc_item = await gen_acs_document(new_image)
             acs_items.append(acs_doc_item)
 
         session.commit()
@@ -398,14 +398,14 @@ def check_image_path(category_id: str, img_path: str, session: Session) -> bool:
 
 
 @app.post('/image')
-def create_image(image: ImageSchema, session: Session = Depends(get_db)):
+async def create_image(image: ImageSchema, session: Session = Depends(get_db)):
     try:
         new_item = ImageModel(**image.model_dump())
         session.add(new_item)
         session.commit()
 
         # Update for Azure Cognitive Search Index
-        acs_doc_item = gen_acs_document(new_item)
+        acs_doc_item = await gen_acs_document(new_item)
         insert_acs_document([acs_doc_item])
 
         return ImageDB.model_validate(new_item)
@@ -438,7 +438,7 @@ def get_image(sid: str, session: Session = Depends(get_db)):
 @app.put('/images/{sid}')
 async def update_image(sid: str, image: ImageSchema, session: Session = Depends(get_db)):
     try:
-        item = session.query(ImageModel).get(sid)
+        item = session.get(ImageModel, sid)
         if not item:
             # TODO: Back to HTTPException after done UI.
             return JSONResponse(content={"message": "Image not found"})
@@ -449,13 +449,13 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
 
         # Upload the image to blob storage
         img_path = item.imgPath
-        blob_exist_check_delete_image(img_path)
-        item.imgPath = await upload_image(img_path)
+        await blob_exist_check_delete_image(img_path)
+        item.imgPath, image_data = await upload_image(img_path)
 
         session.commit()
         session.refresh(item)
 
-        acs_doc_item = gen_acs_document(item)
+        acs_doc_item = await gen_acs_document(item, image_data)
         # Run azure cognitive search for updates
         insert_acs_document([acs_doc_item])
 
@@ -465,18 +465,18 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
         return HTTPException(500, "Failed to update an image")
 
 
-def blob_exist_check_delete_image(img_path: str):
+async def blob_exist_check_delete_image(img_path: str):
     try:
         file_name = img_path.split("/")[-1]
-        blob_service_client = BlobServiceClient.from_connection_string(
-            connection_string)
+
         container_client = blob_service_client.get_container_client(
             container_name)
         blob_client = container_client.get_blob_client(file_name)
 
-        if blob_client.exists():
-            # Delete the blob
-            blob_client.delete_blob()
+        async with blob_client:
+            if await blob_client.exists():
+                # Delete the blob
+                await blob_client.delete_blob()
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -485,7 +485,7 @@ def blob_exist_check_delete_image(img_path: str):
 @app.put("/images/{sid}/delete")
 async def delete_image(sid: str, session: Session = Depends(get_db)):
     try:
-        item = session.query(ImageModel).get(sid)
+        item = session.get(ImageModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Category not found")
         item.deleteFlag = 1
@@ -545,7 +545,7 @@ async def img_gen_handler(query: str, request: Request):
         print(msg)
 
         img_urls: list[str | Any] = []
-        substrings = []  # TODO: Add more keywords to filter out the prompt.
+        substrings = []  # TODO: Add keywords to filter out the prompt.
 
         category_id = str(uuid.uuid4())
         if msg and not any(substring in msg.lower() for substring in substrings):
@@ -584,8 +584,6 @@ async def img_gen_handler(query: str, request: Request):
 @app.get('/emojies')
 async def emoji_handler():
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(
-            connection_string)
         container_client = blob_service_client.get_container_client(
             emoji_container_name)
 
@@ -644,8 +642,6 @@ async def search_handler(query: str, request: Request, session: Session = Depend
 @app.post('/file_upload')
 async def file_upload(files: List[UploadFile], session: Session = Depends(get_db)):
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(
-            connection_string)
         container_client = blob_service_client.get_container_client(
             container_name)
         acs_items = list()
@@ -665,7 +661,7 @@ async def file_upload(files: List[UploadFile], session: Session = Depends(get_db
                 session.add(new_item)
                 session.commit()
 
-                acs_doc_item = gen_acs_document(new_item)
+                acs_doc_item = await gen_acs_document(new_item)
                 acs_items.append(acs_doc_item)
 
         if acs_items:
@@ -677,13 +673,14 @@ async def file_upload(files: List[UploadFile], session: Session = Depends(get_db
         raise HTTPException(401, "Something went wrong..")
 
 
-def gen_acs_document(new_item: ImageModel):
+async def gen_acs_document(new_item: ImageModel, image_data: Optional[bytes] = None):
+    embed = await cog_embed_gen.generate_image_embeddings_by_stream(image_data, cogSvcsEndpoint, cogSvcsApiKey)
     acs_doc_item = {
         "id": base64.b64encode(new_item.sid.encode()).decode(),
         "sid": new_item.sid,
         "imgPath": new_item.imgPath,
         "title": new_item.title,
-        "imageVector": cog_embed_gen.generate_image_embeddings(new_item.imgPath, cogSvcsEndpoint, cogSvcsApiKey)
+        "imageVector": embed
     }
     return acs_doc_item
 
@@ -698,7 +695,7 @@ def insert_acs_document(acs_items: List[dict]):
         result = search_client.merge_or_upload_documents(documents=acs_items)
 
         if result:
-            print(result[0].succeeded)
+            print('insert_acs_document:', result[0].succeeded)
     except Exception as e:
         print('Azure Cognitive Search index: ', e)
         return HTTPException(500, "Failed to upload files to Azure Cognitive Search index")
@@ -722,4 +719,8 @@ def delete_acs_document(acs_items: List[dict]):
 
 
 if __name__ == '__main__':
-    uvicorn.run(app, host="127.0.0.1", port=5000)
+    if os.getenv('ENV_TYPE') == 'dev':
+        load_dotenv()
+        uvicorn.run(app, host="127.0.0.1", port=5000)
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=80, workers=4)

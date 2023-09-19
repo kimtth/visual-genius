@@ -12,7 +12,7 @@ import useAxios from "axios-hooks";
 import { UPLOAD_CATEGORY_ID } from "../../components/state/const";
 //!important: use useAxios with { manual:true, autoCancel: false } to prevent infinite request loop and cancel requests during a server processing.
 
-const SelectPage: NextPage = () => {
+const SelectPage = () => {
   const { back } = useRouter();
   const [tabIndex, setTabIndex] = useState(0)
   const [emojiData, setEmojiData] = useState([]);
