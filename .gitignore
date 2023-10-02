@@ -157,3 +157,4 @@ docs/demo.mp4
 .env.production
 build
 backend/infra/parameter.dev.json
+.idea/

@@ -16,7 +16,7 @@ from azure.search.documents.models import Vector
 # from azure.storage.blob import BlobServiceClient
 from azure.storage.blob.aio import BlobServiceClient
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile
+from fastapi import Body, FastAPI, HTTPException, Depends, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
-from module import cog_embed_gen, aoai_call, bing_img_search
+from module import cog_embed_gen, aoai_call, bing_img_search, text_to_speech
 
 app = FastAPI()
 load_dotenv()
@@ -64,6 +64,8 @@ index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
 cogSvcsEndpoint = os.getenv("COGNITIVE_SERVICES_ENDPOINT")
 cogSvcsApiKey = os.getenv("COGNITIVE_SERVICES_API_KEY")
+speech_subscription_key = os.getenv("SPEECH_SUBSCRIPTION_KEY")
+speech_region = os.getenv("SPEECH_REGION")
 
 # Create the BlobServiceClient object which will be used to create a container client
 blob_service_client = BlobServiceClient.from_connection_string(
@@ -151,16 +153,6 @@ class Emoji(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-# @app.api_route("/{path_name:path}", methods=["GET"])
-# async def catch_all(request: Request, path_name: str):
-#     return {"request_method": request.method, "path_name": path_name}
-
-
-# @app.get("/home")
-# async def catch_all(request: Request):
-#     return {"request_method": request.method}
 
 
 @app.get('/categories')
@@ -682,6 +674,16 @@ async def file_upload(files: List[UploadFile], session: Session = Depends(get_db
         raise HTTPException(401, "Something went wrong..")
 
 
+@app.post('/synthesize_speech')
+async def gen_synthesize_speech(text: str = Body(..., embed=True)):
+    audio_data = await text_to_speech.synthesize_speech(text, speech_subscription_key, speech_region)
+
+    if isinstance(audio_data, dict):
+        return JSONResponse(content=audio_data)
+    else:
+        return Response(content=audio_data, media_type="audio/mp3")
+
+
 async def gen_acs_document(new_item: ImageModel, image_data: Optional[bytes] = None):
     embed = await cog_embed_gen.generate_image_embeddings_by_stream(image_data, cogSvcsEndpoint, cogSvcsApiKey)
     acs_doc_item = {
@@ -731,6 +733,7 @@ directory_path = os.path.dirname(os.path.abspath(__file__))
 static_path = os.path.join(directory_path, "public")
 
 # The @app.get("/{page}") approach was not able to handle the static files. so that, the routes declared each by each.
+
 
 @app.get("/")
 async def redirect_gen():

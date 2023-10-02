@@ -56,6 +56,8 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
 
 1. Deploy Azure Resources
 
+  Set up your parameters for Azure Bicep
+
   ```json
   "prefix": {
       "value": "<your-value-for-prefix>"
@@ -68,6 +70,8 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
   }
   ```
 
+  Execute the script for Azure Bicep
+
   ```powershell
   PS> .\main.ps1 -resourceGroup <your-resource-group-name> -location <your-resource-location>
   ```
@@ -76,12 +80,21 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
 
   ```json
   "scripts": {
-				"dev": "next dev",
-				"build": "next build && next export -o backend/public",
-				"start": "next start",
-				"lint": "next lint"
-	}
+      "dev": "next dev",
+      "build": "next build && next export -o backend/public",
+      "start": "next start",
+      "lint": "next lint"
+  }
   ```
+
+  The `.env.production` on root will be embedded into the javascript files.
+
+  ```
+  API_ENDPOINT=
+  ENV_TYPE=prod
+  ```
+
+  Build UI code.
 
   ```nodejs
   npm run build
@@ -89,46 +102,52 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
 
 This will create `public` directory in the `backend`.
 
-3. To set up the start up command at Azure App service.
+3. Upload python code to Azure App Service
 
-  1. Open your Web App in the Azure Portal.
-  1. Scroll to Configuration under Settings.
-  1. Click on the General Settings tab.
-  1. Enter the appropriate startup command.
+    - [Tutorial](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python?tabs=flask%2Cwindows%2Cvscode-aztools%2Cvscode-deploy%2Cdeploy-instructions-azportal%2Cterminal-bash%2Cdeploy-instructions-zip-azcli)
+
+4. To set up the start up command at Azure App service.
+
+    1. Open your Web App in the Azure Portal.
+    1. Scroll to Configuration under Settings.
+    1. Click on the General Settings tab.
+    1. Enter the appropriate startup command.
 
   ```python
-  python app
+  python app.py
   ```
 
-4. To set up environment variables in Azure App Service, you can follow these steps:
+5. To set up environment variables in Azure App Service, you can follow these steps:
 
-  In the Azure Portal, locate your App Service.
-  1. On the left pane, click on “Configuration”.
-  1. Under “Application settings”, click on “New application setting”.
-  1. Fill in the name and value for each environment variable:
-  1. Click “OK”, then at the top, click "Save"1.
+    In the Azure Portal, locate your App Service.
+    1. On the left pane, click on “Configuration”.
+    1. Under “Application settings”, click on “New application setting”.
+    1. Fill in the name and value for each environment variable:
+    1. Click “OK”, then at the top, click "Save"1.
 
-  ```bash
-  ENV_TYPE=PROD
-  AZURE_SEARCH_SERVICE_ENDPOINT=https://?.search.windows.net
-  AZURE_SEARCH_INDEX_NAME=
-  AZURE_SEARCH_ADMIN_KEY=
-  COGNITIVE_SERVICES_ENDPOINT=https://?.cognitiveservices.azure.com
-  COGNITIVE_SERVICES_API_KEY=
-  BLOB_CONNECTION_STRING=
-  BLOB_CONTAINER_NAME=
-  BLOB_EMOJI_CONTAINER_NAME=
-  AZURE_OPENAI_ENDPOINT=https://?.openai.azure.com/
-  AZURE_OPENAI_API_KEY=
-  AZURE_OPENAI_API_VERSION_IMG=2023-06-01-preview
-  AZURE_OPENAI_API_VERSION_CHAT=2023-07-01-preview
-  BING_IMAGE_SEARCH_KEY=
-  POSTGRE_HOST=
-  POSTGRE_USER=
-  POSTGRE_PORT=5432
-  POSTGRE_DATABASE=
-  POSTGRE_PASSWORD=
-  ```
+        ```bash
+        ENV_TYPE=PROD
+        AZURE_SEARCH_SERVICE_ENDPOINT=https://?.search.windows.net
+        AZURE_SEARCH_INDEX_NAME=
+        AZURE_SEARCH_ADMIN_KEY=
+        COGNITIVE_SERVICES_ENDPOINT=https://?.cognitiveservices.azure.com
+        COGNITIVE_SERVICES_API_KEY=
+        BLOB_CONNECTION_STRING=
+        BLOB_CONTAINER_NAME=
+        BLOB_EMOJI_CONTAINER_NAME=
+        AZURE_OPENAI_ENDPOINT=https://?.openai.azure.com/
+        AZURE_OPENAI_API_KEY=
+        AZURE_OPENAI_API_VERSION_IMG=2023-06-01-preview
+        AZURE_OPENAI_API_VERSION_CHAT=2023-07-01-preview
+        BING_IMAGE_SEARCH_KEY=
+        SPEECH_SUBSCRIPTION_KEY=
+        SPEECH_REGION=
+        POSTGRE_HOST=
+        POSTGRE_USER=
+        POSTGRE_PORT=5432
+        POSTGRE_DATABASE=
+        POSTGRE_PASSWORD=
+        ```
 
 
 
