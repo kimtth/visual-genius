@@ -1,4 +1,4 @@
--- Local Database for development
+-- Local Database for development - As of now, Do not need to use this file.
 
 CREATE TABLE "category" (
 	"sid" TEXT, 

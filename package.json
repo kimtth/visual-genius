@@ -44,7 +44,7 @@
 		},
 		"scripts": {
 				"dev": "next dev",
-				"build": "next build && next export -o build/",
+				"build": "next build && next export -o backend/public",
 				"start": "next start",
 				"lint": "next lint"
 		}

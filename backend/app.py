@@ -16,11 +16,12 @@ from azure.search.documents.models import Vector
 # from azure.storage.blob import BlobServiceClient
 from azure.storage.blob.aio import BlobServiceClient
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends, Request, File, UploadFile
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, JSON
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
@@ -29,7 +30,8 @@ from sqlalchemy.orm import relationship
 from module import cog_embed_gen, aoai_call, bing_img_search
 
 app = FastAPI()
-# if os.getenv('ENV_TYPE') == 'dev':
+load_dotenv()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,9 +43,6 @@ app.add_middleware(
 # Changed Sqlite (local) to PostgreSQL
 # engine = create_engine("sqlite:///./db.db", connect_args={"check_same_thread": False})
 # check_same_thread is needed only for SQLite. It's not needed for other databases.
-
-if os.getenv('ENV_TYPE') == 'dev':
-    load_dotenv()
 
 postgre_host = os.getenv("POSTGRE_HOST")
 postgre_user = os.getenv("POSTGRE_USER")
@@ -152,6 +151,16 @@ class Emoji(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# @app.api_route("/{path_name:path}", methods=["GET"])
+# async def catch_all(request: Request, path_name: str):
+#     return {"request_method": request.method, "path_name": path_name}
+
+
+# @app.get("/home")
+# async def catch_all(request: Request):
+#     return {"request_method": request.method}
 
 
 @app.get('/categories')
@@ -718,9 +727,48 @@ def delete_acs_document(acs_items: List[dict]):
         return HTTPException(500, "Failed to delete files to Azure Cognitive Search index")
 
 
+directory_path = os.path.dirname(os.path.abspath(__file__))
+static_path = os.path.join(directory_path, "public")
+
+# The @app.get("/{page}") approach was not able to handle the static files. so that, the routes declared each by each.
+
+@app.get("/")
+async def redirect_gen():
+    return RedirectResponse(url="/index.html")
+
+
+@app.get("/gen")
+async def redirect_gen():
+    return FileResponse(f'{static_path}/gen.html')
+
+
+@app.get("/rtn")
+async def redirect_rtn():
+    return FileResponse(f'{static_path}/rtn.html')
+
+
+@app.get("/home")
+async def redirect_home():
+    return FileResponse(f'{static_path}/home.html')
+
+
+@app.get("/motion")
+async def redirect_home():
+    return FileResponse(f'{static_path}/motion.html')
+
+# Mount static files from the public directory at the root URL path (/)
+'''
+ !Important: mount the static files after all your API route definitions.
+ The line app.mount("/static", StaticFiles(directory="static"), name="static") should be placed after all your API route definitions. 
+ This is because FastAPI processes routes and mounts in the order they are declared. If you declare the static mount first, 
+ FastAPI will try to find a matching static file for every request, before falling back to the dynamic routes.
+'''
+
+app.mount("/", StaticFiles(directory=static_path), name="public")
+
+
 if __name__ == '__main__':
     if os.getenv('ENV_TYPE') == 'dev':
-        load_dotenv()
         uvicorn.run(app, host="127.0.0.1", port=5000)
     else:
         uvicorn.run(app, host="0.0.0.0", port=80, workers=4)

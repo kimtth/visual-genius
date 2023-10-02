@@ -147,6 +147,7 @@ backend/util/__pycache__
 backend/db.db
 backend/module/__pycache__
 backend/instance
+backend/public
 .env
 yarn.lock
 package-lock.json
@@ -155,3 +156,4 @@ docs/demo.mp4
 .env.development 
 .env.production
 build
+backend/infra/parameter.dev.json

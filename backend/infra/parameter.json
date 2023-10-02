@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "prefix": {
+            "value": "<your-value-for-prefix>"
+        },
+        "pgsqlId": {
+            "value": "<your-postgre-sql-id>"
+        },
+        "pgsqlPwd": {
+            "value": "<your-postgre-sql-password>"
+        }
+    }
+}
