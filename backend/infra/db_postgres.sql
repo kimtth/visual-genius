@@ -1,5 +1,18 @@
 -- Database for production development
 
+CREATE TABLE "user" (
+    "user_id" VARCHAR,
+    "user_password" VARCHAR,
+    "user_name" VARCHAR,
+    "deleteFlag" INTEGER DEFAULT 0,
+    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    PRIMARY KEY("user_id")
+);
+
+INSERT INTO public.user (user_id, user_password, user_name, created_at, updated_at)
+VALUES('sys', 'sys', 'sys', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
 CREATE TABLE "category" (
     "sid" VARCHAR, 
     "category" VARCHAR,
@@ -11,6 +24,7 @@ CREATE TABLE "category" (
     "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY("sid")
+    FOREIGN KEY("user_id") REFERENCES "user"("user_id")
 );
 
 CREATE TABLE "image" (

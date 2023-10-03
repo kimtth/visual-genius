@@ -24,6 +24,15 @@ const SelectPage = () => {
   const categoryData = useSelector((state: any) => state.datas.CategoryData);
   const searchDataPayload = useSelector((state: any) => state.datas.SearchResultPayload);
 
+//TODO
+// const token = getToken();
+// const [{ data, loading, error }, refetch] = useAxios({
+//   url: '/user/' + userId,
+//   headers: {
+//     Authorization: `Bearer ${token}`
+//   }
+// });
+
   const [{ data: emojiD, loading, error }, getEmojiData] = useAxios(
     `${API_ENDPOINT}/emojies`,
     { manual: true, autoCancel: false }
