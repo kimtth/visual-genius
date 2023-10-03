@@ -123,7 +123,7 @@ This will create `public` directory in the `backend`.
     1. On the left pane, click on “Configuration”.
     1. Under “Application settings”, click on “New application setting”.
     1. Fill in the name and value for each environment variable:
-    1. Click “OK”, then at the top, click "Save"1.
+    1. Click “OK”, then at the top, click "Save".
 
         ```bash
         ENV_TYPE=PROD
