@@ -1,4 +1,3 @@
-import type { NextPage } from "next";
 import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack } from "@chakra-ui/react";
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
@@ -9,6 +8,7 @@ import { useDispatch } from "react-redux";
 import { setCategoryData } from "../state/datas";
 import { API_ENDPOINT } from "../state/const";
 import useAxios from "axios-hooks";
+import '../util/axiosInterceptor';
 import { downloadZip, executeShareUrl } from "../util/actionUtil";
 import { useRouter } from "next/router";
 
@@ -65,7 +65,7 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
         //console.log(categoryId);
         push(`${pathes.gen}?categoryId=${categoryId}`);
         //window.location.href= `${pathes.gen}?categoryId=${categoryId}`;
-        
+
     }
 
     const handleModal = (modalTitle: string, modalMessageType: string) => {
@@ -86,7 +86,7 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
                 alert(deleteData);
             } else {
                 console.log('The event is not supported.');
-            }   
+            }
         } catch (error) {
             console.error(error);
         }

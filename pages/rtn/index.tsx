@@ -1,4 +1,3 @@
-import type { NextPage } from "next";
 import Header from "../../components/header/header";
 import { Button, Text, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs, Box, VStack, Divider, HStack, ButtonGroup, IconButton } from "@chakra-ui/react";
 import ResultCard from "../../components/imgcard/searchResultCard";
@@ -9,7 +8,11 @@ import { ChangeEvent, MouseEvent, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { API_ENDPOINT } from "../../components/state/const";
 import useAxios from "axios-hooks";
+import '../../components/util/axiosInterceptor';
 import { UPLOAD_CATEGORY_ID } from "../../components/state/const";
+import { checkTokenValidity } from "../../components/util/axiosInterceptor";
+import { getSignInUserId } from "../../components/util/actionUtil";
+import axios from "axios";
 //!important: use useAxios with { manual:true, autoCancel: false } to prevent infinite request loop and cancel requests during a server processing.
 
 const SelectPage = () => {
@@ -39,6 +42,11 @@ const SelectPage = () => {
     `${API_ENDPOINT}/images?categoryId=${UPLOAD_CATEGORY_ID}`,
     { manual: true, autoCancel: false }
   );
+
+  // Check the token validaity if token is expired, redirect to login page
+  useEffect(() => {
+    checkTokenValidity();
+  }, []);
 
   useEffect(() => {
     if (emojiD) {
@@ -77,67 +85,48 @@ const SelectPage = () => {
   }
 
   const handleAddPhotos = () => {
-    if (tabIndex == 0) {
-      if (checkedItems.length > 0) {
-        try {
-          const transformedDataPayload = searchDataPayload.filter((item: any) =>
-            checkedItems.includes(item['sid'])).map((item: any) =>
-            ({
-              sid: item['sid'],
-              categoryId: categoryData['sid'],
-              title: item['title'],
-              imgPath: item['imgPath']
-            }));
-          executePost({
-            data: transformedDataPayload
-          })
-        } catch (error) {
-          console.error(error);
-        }
-      } else {
-        alert("Please select at least one photo!");
+    let checkedItemsArray: any[];
+    let data;
+
+    switch (tabIndex) {
+      case 0:
+        checkedItemsArray = checkedItems;
+        data = searchDataPayload;
+        break;
+      case 1:
+        checkedItemsArray = checkedEmojiItems;
+        data = emojiData;
+        break;
+      case 2:
+        checkedItemsArray = checkedMyPhotoItems;
+        data = myPhotoData;
+        break;
+      default:
+        return;
+    }
+
+    if (checkedItemsArray.length > 0) {
+      try {
+        const transformedData = data.filter((item: any) =>
+          checkedItemsArray.includes(item['sid'])).map((item: any) =>
+          ({
+            sid: item['sid'],
+            categoryId: categoryData['sid'],
+            title: item['title'],
+            imgPath: item['imgPath'],
+            user_id: getSignInUserId()
+          }));
+        executePost({
+          data: transformedData
+        })
+      } catch (error) {
+        console.error(error);
       }
-    } else if (tabIndex == 1) {
-      if (checkedEmojiItems.length > 0) {
-        try {
-          const transformedEmojiData = emojiData.filter((item: any) =>
-            checkedEmojiItems.includes(item['sid'])).map((item: any) =>
-            ({
-              sid: item['sid'],
-              categoryId: categoryData['sid'],
-              title: item['title'],
-              imgPath: item['imgPath']
-            }));
-          executePost({
-            data: transformedEmojiData
-          })
-        } catch (error) {
-          console.error(error);
-        }
-      } else {
-        alert("Please select at least one photo!");
-      }
-    } else if (tabIndex == 2) {
-      if (checkedMyPhotoItems.length > 0) {
-        try {
-          const transformedMyPhotoData = myPhotoData.filter((item: any) =>
-            checkedMyPhotoItems.includes(item['sid'])).map((item: any) =>
-            ({
-              sid: item['sid'],
-              categoryId: categoryData['sid'],
-              title: item['title'],
-              imgPath: item['imgPath']
-            }));
-          console.log(transformedMyPhotoData);
-          executePost({
-            data: transformedMyPhotoData
-          })
-        } catch (error) {
-          console.error(error);
-        }
-      }
+    } else {
+      alert("Please select at least one photo!");
     }
   }
+
 
   const handleSearchResultSelectItem = (sid: string, checked: boolean) => {
     const newCheckedItems =
@@ -166,16 +155,11 @@ const SelectPage = () => {
         formData.append('files', files[i]);
       }
 
-      fetch(`${API_ENDPOINT}/file_upload`, {
-        method: 'POST',
-        body: formData
-      })
+      axios.post(`${API_ENDPOINT}/file_upload`, formData)
         .then(response => {
-          if (response.ok) {
+          if (response.status === 200) {
             getUpImageData();
-            response.json().then(data => {
-              alert(data.message);
-            });
+            alert(response.data.message);
           } else {
             throw new Error('Something went wrong..');
           }

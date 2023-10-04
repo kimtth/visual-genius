@@ -7,6 +7,7 @@ import io
 import zipfile
 from typing import List, Any, Optional
 from urllib.parse import urlparse, urlunparse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import httpx
 
 import uvicorn
@@ -16,7 +17,7 @@ from azure.search.documents.models import Vector
 # from azure.storage.blob import BlobServiceClient
 from azure.storage.blob.aio import BlobServiceClient
 from dotenv import load_dotenv
-from fastapi import Body, FastAPI, HTTPException, Depends, Request, Response, UploadFile
+from fastapi import Body, FastAPI, HTTPException, Depends, Request, Response, Security, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
@@ -27,7 +28,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
-from module import cog_embed_gen, aoai_call, bing_img_search, text_to_speech
+from module import cog_embed_gen, aoai_call, bing_img_search, text_to_speech, auth
 
 app = FastAPI()
 load_dotenv()
@@ -71,6 +72,9 @@ speech_region = os.getenv("SPEECH_REGION")
 blob_service_client = BlobServiceClient.from_connection_string(
     connection_string)
 
+security = HTTPBearer()
+auth_handler = auth.Auth()
+
 
 def get_db():
     db = SessionLocal()
@@ -81,6 +85,37 @@ def get_db():
 
 
 # SQLAlchemy model
+class UserModel(Base):
+    __tablename__ = 'user'
+    user_id = Column(String, primary_key=True)
+    user_password = Column(String)
+    user_name = Column(String)
+    deleteFlag = Column(Integer, default=0)
+
+    # The "user" in backref="parent" and ForeignKey('category.sid') should be the same.
+    categories = relationship(
+        "CategoryModel", backref="user", cascade='all, delete-orphan')
+
+
+# Pydantic model - request body
+class UserSchema(BaseModel):
+    user_id: str
+    user_password: Optional[str] = None
+    user_name: Optional[str] = None
+    deleteFlag: Optional[int] = 0
+
+
+# Pydantic model - response body
+class UserDB(UserSchema):
+    user_id: str
+    user_name: Optional[str] = None
+    # deleteFlag: Optional[int] = 0
+
+    class Config:
+        from_attributes = True
+
+
+# SQLAlchemy model
 class CategoryModel(Base):
     __tablename__ = "category"
     sid = Column(String, primary_key=True, index=True)
@@ -88,6 +123,7 @@ class CategoryModel(Base):
     category = Column(String)
     difficulty = Column(String)
     imgNum = Column(Integer)
+    user_id = Column(String, ForeignKey('user.user_id'))
     deleteFlag = Column(Integer, default=0)
 
     # The "category" in backref="parent" and ForeignKey('category.sid') should be the same.
@@ -101,6 +137,7 @@ class CategorySchema(BaseModel):
     category: str
     difficulty: str
     imgNum: int
+    user_id: str
     deleteFlag: Optional[int] = 0
 
     class Config:
@@ -123,6 +160,7 @@ class ImageModel(Base):
     categoryId = Column(String, ForeignKey('category.sid'))
     title = Column(String)
     imgPath = Column(String)
+    user_id = Column(String)
     deleteFlag = Column(Integer, default=0)
 
 
@@ -132,6 +170,7 @@ class ImageSchema(BaseModel):
     categoryId: str
     title: str
     imgPath: str
+    user_id: str
     deleteFlag: Optional[int] = 0
 
     class Config:
@@ -155,11 +194,164 @@ class Emoji(BaseModel):
         from_attributes = True
 
 
-@app.get('/categories')
-def get_categories(session: Session = Depends(get_db)):
+@app.post('/signup')
+def signup(user: UserSchema, session: Session = Depends(get_db)):
+    if user.get(user.user_id) != None:
+        return 'Account already exists'
     try:
-        items = session.query(CategoryModel).filter(
-            CategoryModel.deleteFlag == 0).all()
+        hashed_password = auth_handler.encode_password(user.user_password)
+        db_user = UserModel(**user.model_dump())
+        db_user.user_password = hashed_password
+
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+        return UserDB.model_validate(db_user)
+    except:
+        error_msg = 'Failed to signup user'
+        return HTTPException(status_code=500, detail=error_msg)
+
+
+@app.post('/login')
+def login(user: UserSchema, session: Session = Depends(get_db)):
+    try:
+        db_user = session.get(UserModel, user.user_id)
+        if user is None:
+            return HTTPException(status_code=401, detail='Invalid username')
+        if not auth_handler.verify_password(user.user_password, db_user.user_password):
+            return HTTPException(status_code=401, detail='Invalid password')
+
+        access_token = auth_handler.encode_token(user.user_id)
+        refresh_token = auth_handler.encode_refresh_token(user.user_id)
+        return JSONResponse(content={'access_token': access_token, 'refresh_token': refresh_token})
+    except Exception as e:
+        print(e)
+        return HTTPException(status_code=401, detail='Invalid credentials')
+
+
+@app.get('/refresh_token')
+def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+    refresh_token = credentials.credentials
+    new_token = auth_handler.refresh_token(refresh_token)
+    return JSONResponse(content={'access_token': new_token})
+
+
+@app.get('/validate_token')
+def validate_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if auth_handler.decode_token(token):
+        return JSONResponse(content={'status': 'valid token'})
+    raise HTTPException(status_code=401, detail='Token is invalid')
+
+# @app.post('/secret')
+# def secret_data(credentials: HTTPAuthorizationCredentials = Security(security)):
+#     token = credentials.credentials
+#     if (auth_handler.decode_token(token)):
+#         return 'Top Secret data only authorized users can access this info'
+
+
+@app.post("/user/")
+def create_user(user: UserSchema, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
+    try:
+        db_user = UserModel(**user.model_dump())
+        db_user.user_password = auth_handler.encode_password(
+            user.user_password)
+
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+        return UserDB.model_validate(db_user)
+    except Exception as e:
+        print(e)
+        return HTTPException(500, "Failed to add the user")
+
+
+@app.get("/user/{user_id}")
+def read_user(user_id: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
+    try:
+        user = session.get(UserModel, user_id)
+        return UserDB.model_validate(user)
+    except Exception as e:
+        print(e)
+        return HTTPException(500, "Failed to get the user")
+
+
+@app.put("/user/{user_id}")
+def update_user(user_id: str, user: UserSchema, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
+    try:
+        user = session.get(UserModel, user_id)
+        for key, value in user.model_dump().items():
+            setattr(user, key, value)
+        session.commit()
+        return JSONResponse(content={"message": "User updated successfully"})
+    except Exception as e:
+        print(e)
+        return HTTPException(500, "Failed to update the user")
+
+
+# prevent the unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
+@app.put("/user/{user_id}/delete")
+def update_user(user_id: str, user: UserSchema, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
+    try:
+        user = session.get(UserModel, user_id)
+        user.deleteFlag = 1
+
+        # Update the deleteFlag for all images associated with the category and the user
+        acs_item = []
+        for category in user.categories:
+            category.deleteFlag = 1
+            for image in category.images:
+                image.deleteFlag = 1
+                acs_item.append({"sid": image.sid})
+
+            if acs_item:
+                delete_acs_document(acs_item)
+
+        session.commit()
+        session.refresh(user)
+        return JSONResponse(content={"message": "User updated successfully"})
+    except Exception as e:
+        print(e)
+        return HTTPException(500, "Failed to update the user")
+
+
+@app.delete("/user/{user_id}")
+def delete_user(user_id: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
+    try:
+        user = session.get(UserModel, user_id)
+        session.delete(user)
+        session.commit()
+        return JSONResponse(content={"message": "User deleted successfully"})
+    except Exception as e:
+        print(e)
+        return HTTPException(500, "Failed to delete the user")
+
+
+@app.get('/categories')
+def get_categories(session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    user_id = auth_handler.decode_token(token)
+    if not user_id:
+        raise HTTPException(403, "Not authorized")
+    try:
+        # how to get user_id from token?
+
+        items = session.query(CategoryModel).filter_by(deleteFlag=0, user_id=user_id).all()
         # First 3 images for each category
         for item in items:
             imgs = item.images[0:3]
@@ -171,7 +363,10 @@ def get_categories(session: Session = Depends(get_db)):
 
 
 @app.post('/category')
-async def create_category(category: CategorySchema, images: List[ImageSchema], session: Session = Depends(get_db)):
+async def create_category(category: CategorySchema, images: List[ImageSchema], session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         new_category = CategoryModel(**category.model_dump())
 
@@ -227,7 +422,10 @@ async def upload_image(img_path: str):
 
 
 @app.get('/category/{sid}')
-def get_category(sid: str, session: Session = Depends(get_db)):
+def get_category(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         item = session.get(CategoryModel, sid)
         if not item:
@@ -239,7 +437,10 @@ def get_category(sid: str, session: Session = Depends(get_db)):
 
 
 @app.put('/category/{sid}')
-def update_category(sid: str, category: CategorySchema, session: Session = Depends(get_db)):
+def update_category(sid: str, category: CategorySchema, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         item = session.get(CategoryModel, sid)
         if not item:
@@ -257,7 +458,10 @@ def update_category(sid: str, category: CategorySchema, session: Session = Depen
 
 # Preventing unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
 @app.put("/category/{sid}/delete")
-def delete_category(sid: str, session: Session = Depends(get_db)):
+def delete_category(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         item = session.get(CategoryModel, sid)
         if not item:
@@ -281,8 +485,28 @@ def delete_category(sid: str, session: Session = Depends(get_db)):
         return HTTPException(500, "Failed to delete an category")
 
 
+@app.delete("/category/{sid}")
+def delete_category_all(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
+    try:
+        item = session.get(CategoryModel, sid)
+        if not item:
+            raise HTTPException(status_code=404, detail="Category not found")
+        session.delete(item)
+        session.commit()
+        return JSONResponse(content={"message": "Category deleted successfully"})
+    except Exception as e:
+        print(e)
+        return HTTPException(500, "Failed to delete an category")
+
+
 @app.get("/category/{sid}/download")
-async def download_images(sid: str, session: Session = Depends(get_db)):
+async def download_images(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         container_client = blob_service_client.get_container_client(
             container_name)
@@ -331,21 +555,21 @@ async def download_image(container_client, img_path: str):
 
 
 @app.get('/images')
-def get_images(request: Request, session: Session = Depends(get_db)):
+def get_images(request: Request, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         params = request.query_params
         category_id = params['categoryId'] if 'categoryId' in params else ''
 
         if (category_id):
             if (category_id == 'file_upload'):
-                items = session.query(ImageModel).filter(
-                    ImageModel.categoryId == category_id).all()
+                items = session.query(ImageModel).filter_by(categoryId = category_id).all()
             else:
-                items = session.query(ImageModel).filter(
-                    ImageModel.deleteFlag != 1, ImageModel.categoryId == category_id).all()
+                items = session.query(ImageModel).filter_by(deleteFlag='0', categoryId = category_id).all()
         else:
-            items = session.query(ImageModel).filter(
-                ImageModel.deleteFlag != 1).all()
+            items = session.query(ImageModel).filter_by(deleteFlag='0').all()
 
         items_list = [ImageDB.model_validate(item) for item in items]
         # for item in items_list:
@@ -362,7 +586,10 @@ def get_images(request: Request, session: Session = Depends(get_db)):
 
 
 @app.post('/images')
-async def create_image(images: List[ImageSchema], session: Session = Depends(get_db)):
+async def create_image(images: List[ImageSchema], session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         items = []
         acs_items = list()
@@ -399,7 +626,10 @@ def check_image_path(category_id: str, img_path: str, session: Session) -> bool:
 
 
 @app.post('/image')
-async def create_image(image: ImageSchema, session: Session = Depends(get_db)):
+async def create_image(image: ImageSchema, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         new_item = ImageModel(**image.model_dump())
         session.add(new_item)
@@ -416,7 +646,10 @@ async def create_image(image: ImageSchema, session: Session = Depends(get_db)):
 
 
 @app.get('/images/{sid}')
-def get_image(sid: str, session: Session = Depends(get_db)):
+def get_image(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         if not sid:
             return []
@@ -437,7 +670,10 @@ def get_image(sid: str, session: Session = Depends(get_db)):
 
 
 @app.put('/images/{sid}')
-async def update_image(sid: str, image: ImageSchema, session: Session = Depends(get_db)):
+async def update_image(sid: str, image: ImageSchema, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         item = session.get(ImageModel, sid)
         if not item:
@@ -484,7 +720,10 @@ async def blob_exist_check_delete_image(img_path: str):
 
 # Preventing unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
 @app.put("/images/{sid}/delete")
-async def delete_image(sid: str, session: Session = Depends(get_db)):
+async def delete_image(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         item = session.get(ImageModel, sid)
         if not item:
@@ -500,8 +739,28 @@ async def delete_image(sid: str, session: Session = Depends(get_db)):
         return HTTPException(500, "Failed to delete an image")
 
 
+@app.delete("/images/{sid}")
+async def delete_image_all(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
+    try:
+        item = session.get(ImageModel, sid)
+        if not item:
+            raise HTTPException(status_code=404, detail="Category not found")
+        session.delete(item)
+        session.commit()
+        return JSONResponse(content={"message": "Image deleted successfully"})
+    except Exception as e:
+        print(e)
+        return HTTPException(500, "Failed to delete an image")
+
+
 @app.get('/gen_img/{query}')
-async def img_gen_handler(query: str):
+async def img_gen_handler(query: str, credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         image_url = await aoai_call.img_gen(query)
         return image_url
@@ -510,7 +769,10 @@ async def img_gen_handler(query: str):
 
 
 @app.get('/bing_img/{search_query}')
-async def img_gen_handler(search_query: str, request: Request):
+async def img_gen_handler(search_query: str, request: Request, credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         params = request.query_params
         title = params['title'] if 'title' in params else ''
@@ -530,7 +792,10 @@ async def img_gen_handler(search_query: str, request: Request):
 
 
 @app.get('/gen_img_list/{query}')
-async def img_gen_handler(query: str, request: Request):
+async def img_gen_handler(query: str, request: Request, credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         params = request.query_params
         mode = params['mode'] if 'mode' in params else ''
@@ -583,7 +848,10 @@ async def img_gen_handler(query: str, request: Request):
 
 
 @app.get('/emojies')
-async def emoji_handler():
+async def emoji_handler(credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         container_client = blob_service_client.get_container_client(
             emoji_container_name)
@@ -606,7 +874,10 @@ async def emoji_handler():
 
 
 @app.get('/search/{query}')
-async def search_handler(query: str, request: Request, session: Session = Depends(get_db)):
+async def search_handler(query: str, request: Request, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         params = request.query_params
         k_num = int(params['count']) if 'count' in params else 3
@@ -641,7 +912,10 @@ async def search_handler(query: str, request: Request, session: Session = Depend
 
 
 @app.post('/file_upload')
-async def file_upload(files: List[UploadFile], session: Session = Depends(get_db)):
+async def file_upload(files: List[UploadFile], session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     try:
         container_client = blob_service_client.get_container_client(
             container_name)
@@ -675,7 +949,10 @@ async def file_upload(files: List[UploadFile], session: Session = Depends(get_db
 
 
 @app.post('/synthesize_speech')
-async def gen_synthesize_speech(text: str = Body(..., embed=True)):
+async def gen_synthesize_speech(text: str = Body(..., embed=True), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if not auth_handler.decode_token(token):
+        raise HTTPException(403, "Not authorized")
     audio_data = await text_to_speech.synthesize_speech(text, speech_subscription_key, speech_region)
 
     if isinstance(audio_data, dict):

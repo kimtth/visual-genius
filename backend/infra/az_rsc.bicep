@@ -2,13 +2,12 @@ param location string = resourceGroup().location
 param prefix string
 param pgsqlId string
 @secure()
-param pgsqlPwd string //'vgpgpwdpwd@123'
+param pgsqlPwd string //'ex) vgpgpwdpwd@123'
 
-var uniqueStorageName = '${prefix}${uniqueString(resourceGroup().id)}'
 
 // Azure Cognitive Search
 resource searchService 'Microsoft.Search/searchServices@2022-09-01' = {
-  name: '${prefix}-acsearch'
+  name: '${prefix}-acsearch-${uniqueString(resourceGroup().id)}'
   location: location
   sku: {
     name: 'standard'
@@ -30,7 +29,7 @@ resource searchService 'Microsoft.Search/searchServices@2022-09-01' = {
 
 // Blob Storage
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
-  name: uniqueStorageName
+  name: '${prefix}${uniqueString(resourceGroup().id)}'
   location: location
   sku: {
     name: 'Standard_LRS'
@@ -165,14 +164,14 @@ resource postgresqlServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-
 
 // Cognitive Services (Image Vision, Speech to Text)
 resource cognitiveServices 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: '${prefix}-cog'
+  name: '${prefix}-cog-${uniqueString(resourceGroup().id)}'
   location: location
   kind: 'CognitiveServices'
   sku: {
     name: 'S0'
   }
   properties: {
-    customSubDomainName: '${prefix}-cog'
+    customSubDomainName: '${prefix}-cog-${uniqueString(resourceGroup().id)}'
     networkAcls: {
       defaultAction: 'Allow'
       virtualNetworkRules: []
@@ -182,9 +181,21 @@ resource cognitiveServices 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
 }
 
+resource bingSearchAccount 'Microsoft.Search/searchServices@2022-09-01' = {
+  name: '${prefix}-bing-${uniqueString(resourceGroup().id)}'
+  location: location
+  dependsOn: [
+    cognitiveServices
+  ]
+  sku: {
+    name: 'standard'
+  }
+}
+
+
 // Azure OpenAI (ChatGPT and DALL-E 2): DALL-E 2 is not required to deploy the model.
 resource openAI 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: '${prefix}-oai'
+  name: '${prefix}-oai-${uniqueString(resourceGroup().id)}'
   location: location
   dependsOn: [
     cognitiveServices
@@ -194,7 +205,7 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
     name: 'S0'
   }
   properties: {
-    customSubDomainName: '${prefix}-oai'
+    customSubDomainName: '${prefix}-oai-${uniqueString(resourceGroup().id)}'
     networkAcls: {
       defaultAction: 'Allow'
       virtualNetworkRules: []
@@ -217,14 +228,14 @@ resource oaiGPT35 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' 
   }
   sku: {
     name: 'Standard'
-    capacity: 120
+    capacity: 80
   }
 }
 
 
 // Azure App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
-  name: '${prefix}-appsrvplan'
+  name: '${prefix}-appsrvplan-${uniqueString(resourceGroup().id)}'
   location: location
   sku: {
     name: 'B1'
@@ -251,7 +262,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
 
 // Azure App Service (Webapp Python)
 resource appService 'Microsoft.Web/sites@2021-02-01' = {
-  name: '${prefix}-webapp'
+  name: '${prefix}-webapp-${uniqueString(resourceGroup().id)}'
   location: location
   properties: {
     serverFarmId: appServicePlan.id
@@ -264,11 +275,11 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       appSettings: [
         {
           name: 'AZURE_SEARCH_SERVICE_ENDPOINT'
-          value: 'https://?.search.windows.net'
+          value: 'https://${searchService.name}.search.windows.net'
         }
         {
           name: 'AZURE_SEARCH_INDEX_NAME'
-          value: ''
+          value: 'vg-index'
         }
         {
           name: 'AZURE_SEARCH_ADMIN_KEY'
@@ -276,39 +287,39 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'COGNITIVE_SERVICES_ENDPOINT'
-          value: 'https://?.cognitiveservices.azure.com'
+          value: cognitiveServices.properties.endpoint
         }
         {
           name: 'COGNITIVE_SERVICES_API_KEY'
-          value: ''
+          value: cognitiveServices.listKeys().key1
         }
         {
           name: 'BLOB_CONNECTION_STRING'
-          value: ''
+          value: storageAccount.listKeys().keys[0].value
         }
         {
           name: 'BLOB_CONTAINER_NAME'
-          value: ''
+          value: imgContainer.name
         }
         {
           name: 'BLOB_EMOJI_CONTAINER_NAME'
-          value: ''
+          value: imgEmoji.name
         }
         {
           name: 'AZURE_OPENAI_ENDPOINT'
-          value: 'https://?.openai.azure.com/'
+          value: openAI.properties.endpoint
         }
         {
           name: 'AZURE_OPENAI_API_KEY'
-          value: ''
+          value: openAI.listKeys().key1
         }
         {
           name: 'AZURE_OPENAI_API_VERSION_IMG'
-          value: '2023-06-01-preview'
+          value: openAI.apiVersion
         }
         {
           name: 'AZURE_OPENAI_API_VERSION_CHAT'
-          value: '2023-07-01-preview'
+          value: openAI.apiVersion
         }
         {
           name: 'BING_IMAGE_SEARCH_KEY'
@@ -316,11 +327,11 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'POSTGRE_HOST'
-          value: ''
+          value: postgresqlServer.properties.fullyQualifiedDomainName
         }
         {
           name: 'POSTGRE_USER'
-          value: ''
+          value: pgsqlId
         }
         {
           name: 'POSTGRE_PORT'
@@ -328,10 +339,14 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'POSTGRE_DATABASE'
-          value: ''
+          value: 'vgdb'
         }
         {
           name: 'POSTGRE_PASSWORD'
+          value: pgsqlPwd
+        }
+        {
+          name: 'APP_SECRET_STRING'
           value: ''
         }
       ]
@@ -341,7 +356,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
 
 // Azure App Service (Function App Python)
 resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
-  name: '${prefix}-func'
+  name: '${prefix}-func-${uniqueString(resourceGroup().id)}'
   location: location
   kind: 'functionapp,linux'
   properties: {

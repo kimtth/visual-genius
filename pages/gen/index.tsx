@@ -1,17 +1,15 @@
-import type { NextPage } from "next";
 import Header from "../../components/header/header";
 import NewSidePanel from "../../components/sidepanel/sidepanel";
 import DragDropBoard from "../../components/dnd";
-
 import React, { useCallback, useEffect } from "react";
 import { Box } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
 import Axios from "axios";
+import '../../components/util/axiosInterceptor';
 import { API_ENDPOINT } from "../../components/state/const";
 import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import { setImageDataPayload } from "../../components/state/datas";
-
 import { setColumnNumber, setImageNumber, setRowNumber } from "../../components/state/settings";
 import { arrangeDataToColumns } from "../../components/data/dataHandler";
 

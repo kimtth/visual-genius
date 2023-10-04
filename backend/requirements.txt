@@ -10,4 +10,7 @@ httpx~=0.23.3
 psycopg2-binary~=2.9.7
 python-multipart~=0.0.6
 azure-cognitiveservices-speech==1.32.1
+pyjwt
+passlib
+bcrypt
 

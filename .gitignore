@@ -158,3 +158,4 @@ docs/demo.mp4
 build
 backend/infra/parameter.dev.json
 .idea/
+backend/infra/main.dev.ps1

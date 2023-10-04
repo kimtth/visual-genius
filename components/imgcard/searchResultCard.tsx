@@ -1,4 +1,3 @@
-import type { NextPage } from "next";
 import { Card, CardBody, Image, Text, Checkbox, Flex, Spacer, useDisclosure } from "@chakra-ui/react";
 import SearchImageModal from "./searchModalCard";
 import { FC } from "react";

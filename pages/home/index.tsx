@@ -1,4 +1,3 @@
-import type { NextPage } from "next";
 import Header from "../../components/header/header";
 import CategoryCard from "../../components/imgcard/categoryCard";
 import { Box, Button, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
@@ -7,6 +6,7 @@ import { setCategoriesDataPayload } from "../../components/state/datas";
 import React, { useCallback, useEffect, MouseEvent } from "react";
 import useAxios from "axios-hooks";
 import { IoCreate } from "react-icons/io5";
+import '../../components/util/axiosInterceptor';
 import { API_ENDPOINT } from "../../components/state/const";
 import { pathes } from "../../components/state/pathes";
 

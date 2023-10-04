@@ -1,4 +1,3 @@
-import type { NextPage } from "next";
 import { HStack, Box, Text, Input, InputGroup, Image, InputRightElement, Icon, IconButton } from "@chakra-ui/react";
 import { SiMicrosoftbing } from 'react-icons/si';
 import { FiSearch } from "react-icons/fi";
@@ -6,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { pathes } from "../../components/state/pathes";
 import { API_ENDPOINT } from "../state/const";
 import useAxios from "axios-hooks";
+import '../../components/util/axiosInterceptor';
 import { MouseEvent, KeyboardEvent } from "react";
 import { useDispatch } from "react-redux";
 import { setSearchResultPayload } from "../state/datas";
