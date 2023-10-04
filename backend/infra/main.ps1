@@ -9,4 +9,7 @@ az deployment group create --resource-group $resourceGroup --template-file .\az_
 
 # Delete the Resource group
 # az group delete --name v-genius --yes --no-wait
-```
+
+# Purge the deleted Resource group
+# az resource create --subscription {subscriptionID} -g {resourceGroup} -n {resourceName} --location {location} --namespace Microsoft.CognitiveServices --resource-type accounts --properties "{\"restore\": true}"
+# az resource delete --ids /subscriptions/{subscriptionId}/providers/Microsoft.CognitiveServices/locations/{location}/resourceGroups/{resourceGroup}/deletedAccounts/{resourceName}

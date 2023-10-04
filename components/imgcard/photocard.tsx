@@ -1,4 +1,3 @@
-import type { NextPage } from "next";
 import dynamic from 'next/dynamic';
 import { Card, CardBody, Image, Flex, Text, useDisclosure, IconButton } from "@chakra-ui/react";
 import { useSelector } from "react-redux";

@@ -1,8 +1,10 @@
 import axios from 'axios';
+import './axiosInterceptor';
+import { API_ENDPOINT } from '../state/const';
 
 const synthesizeSpeech = async (text: string) => {
     try {
-        const response = await axios.post('/synthesize_speech', { text: text }, { responseType: 'arraybuffer' });
+        const response = await axios.post(`${API_ENDPOINT}/synthesize_speech`, { text: text }, { responseType: 'arraybuffer' });
         const blob = new Blob([response.data], { type: 'audio/mp3' });
         const url = window.URL.createObjectURL(blob);
         const audio = new Audio(url);

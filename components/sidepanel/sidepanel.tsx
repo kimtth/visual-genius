@@ -16,8 +16,9 @@ import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption, showNumb
 import { setCategoryData, setImageDataPayload } from "../state/datas";
 import useAxios from "axios-hooks";
 import { API_ENDPOINT } from "../state/const";
+import '../../components/util/axiosInterceptor';
 import { arrangeDataToColumns } from "../data/dataHandler";
-import { downloadZip, executeShareUrl } from "../util/actionUtil";
+import { downloadZip, executeShareUrl, getSignInUserId } from "../util/actionUtil";
 import Axios from "axios";
 import { DeleteIcon } from "@chakra-ui/icons";
 
@@ -278,9 +279,9 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                     category: "Object Recognition", //TODO: change to dynamic
                     difficulty: "Medium",  //TODO: change to dynamic
                     imgNum: imageNumber,
-                    //contentUrl: []
+                    user_id: getSignInUserId()
                 }
-                console.log(newCategory);
+                //console.log(newCategory);
                 executePost({
                     data: {
                         category: newCategory,

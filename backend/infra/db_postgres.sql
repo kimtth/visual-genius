@@ -6,12 +6,12 @@ CREATE TABLE "user" (
     "user_name" VARCHAR,
     "deleteFlag" INTEGER DEFAULT 0,
     "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY("user_id")
 );
 
-INSERT INTO public.user (user_id, user_password, user_name, created_at, updated_at)
-VALUES('sys', 'sys', 'sys', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO user (user_id, user_password, user_name, created_at, updated_at)
+VALUES('sys', '$2b$12$wJKDrgMaYyj24Ns2oqMz4uqw1eUXc4XT2LoYNVBf0fa3p4f6ycuZG', 'sys', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 CREATE TABLE "category" (
     "sid" VARCHAR, 
@@ -26,6 +26,8 @@ CREATE TABLE "category" (
     PRIMARY KEY("sid")
     FOREIGN KEY("user_id") REFERENCES "user"("user_id")
 );
+
+-- ALTER TABLE "category" ADD CONSTRAINT "fk_category_user" FOREIGN KEY ("user_id") REFERENCES "user"("user_id");
 
 CREATE TABLE "image" (
     "sid" VARCHAR,
@@ -47,6 +49,11 @@ BEGIN
    RETURN NEW; 
 END;
 $$ language 'plpgsql';
+
+CREATE TRIGGER update_user_modtime
+BEFORE UPDATE ON "user"
+FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 CREATE TRIGGER update_category_modtime
 BEFORE UPDATE ON category

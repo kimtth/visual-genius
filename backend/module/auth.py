@@ -5,7 +5,6 @@ from passlib.context import CryptContext  # used for hashing the password
 # used to handle expiry time for tokens
 from datetime import datetime, timedelta
 
-# https://dev.to/deta/get-started-with-fastapi-jwt-authentication-part-2-18ok
 # https://github.com/rohanshiva/Deta-FastAPI-JWT-Auth-Blog/tree/main
 
 class Auth():
@@ -18,12 +17,12 @@ class Auth():
     def verify_password(self, password, encoded_password):
         return self.hasher.verify(password, encoded_password)
 
-    def encode_token(self, username):
+    def encode_token(self, user_id):
         payload = {
             'exp': datetime.utcnow() + timedelta(days=0, minutes=30),
             'iat': datetime.utcnow(),
             'scope': 'access_token',
-            'sub': username
+            'sub': user_id
         }
         return jwt.encode(
             payload,
@@ -43,12 +42,12 @@ class Auth():
         except jwt.InvalidTokenError:
             raise HTTPException(status_code=401, detail='Invalid token')
 
-    def encode_refresh_token(self, username):
+    def encode_refresh_token(self, user_id):
         payload = {
             'exp': datetime.utcnow() + timedelta(days=0, hours=10),
             'iat': datetime.utcnow(),
             'scope': 'refresh_token',
-            'sub': username
+            'sub': user_id
         }
         return jwt.encode(
             payload,
@@ -61,8 +60,8 @@ class Auth():
             payload = jwt.decode(
                 refresh_token, self.secret, algorithms=['HS256'])
             if (payload['scope'] == 'refresh_token'):
-                username = payload['sub']
-                new_token = self.encode_token(username)
+                user_id = payload['sub']
+                new_token = self.encode_token(user_id)
                 return new_token
             raise HTTPException(
                 status_code=401, detail='Invalid scope for token')

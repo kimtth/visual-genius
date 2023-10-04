@@ -1,9 +1,9 @@
-import { Text, Image, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalOverlay, IconButton, Flex, Button } from "@chakra-ui/react"
-import { NextPage } from "next";
+import { Text, Image, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalOverlay, IconButton, Flex, Button } from "@chakra-ui/react";
 import { MdOutlineYoutubeSearchedFor } from "react-icons/md";
 import { FaPaintBrush } from "react-icons/fa";
 import { VscSaveAll } from "react-icons/vsc";
 import useAxios from "axios-hooks";
+import '../util/axiosInterceptor';
 import { API_ENDPOINT } from "../state/const";
 import { FC, useCallback, useEffect, useState } from "react";
 import { setImageDataPayload } from "../state/datas";

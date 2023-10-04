@@ -137,6 +137,7 @@ class CategorySchema(BaseModel):
     category: str
     difficulty: str
     imgNum: int
+    user_id: str
     deleteFlag: Optional[int] = 0
 
     class Config:
@@ -159,6 +160,7 @@ class ImageModel(Base):
     categoryId = Column(String, ForeignKey('category.sid'))
     title = Column(String)
     imgPath = Column(String)
+    user_id = Column(String)
     deleteFlag = Column(Integer, default=0)
 
 
@@ -168,6 +170,7 @@ class ImageSchema(BaseModel):
     categoryId: str
     title: str
     imgPath: str
+    user_id: str
     deleteFlag: Optional[int] = 0
 
     class Config:
@@ -196,9 +199,9 @@ def signup(user: UserSchema, session: Session = Depends(get_db)):
     if user.get(user.user_id) != None:
         return 'Account already exists'
     try:
-        hashed_password = auth_handler.encode_password(user.password)
+        hashed_password = auth_handler.encode_password(user.user_password)
         db_user = UserModel(**user.model_dump())
-        db_user.password = hashed_password
+        db_user.user_password = hashed_password
 
         session.add(db_user)
         session.commit()
@@ -206,28 +209,39 @@ def signup(user: UserSchema, session: Session = Depends(get_db)):
         return UserDB.model_validate(db_user)
     except:
         error_msg = 'Failed to signup user'
-        return error_msg
+        return HTTPException(status_code=500, detail=error_msg)
 
 
 @app.post('/login')
 def login(user: UserSchema, session: Session = Depends(get_db)):
-    user = session.get(user.user_id)
-    if (user is None):
-        return HTTPException(status_code=401, detail='Invalid username')
-    if (not auth_handler.verify_password(user.password, user['password'])):
-        return HTTPException(status_code=401, detail='Invalid password')
+    try:
+        db_user = session.get(UserModel, user.user_id)
+        if user is None:
+            return HTTPException(status_code=401, detail='Invalid username')
+        if not auth_handler.verify_password(user.user_password, db_user.user_password):
+            return HTTPException(status_code=401, detail='Invalid password')
 
-    access_token = auth_handler.encode_token(user['user_id'])
-    refresh_token = auth_handler.encode_refresh_token(user['user_id'])
-    return {'access_token': access_token, 'refresh_token': refresh_token}
+        access_token = auth_handler.encode_token(user.user_id)
+        refresh_token = auth_handler.encode_refresh_token(user.user_id)
+        return JSONResponse(content={'access_token': access_token, 'refresh_token': refresh_token})
+    except Exception as e:
+        print(e)
+        return HTTPException(status_code=401, detail='Invalid credentials')
 
 
 @app.get('/refresh_token')
 def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security)):
     refresh_token = credentials.credentials
     new_token = auth_handler.refresh_token(refresh_token)
-    return {'access_token': new_token}
+    return JSONResponse(content={'access_token': new_token})
 
+
+@app.get('/validate_token')
+def validate_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    if auth_handler.decode_token(token):
+        return JSONResponse(content={'status': 'valid token'})
+    raise HTTPException(status_code=401, detail='Token is invalid')
 
 # @app.post('/secret')
 # def secret_data(credentials: HTTPAuthorizationCredentials = Security(security)):
@@ -242,13 +256,14 @@ def create_user(user: UserSchema, session: Session = Depends(get_db), credential
     if not auth_handler.decode_token(token):
         raise HTTPException(403, "Not authorized")
     try:
-        user = UserModel(**user.model_dump())
-        user.password = auth_handler.get_password_hash(user.password)
+        db_user = UserModel(**user.model_dump())
+        db_user.user_password = auth_handler.encode_password(
+            user.user_password)
 
-        session.add(user)
+        session.add(db_user)
         session.commit()
-        session.refresh(user)
-        return UserDB.model_validate(user)
+        session.refresh(db_user)
+        return UserDB.model_validate(db_user)
     except Exception as e:
         print(e)
         return HTTPException(500, "Failed to add the user")
@@ -330,11 +345,13 @@ def delete_user(user_id: str, session: Session = Depends(get_db), credentials: H
 @app.get('/categories')
 def get_categories(session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
-    if not auth_handler.decode_token(token):
+    user_id = auth_handler.decode_token(token)
+    if not user_id:
         raise HTTPException(403, "Not authorized")
     try:
-        items = session.query(CategoryModel).filter(
-            CategoryModel.deleteFlag == 0).all()
+        # how to get user_id from token?
+
+        items = session.query(CategoryModel).filter_by(deleteFlag=0, user_id=user_id).all()
         # First 3 images for each category
         for item in items:
             imgs = item.images[0:3]
@@ -548,14 +565,11 @@ def get_images(request: Request, session: Session = Depends(get_db), credentials
 
         if (category_id):
             if (category_id == 'file_upload'):
-                items = session.query(ImageModel).filter(
-                    ImageModel.categoryId == category_id).all()
+                items = session.query(ImageModel).filter_by(categoryId = category_id).all()
             else:
-                items = session.query(ImageModel).filter(
-                    ImageModel.deleteFlag != 1, ImageModel.categoryId == category_id).all()
+                items = session.query(ImageModel).filter_by(deleteFlag='0', categoryId = category_id).all()
         else:
-            items = session.query(ImageModel).filter(
-                ImageModel.deleteFlag != 1).all()
+            items = session.query(ImageModel).filter_by(deleteFlag='0').all()
 
         items_list = [ImageDB.model_validate(item) for item in items]
         # for item in items_list:
