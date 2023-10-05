@@ -8,7 +8,7 @@ from azure.search.documents.models import Vector
 from dotenv import load_dotenv
 
   
-load_dotenv()  
+load_dotenv(verbose=False)  
 service_endpoint = os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")  
 index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")  
 key = os.getenv("AZURE_SEARCH_ADMIN_KEY")  

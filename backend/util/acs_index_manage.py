@@ -4,8 +4,7 @@ from azure.search.documents.indexes import SearchIndexerClient
 from dotenv import load_dotenv
 
 
-if os.getenv('ENV_TYPE') == 'dev':
-    load_dotenv()
+load_dotenv(verbose=False)
 key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
 index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 service_endpoint = os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")
@@ -21,4 +20,5 @@ def run_indexer():
 
 
 if __name__ == '__main__':
-    run_indexer()
+    print("Running indexer...")
+    # run_indexer()

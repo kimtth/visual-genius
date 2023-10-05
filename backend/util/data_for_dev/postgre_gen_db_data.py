@@ -1,93 +1,64 @@
+import os
+import uuid
+import psycopg2
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
-import os
-import json
-import uuid
-import sqlite3
 
 # Set the directory path
-dir_path = '../data'
+dir_path = 'dataset'
+print(os.path.abspath(dir_path))
 
 # Get a list of all files in the directory
 file_list = os.listdir(dir_path)
 
 load_dotenv(verbose=False)
-connection_string = os.getenv("BLOB_CONNECTION_STRING")
+connection_string = os.getenv("POSTGRES_CONNECTION_STRING")
 container_name = os.getenv("BLOB_CONTAINER_NAME")
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
 
-# Connect to the SQLite database
-conn = sqlite3.connect('../db.db')
-
+# Connect to the PostgreSQL database
+conn = psycopg2.connect(connection_string)
 
 def insert_data(conn, table_name, data):
-    """
-    Insert data into a table in an SQLite database.
-
-    :param conn: A connection object to the SQLite database.
-    :param table_name: The name of the table to insert data into.
-    :param data: A list of dictionaries, where each dictionary represents a row to be inserted into the table.
-    """
     # Get the column names from the first row of data
     columns = ', '.join(data[0].keys())
 
     # Create the placeholders for the values
-    placeholders = ', '.join(['?'] * len(data[0]))
+    placeholders = ', '.join(['%s'] * len(data[0].keys()))
 
-    # Create the SQL query
-    query = f'INSERT INTO {table_name} ({columns}) VALUES ({placeholders})'
+    # Build the SQL query
+    sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
 
-    # Extract the values from the data
-    values = [tuple(row.values()) for row in data]
-
-    # Execute the query
-    conn.executemany(query, values)
-    conn.commit()
+    # Insert the data into the table
+    with conn, conn.cursor() as cur:
+        values = [tuple(row.values()) for row in data]
+        cur.executemany(sql, values)
 
 
 def update_category(conn):
     """
-    Update the imgNum and contentUrl columns of the category table based on information from the image table.
+    Update the imgNum column of the category table based on information from the image table.
 
-    :param conn: A connection object to the SQLite database.
+    :param conn: A connection object to the PostgreSQL database.
     """
-    # Create a cursor object
-    cursor = conn.cursor()
-
-    # Query to get the number of images and the first 3 image paths for each category
-    query = '''
-        SELECT c.sid, COUNT(i.sid)
-        FROM category c
-        LEFT JOIN image i ON c.sid = i.categoryId
-        GROUP BY c.sid
+    # Build the SQL query
+    sql = '''
+        UPDATE category
+        SET imgNum = subquery.img_num
+        FROM (
+            SELECT categoryId, COUNT(*) AS img_num
+            FROM image
+            GROUP BY categoryId
+        ) AS subquery
+        WHERE category.sid = subquery.categoryId
     '''
 
     # Execute the query
-    cursor.execute(query)
-
-    # Fetch the results
-    results = cursor.fetchall()
-
-    # Update the category table
-    for row in results:
-        category_id = row[0]
-        img_num = row[1]
-
-        # Update query
-        update_query = '''
-            UPDATE category
-            SET imgNum = ?, contentUrl = ?
-            WHERE sid = ?
-        '''
-
-        # Execute the update query
-        cursor.execute(update_query, (img_num, content_url, category_id))
-
-    # Commit changes
-    conn.commit()
+    with conn, conn.cursor() as cur:
+        cur.execute(sql)
 
 
-def get_cls_id(i):
+def get_cls_id(i, file_name):
     cls_id = i // 20
     if 'val2017' in file_name:
         cls_id = cls_id + 4
@@ -128,7 +99,8 @@ for i, file_name in enumerate(cls_animal):
         'sid': str(uuid.uuid4()),
         'title': img_name.title(),
         'categoryId': cls_uuid,
-        'imgPath': blob_url
+        'imgPath': blob_url,
+        'user_id': 'sys'
     }
 
     prev_cls_id = cls_id
@@ -156,7 +128,8 @@ for i, file_name in enumerate(cls_everyday_life):
         'sid': str(uuid.uuid4()),
         'title': img_name.title(),
         'categoryId': cls_uuid,  # get_cls_id(i, file_name),
-        'imgPath': blob_url
+        'imgPath': blob_url,
+        'user_id': 'sys'
     }
 
     prev_cls_id = cls_id
@@ -214,16 +187,18 @@ cls_6 = {
     'imgNum': 8,
 }
 
-category_data = [cls_1, cls_2, cls_3, cls_4, cls_5, cls_6]
-# Insert data into the category table
-insert_data(conn, 'category', category_data)
-# Insert data into the image table
-insert_data(conn, 'image', image_list_1)
-insert_data(conn, 'image', image_list_2)
 
-# Update the category table
-update_category(conn)
+if __name__ == '__main__':
+    # Create a list of dictionaries
+    category_data = [cls_1, cls_2, cls_3, cls_4, cls_5, cls_6]
+    # Insert data into the category table
+    insert_data(conn, 'category', category_data)
+    # Insert data into the image table
+    insert_data(conn, 'image', image_list_1)
+    insert_data(conn, 'image', image_list_2)
 
-# Commit changes and close connection
-conn.commit()
-conn.close()
+    # Update the category table
+    update_category(conn)
+
+    conn.close()
+

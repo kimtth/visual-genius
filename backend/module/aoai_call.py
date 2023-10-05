@@ -10,8 +10,7 @@ from dotenv import load_dotenv
 from module import prompt_template
 
 
-if os.getenv('ENV_TYPE') == 'dev':
-    load_dotenv()
+load_dotenv(verbose=False)
 openai.api_type = "azure"
 openai.api_base = os.getenv("AZURE_OPENAI_ENDPOINT")
 openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")

@@ -21,8 +21,7 @@ import asyncio
 import httpx
 
 
-if os.getenv('ENV_TYPE') == 'dev':
-    load_dotenv()
+load_dotenv(verbose=False)
 bing_search_subscription_key = os.getenv("BING_IMAGE_SEARCH_KEY")
 
 # fmt: off

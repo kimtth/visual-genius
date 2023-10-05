@@ -31,8 +31,9 @@ from sqlalchemy.orm import relationship
 from module import cog_embed_gen, aoai_call, bing_img_search, text_to_speech, auth
 
 app = FastAPI()
-load_dotenv()
+load_dotenv(verbose=False)
 
+# TODO: Development purpose only, remove it later
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

@@ -6,7 +6,7 @@ import os
 from azure.search.documents import SearchClient
 
 
-load_dotenv()
+load_dotenv(verbose=False)
 postgre_host = os.getenv("POSTGRE_HOST")
 postgre_user = os.getenv("POSTGRE_USER")
 postgre_port = os.getenv("POSTGRE_PORT")

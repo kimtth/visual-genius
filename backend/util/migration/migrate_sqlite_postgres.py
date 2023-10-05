@@ -3,7 +3,7 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(verbose=False)
 
 postgre_host = os.getenv("POSTGRE_HOST")
 postgre_user = os.getenv("POSTGRE_USER")
