@@ -24,8 +24,7 @@ from dotenv import load_dotenv
 # https://github.com/Azure/cognitive-search-vector-pr
 # demo-python/code/azure-search-vector-image-python-sample.ipynb
 
-if os.getenv('ENV_TYPE') == 'dev':
-    load_dotenv()
+load_dotenv(verbose=False)
 service_endpoint = os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")
 index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
@@ -59,6 +58,7 @@ data_source = ds_client.create_or_update_data_source_connection(data_source_conn
 print(f"Data source '{data_source.name}' created or updated")
 
 # Create a skillset  
+# WebSkill is a custom skill that is hosted in Azure Functions. > `backend\func\acs_skillset_for_indexer`
 skillset_name = f"{index_name}-skillset"
 skill_uri = customSkill_endpoint
 
@@ -82,11 +82,17 @@ client.create_or_update_skillset(skillset)
 print(f' {skillset.name} created')
 
 # Create a search index
+'''
+In Azure Cognitive Search, the key attribute in the SimpleField function is used to denote 
+the unique identifier for each document in the index. 
+Once you’ve set a field as the key, you cannot change its value for a particular document. 
+So that, add sid attibute for id from database.
+'''
 index_client = SearchIndexClient(
     endpoint=service_endpoint, credential=credential)
 fields = [
-    # SimpleField(name="id", type=SearchFieldDataType.String, key=True, sortable=True, filterable=True, facetable=True),
-    SimpleField(name="sid", type=SearchFieldDataType.String, key=True, sortable=True, filterable=True, facetable=True), # uuid in the sql
+    SimpleField(name="id", type=SearchFieldDataType.String, key=True, sortable=True, filterable=True, facetable=True),
+    SimpleField(name="sid", type=SearchFieldDataType.String, sortable=True, filterable=True, facetable=True), # uuid in the sql
     SimpleField(name="imgPath", type=SearchFieldDataType.String, filterable=True, retrievable=True),
     SearchableField(name="title", type=SearchFieldDataType.String, searchable=True, retrievable=True),
     SearchField(
