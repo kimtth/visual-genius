@@ -9,7 +9,7 @@ import { TbNumbers, TbVideo } from "react-icons/tb";
 import { VscSaveAll } from "react-icons/vsc";
 import { ChangeEvent, FC, MouseEvent, useCallback, useEffect, useState } from "react";
 import { useRouter as usePath, useRouter } from 'next/router';
-import BasicModal from "../imgcard/basicModal";
+import BasicModal from "../imgcard/basicMessageModal";
 import { pathes } from "../../components/state/pathes";
 import { useDispatch, useSelector } from "react-redux";
 import { setColumnNumber, setImageNumber, setRowNumber, showImgCaption, showNumbering, showTextSpeech } from "../state/settings";

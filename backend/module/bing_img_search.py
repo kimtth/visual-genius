@@ -1,8 +1,6 @@
-import logging
 import os
 from io import BytesIO
 from PIL import Image
-from bing_image_urls import bing_image_urls
 from dotenv import load_dotenv
 
 r"""
@@ -76,7 +74,6 @@ async def bing_image_urls(  # pylint: disable=too-many-locals
         raise
 
     try:
-        # links = re.findall(r"murl&quot;:&quot;(.*?)&quot;", resp.text)
         search_results = resp.json()["value"]
         links = [url["contentUrl"] for url in search_results]
     except Exception as exc:
@@ -123,10 +120,29 @@ async def verify_links(links: List[str]) -> List[bool]:
                 # Verify whether the Image link is broken.
                 img = Image.open(BytesIO(resp.content))
                 img.verify()
-                # res.append(resp)
-                res.append(img.format is not None)
+
+                # Determine the format of the image
+                content_type = resp.headers['Content-Type']
+                if 'png' in content_type:
+                    format = 'PNG'
+                elif 'jpeg' in content_type:
+                    format = 'JPEG'
+                elif 'gif' in content_type:
+                    format = 'GIF'
+                else:
+                    format = img.format  # default to the original format
+
+                # Get image size in bytes
+                img_byte_arr = BytesIO()
+                img.save(img_byte_arr, format=format)
+                size_in_bytes = img_byte_arr.tell()
+
+                # Check if size is less than or equal to 1048576
+                if size_in_bytes > 1048576:
+                    res.append(False)
+                else:
+                    res.append(img.format is not None)
             except Exception:
-                # res.append(None)
                 res.append(False)
 
         # Deprecated since version 3.11, will be removed in version 3.13: The imghdr module is deprecated
@@ -140,13 +156,7 @@ async def verify_links(links: List[str]) -> List[bool]:
 async def fetch_image_from_bing(query, limit=1):
     urls = await bing_image_urls(query, limit=limit)
 
-    if limit == 1 and len(urls) >= 1:
-        return urls[0]
-    
-    if limit == 1 and len(urls) == 0:
-        return ""
-    
-    if limit > 1 and len(urls) > 0:
-        return urls
-    else:
-        return []
+    if not urls:
+        return "" if limit == 1 else []
+
+    return urls[0] if limit == 1 else urls[:limit]

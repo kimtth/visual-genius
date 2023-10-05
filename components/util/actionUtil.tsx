@@ -24,10 +24,17 @@ export const downloadZip = (downloadData: any) => {
 
 export const getToken = () => {
     const token = localStorage.getItem('token');
-    return token;
+    const access_token = token ? JSON.parse(token)['access_token'] : null;
+    return access_token;
 }
 
-export const setToken = (token: string) => {
+export const getRefreshToken = () => {
+    const token = localStorage.getItem('refresh_token');
+    const refresh_token = token ? JSON.parse(token)['refresh_token'] : null;
+    return refresh_token;
+}
+
+export const setToken = (token: any) => {
     // TODO
     // 1. Storing JWT tokens in localStorage is a common practice, 
     // but it can leave your application vulnerable to certain types of attacks, such as Cross-Site Scripting (XSS).
@@ -37,7 +44,7 @@ export const setToken = (token: string) => {
     // 3. Session storage is a better option than local storage for storing JWT tokens. but both are vulnerable to XSS attacks.
     // 4. The best way to store JWT tokens is in-memory.
     // https://stackoverflow.com/questions/48712923/where-to-store-a-jwt-token-properly-and-safely-in-a-web-based-application
-    localStorage.setItem('token', token);
+    localStorage.setItem('token', JSON.stringify(token));
 }
 
 export const getSignInUserId = () => {

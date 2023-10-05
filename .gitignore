@@ -154,8 +154,8 @@ package-lock.json
 db.7z
 docs/demo.mp4
 .env.development 
-.env.production
 build
 backend/infra/parameter.dev.json
 .idea/
 backend/infra/main.dev.ps1
+backend/*.mp3

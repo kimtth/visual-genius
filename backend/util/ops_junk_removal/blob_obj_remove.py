@@ -63,4 +63,7 @@ for result in search_client.search(search_text="*", select="id, imgPath"):
     if result["imgPath"] not in image_paths:
         del_items.append({"id": result["id"], "imgPath": result["imgPath"]})
 
-search_client.delete_documents(documents=del_items)
+if del_items:
+    search_client.delete_documents(documents=del_items)
+
+print('Done')

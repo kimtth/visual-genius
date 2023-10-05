@@ -2,7 +2,7 @@ import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconB
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
 import { useEffect, useCallback, useState } from "react";
-import BasicModal from "./basicModal";
+import BasicModal from "./basicMessageModal";
 import { pathes } from "../state/pathes";
 import { useDispatch } from "react-redux";
 import { setCategoryData } from "../state/datas";

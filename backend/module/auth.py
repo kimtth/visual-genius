@@ -19,7 +19,7 @@ class Auth():
 
     def encode_token(self, user_id):
         payload = {
-            'exp': datetime.utcnow() + timedelta(days=0, minutes=30),
+            'exp': datetime.utcnow() + timedelta(days=1, hours=12),
             'iat': datetime.utcnow(),
             'scope': 'access_token',
             'sub': user_id
@@ -44,7 +44,7 @@ class Auth():
 
     def encode_refresh_token(self, user_id):
         payload = {
-            'exp': datetime.utcnow() + timedelta(days=0, hours=10),
+            'exp': datetime.utcnow() + timedelta(days=1, hours=12),
             'iat': datetime.utcnow(),
             'scope': 'refresh_token',
             'sub': user_id
@@ -57,14 +57,12 @@ class Auth():
 
     def refresh_token(self, refresh_token):
         try:
-            payload = jwt.decode(
-                refresh_token, self.secret, algorithms=['HS256'])
+            payload = jwt.decode(refresh_token, self.secret, algorithms=['HS256'])
             if (payload['scope'] == 'refresh_token'):
                 user_id = payload['sub']
                 new_token = self.encode_token(user_id)
                 return new_token
-            raise HTTPException(
-                status_code=401, detail='Invalid scope for token')
+            raise HTTPException(status_code=401, detail='Invalid scope for token')
         except jwt.ExpiredSignatureError:
             raise HTTPException(
                 status_code=401, detail='Refresh token expired')

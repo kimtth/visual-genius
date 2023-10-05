@@ -1,8 +1,8 @@
 fastapi~=0.103.0
 uvicorn[standard]~=0.23.2
-aiohttp
-azure-search-documents --pre
-azure-storage-blob
+aiohttp==3.8.5
+azure-search-documents==11.4.0b8
+azure-storage-blob==12.17.0
 openai~=0.27.9
 python-dotenv~=1.0.0
 Pillow~=10.0.0
@@ -10,7 +10,9 @@ httpx~=0.23.3
 psycopg2-binary~=2.9.7
 python-multipart~=0.0.6
 azure-cognitiveservices-speech==1.32.1
-pyjwt
-passlib
-bcrypt
+PyJWT==2.8.0
+passlib==1.7.4
+bcrypt==4.0.1
+SQLAlchemy==2.0.20
+
 

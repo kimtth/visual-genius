@@ -14,7 +14,6 @@ import uvicorn
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import Vector
-# from azure.storage.blob import BlobServiceClient
 from azure.storage.blob.aio import BlobServiceClient
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, HTTPException, Depends, Request, Response, Security, UploadFile
@@ -42,7 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Changed Sqlite (local) to PostgreSQL
+# In case of Sqlite (local)
 # engine = create_engine("sqlite:///./db.db", connect_args={"check_same_thread": False})
 # check_same_thread is needed only for SQLite. It's not needed for other databases.
 
@@ -109,7 +108,6 @@ class UserSchema(BaseModel):
 # Pydantic model - response body
 class UserDB(UserSchema):
     user_id: str
-    user_name: Optional[str] = None
     # deleteFlag: Optional[int] = 0
 
     class Config:
@@ -170,8 +168,8 @@ class ImageSchema(BaseModel):
     sid: str
     categoryId: str
     title: str
-    imgPath: str
-    user_id: str
+    imgPath: Optional[str] = None
+    user_id: Optional[str] = None
     deleteFlag: Optional[int] = 0
 
     class Config:
@@ -210,45 +208,45 @@ def signup(user: UserSchema, session: Session = Depends(get_db)):
         return UserDB.model_validate(db_user)
     except:
         error_msg = 'Failed to signup user'
-        return HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @app.post('/login')
 def login(user: UserSchema, session: Session = Depends(get_db)):
     try:
         db_user = session.get(UserModel, user.user_id)
+        # raise HTTPException(status_code=401, detail='Invalid token')
         if user is None:
-            return HTTPException(status_code=401, detail='Invalid username')
+            raise HTTPException(status_code=401, detail='Invalid username')
         if not auth_handler.verify_password(user.user_password, db_user.user_password):
-            return HTTPException(status_code=401, detail='Invalid password')
+            raise HTTPException(status_code=401, detail='Invalid password')
 
         access_token = auth_handler.encode_token(user.user_id)
         refresh_token = auth_handler.encode_refresh_token(user.user_id)
         return JSONResponse(content={'access_token': access_token, 'refresh_token': refresh_token})
     except Exception as e:
         print(e)
-        return HTTPException(status_code=401, detail='Invalid credentials')
+        raise HTTPException(status_code=401, detail='Invalid credentials')
 
 
-@app.get('/refresh_token')
+@app.post('/refresh_token')
 def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security)):
-    refresh_token = credentials.credentials
-    new_token = auth_handler.refresh_token(refresh_token)
-    return JSONResponse(content={'access_token': new_token})
+    try:
+        token = credentials.credentials
+        user_id = auth_handler.decode_token(token)
+        new_token = auth_handler.refresh_token(user_id)
+        return JSONResponse(content={'access_token': new_token})
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=401, detail='Invalid token')
 
 
-@app.get('/validate_token')
+@app.post('/validate_token')
 def validate_token(credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
     if auth_handler.decode_token(token):
         return JSONResponse(content={'status': 'valid token'})
-    raise HTTPException(status_code=401, detail='Token is invalid')
-
-# @app.post('/secret')
-# def secret_data(credentials: HTTPAuthorizationCredentials = Security(security)):
-#     token = credentials.credentials
-#     if (auth_handler.decode_token(token)):
-#         return 'Top Secret data only authorized users can access this info'
+    raise HTTPException(status_code=401, detail='Invalid token')
 
 
 @app.post("/user/")
@@ -267,7 +265,7 @@ def create_user(user: UserSchema, session: Session = Depends(get_db), credential
         return UserDB.model_validate(db_user)
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to add the user")
+        raise HTTPException(500, "Failed to add the user")
 
 
 @app.get("/user/{user_id}")
@@ -280,7 +278,7 @@ def read_user(user_id: str, session: Session = Depends(get_db), credentials: HTT
         return UserDB.model_validate(user)
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to get the user")
+        raise HTTPException(500, "Failed to get the user")
 
 
 @app.put("/user/{user_id}")
@@ -296,7 +294,7 @@ def update_user(user_id: str, user: UserSchema, session: Session = Depends(get_d
         return JSONResponse(content={"message": "User updated successfully"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to update the user")
+        raise HTTPException(500, "Failed to update the user")
 
 
 # prevent the unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
@@ -325,7 +323,7 @@ def update_user(user_id: str, user: UserSchema, session: Session = Depends(get_d
         return JSONResponse(content={"message": "User updated successfully"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to update the user")
+        raise HTTPException(500, "Failed to update the user")
 
 
 @app.delete("/user/{user_id}")
@@ -340,7 +338,7 @@ def delete_user(user_id: str, session: Session = Depends(get_db), credentials: H
         return JSONResponse(content={"message": "User deleted successfully"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to delete the user")
+        raise HTTPException(500, "Failed to delete the user")
 
 
 @app.get('/categories')
@@ -350,8 +348,6 @@ def get_categories(session: Session = Depends(get_db), credentials: HTTPAuthoriz
     if not user_id:
         raise HTTPException(403, "Not authorized")
     try:
-        # how to get user_id from token?
-
         items = session.query(CategoryModel).filter_by(deleteFlag=0, user_id=user_id).all()
         # First 3 images for each category
         for item in items:
@@ -360,7 +356,7 @@ def get_categories(session: Session = Depends(get_db), credentials: HTTPAuthoriz
         return [CategoryDB.model_validate(item) for item in items]
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to get categories")
+        raise HTTPException(500, "Failed to get categories")
 
 
 @app.post('/category')
@@ -377,12 +373,13 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
             new_image = ImageModel(**image.model_dump())
 
             # Upload the image to blob storage
-            img_path = remove_query_params(new_image.imgPath)
-            new_image.imgPath, image_data = await upload_image(img_path)
+            # img_path = remove_query_params(new_image.imgPath)
+            new_image.imgPath, image_data = await upload_image(new_image.imgPath)
 
-            session.add(new_image)
-            acs_doc_item = await gen_acs_document(new_image, image_data)
-            acs_items.append(acs_doc_item)
+            if image_data:
+                session.add(new_image)
+                acs_doc_item = await gen_acs_document(new_image, image_data)
+                acs_items.append(acs_doc_item)
 
         # The order in which you add objects to the session does not matter,
         # as long as all the necessary relationships between the objects are properly set up
@@ -395,7 +392,7 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
         return CategoryDB.model_validate(new_category)
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to create a category")
+        raise HTTPException(500, "Failed to create a category")
 
 
 def remove_query_params(url: str):
@@ -409,17 +406,28 @@ def remove_query_params(url: str):
 async def upload_image(img_path: str):
     container_client = blob_service_client.get_container_client(container_name)
 
-    file_name = img_path.split("/")[-1]
-    blob_client = container_client.get_blob_client(file_name)
+    from io import BytesIO
+    from PIL import Image
+    import re
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(img_path)
-        image_data = response.content
+        try:
+            response = await client.get(img_path)
+            img = Image.open(BytesIO(response.content))
+            # Verify whether the Image link is broken.
+            # If this method finds any problems, it raises suitable exceptions.
+            img.verify()
+            # Get the file name from the response headers
+            content_disposition = response.headers['Content-Disposition']
+            file_name = re.findall('filename=(.+)', content_disposition)[0]
+            blob_client = container_client.get_blob_client(file_name)
 
-        async with blob_client:
-            await blob_client.upload_blob(image_data, overwrite=True)
-
-    return blob_client.url, image_data
+            async with blob_client:
+                await blob_client.upload_blob(img, overwrite=True)
+            return blob_client.url, img
+        except Exception as e:
+            print(e)
+            return None, None
 
 
 @app.get('/category/{sid}')
@@ -434,7 +442,7 @@ def get_category(sid: str, session: Session = Depends(get_db), credentials: HTTP
         return CategoryDB.model_validate(item)
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to get an category")
+        raise HTTPException(500, "Failed to get an category")
 
 
 @app.put('/category/{sid}')
@@ -454,7 +462,7 @@ def update_category(sid: str, category: CategorySchema, session: Session = Depen
         return CategoryDB.model_validate(item)
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to update an category")
+        raise HTTPException(500, "Failed to update an category")
 
 
 # Preventing unintentional delete, the request will be a put request to change the delete flag. (Soft delete)
@@ -483,7 +491,7 @@ def delete_category(sid: str, session: Session = Depends(get_db), credentials: H
         return JSONResponse(content={"message": "Category deleted successfully"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to delete an category")
+        raise HTTPException(500, "Failed to delete an category")
 
 
 @app.delete("/category/{sid}")
@@ -500,7 +508,7 @@ def delete_category_all(sid: str, session: Session = Depends(get_db), credential
         return JSONResponse(content={"message": "Category deleted successfully"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to delete an category")
+        raise HTTPException(500, "Failed to delete an category")
 
 
 @app.get("/category/{sid}/download")
@@ -538,7 +546,7 @@ async def download_images(sid: str, session: Session = Depends(get_db), credenti
                                  headers={"Content-Disposition": "attachment; filename=images.zip"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to download an image")
+        raise HTTPException(500, "Failed to download an image")
 
 
 # Speed up the download process by using async
@@ -573,17 +581,10 @@ def get_images(request: Request, session: Session = Depends(get_db), credentials
             items = session.query(ImageModel).filter_by(deleteFlag='0').all()
 
         items_list = [ImageDB.model_validate(item) for item in items]
-        # for item in items_list:
-        #     # Get the primary blob service endpoint for your storage account
-        #     primary_endpoint = f"https://{blob_service_client.account_name}.blob.core.windows.net"
-        #     # Construct the URL for the blob
-        #     blob_url = f"{primary_endpoint}/{container_name}/{item.imgPath}"
-        #     # Set the imgPath attribute to the blob URL
-        #     item.imgPath = blob_url
         return items_list
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to get images")
+        raise HTTPException(500, "Failed to get images")
 
 
 @app.post('/images')
@@ -614,7 +615,7 @@ async def create_image(images: List[ImageSchema], session: Session = Depends(get
         return items_list
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to create images")
+        raise HTTPException(500, "Failed to create images")
 
 
 def check_image_path(category_id: str, img_path: str, session: Session) -> bool:
@@ -643,7 +644,7 @@ async def create_image(image: ImageSchema, session: Session = Depends(get_db), c
         return ImageDB.model_validate(new_item)
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to create an image")
+        raise HTTPException(500, "Failed to create an image")
 
 
 @app.get('/images/{sid}')
@@ -667,7 +668,7 @@ def get_image(sid: str, session: Session = Depends(get_db), credentials: HTTPAut
         return image_list
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to get an image")
+        raise HTTPException(500, "Failed to get an image")
 
 
 @app.put('/images/{sid}')
@@ -678,43 +679,46 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
     try:
         item = session.get(ImageModel, sid)
         if not item:
-            # TODO: Back to HTTPException after done UI.
-            return JSONResponse(content={"message": "Image not found"})
-            # raise HTTPException(status_code=404, detail="Image not found")
+            raise HTTPException(status_code=404, detail="Image not found")
 
         for k, value in image.model_dump().items():
             setattr(item, k, value)
 
         # Upload the image to blob storage
-        img_path = item.imgPath
-        await blob_exist_check_delete_image(img_path)
-        item.imgPath, image_data = await upload_image(img_path)
+        db_img_path = item.imgPath
+        req_img_path = image.imgPath
+
+        if db_img_path:
+            await blob_exist_check_delete_image(db_img_path)
+        if req_img_path:
+            item.imgPath, image_data = await upload_image(req_img_path)
 
         session.commit()
         session.refresh(item)
 
-        acs_doc_item = await gen_acs_document(item, image_data)
-        # Run azure cognitive search for updates
-        insert_acs_document([acs_doc_item])
+        if image_data:
+            acs_doc_item = await gen_acs_document(item, image_data)
+            # Run azure cognitive search for updates
+            insert_acs_document([acs_doc_item])
 
         return ImageDB.model_validate(item)
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to update an image")
+        raise HTTPException(500, "Failed to update an image")
 
 
-async def blob_exist_check_delete_image(img_path: str):
+async def blob_exist_check_delete_image(db_img_path: str):
     try:
-        file_name = img_path.split("/")[-1]
+        db_file_name = db_img_path.split("/")[-1]
 
         container_client = blob_service_client.get_container_client(
             container_name)
-        blob_client = container_client.get_blob_client(file_name)
+        db_blob_client = container_client.get_blob_client(db_file_name)
 
-        async with blob_client:
-            if await blob_client.exists():
+        async with db_blob_client:
+            if await db_blob_client.exists():
                 # Delete the blob
-                await blob_client.delete_blob()
+                await db_blob_client.delete_blob()
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -737,7 +741,7 @@ async def delete_image(sid: str, session: Session = Depends(get_db), credentials
         return JSONResponse(content={"message": "Image deleted successfully"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to delete an image")
+        raise HTTPException(500, "Failed to delete an image")
 
 
 @app.delete("/images/{sid}")
@@ -754,7 +758,7 @@ async def delete_image_all(sid: str, session: Session = Depends(get_db), credent
         return JSONResponse(content={"message": "Image deleted successfully"})
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to delete an image")
+        raise HTTPException(500, "Failed to delete an image")
 
 
 @app.get('/gen_img/{query}')
@@ -777,6 +781,7 @@ async def img_gen_handler(search_query: str, request: Request, credentials: HTTP
     try:
         params = request.query_params
         title = params['title'] if 'title' in params else ''
+        title = '' if title == 'undefined' else title
         # Add category title for searching more better output.
         search_query = search_query + ' in ' + title
         img_urls = await bing_img_search.fetch_image_from_bing(search_query, 15)
@@ -789,7 +794,7 @@ async def img_gen_handler(search_query: str, request: Request, credentials: HTTP
         return img_url
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to get images")
+        raise HTTPException(500, "Failed to get images")
 
 
 @app.get('/gen_img_list/{query}')
@@ -845,7 +850,7 @@ async def img_gen_handler(query: str, request: Request, credentials: HTTPAuthori
         return items_list
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to get images")
+        raise HTTPException(500, "Failed to get images")
 
 
 @app.get('/emojies')
@@ -871,7 +876,7 @@ async def emoji_handler(credentials: HTTPAuthorizationCredentials = Security(sec
         return emoji_list
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to find images")
+        raise HTTPException(500, "Failed to find images")
 
 
 @app.get('/search/{query}')
@@ -909,7 +914,7 @@ async def search_handler(query: str, request: Request, session: Session = Depend
         return items_list
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to find images")
+        raise HTTPException(500, "Failed to find images")
 
 
 @app.post('/file_upload')
@@ -954,12 +959,13 @@ async def gen_synthesize_speech(text: str = Body(..., embed=True), credentials: 
     token = credentials.credentials
     if not auth_handler.decode_token(token):
         raise HTTPException(403, "Not authorized")
-    audio_data = await text_to_speech.synthesize_speech(text, speech_subscription_key, speech_region)
-
-    if isinstance(audio_data, dict):
-        return JSONResponse(content=audio_data)
-    else:
+    try:
+        audio_data = await text_to_speech.synthesize_speech(text, speech_subscription_key, speech_region)
         return Response(content=audio_data, media_type="audio/mp3")
+    except RuntimeError as e:
+        raise JSONResponse(content={"error": str(e)})
+    except Exception as e:
+        raise HTTPException(500, "Failed to synthesize speech")
 
 
 async def gen_acs_document(new_item: ImageModel, image_data: Optional[bytes] = None):
@@ -987,7 +993,7 @@ def insert_acs_document(acs_items: List[dict]):
             print('insert_acs_document:', result[0].succeeded)
     except Exception as e:
         print('Azure Cognitive Search index: ', e)
-        return HTTPException(500, "Failed to upload files to Azure Cognitive Search index")
+        raise HTTPException(500, "Failed to upload files to Azure Cognitive Search index")
 
 
 def delete_acs_document(acs_items: List[dict]):
@@ -1004,7 +1010,7 @@ def delete_acs_document(acs_items: List[dict]):
                 print("Delete new document succeeded: {}".format(result))
     except Exception as e:
         print(e)
-        return HTTPException(500, "Failed to delete files to Azure Cognitive Search index")
+        raise HTTPException(500, "Failed to delete files to Azure Cognitive Search index")
 
 
 directory_path = os.path.dirname(os.path.abspath(__file__))
@@ -1050,6 +1056,6 @@ app.mount("/", StaticFiles(directory=static_path), name="public")
 
 if __name__ == '__main__':
     if os.getenv('ENV_TYPE') == 'dev':
-        uvicorn.run(app, host="127.0.0.1", port=5000)
+        uvicorn.run(app='app:app', host="127.0.0.1", port=5000) # app:app == filename:app <= FastAPI()
     else:
-        uvicorn.run(app, host="0.0.0.0", port=80, workers=4)
+        uvicorn.run(app='app:app', host="0.0.0.0", workers=4) # Azure App service uses 8000 as default port internally. 
