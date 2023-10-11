@@ -63,7 +63,7 @@ export default function LoginPage() {
                     type="email" background="white" onChange={(e) => setUserId(e.target.value)} />
                 +        <Input name="password" placeholder="********" variant="outline" value={userPassword} mb={6}
                     type="password" background="white" onChange={(e) => setUserPassword(e.target.value)} />
-                <Button mb={6} colorScheme="twitter" onClick={logingGetToken}>Sign-in</Button>
+                <Button mb={6} colorScheme="blue" onClick={logingGetToken}>Sign-in</Button>
             </Flex>
         </Flex>
     )

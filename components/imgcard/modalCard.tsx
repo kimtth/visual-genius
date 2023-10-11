@@ -88,16 +88,21 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
         });
         // TODO: Need to check whether the image is exist or not
         try {
-            updateImg({
-                data: {
-                    ...item,
-                    imgPath: newImgPath
-                }
-            });
-            onDataPayload(updatedPayload);
-            clonedDataPayload = null;
-            onClose();
+            if (bingImgError) {
+                alert(bingImgError);
+            } else {
+                updateImg({
+                    data: {
+                        ...item,
+                        imgPath: newImgPath
+                    }
+                });
+                onDataPayload(updatedPayload);
+                clonedDataPayload = null;
+                onClose();
+            }
         } catch (err) {
+            alert(err);
             console.error(err);
         }
     }

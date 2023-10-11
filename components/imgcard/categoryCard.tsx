@@ -83,7 +83,6 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
                 executeShareUrl(categoryId);
             } else if (modalMessageType === 'download') {
                 executeDownload();
-                alert(deleteData);
             } else {
                 console.log('The event is not supported.');
             }

@@ -8,7 +8,7 @@ axios.interceptors.request.use(
     const token = getToken();
 
     // Redirect to login page if token is invalid
-    if(!token) {
+    if (!token) {
       history.push('/login');
     }
 
@@ -29,13 +29,15 @@ axios.interceptors.response.use(
   async (error) => {
     const config = error.config;
 
-    if (error.response.status === 401 && error.response.data.detail === "Invalid token" && !config._retry) {
-      config._retry = true;
-      await refreshAccessToken();
-      return axios(config);
-    }
+    if (error && typeof error === 'object' && error.hasOwnProperty('response')) {
+      if (error.response.status === 401 && error.response.data.detail === "Invalid token" && !config._retry) {
+        config._retry = true;
+        await refreshAccessToken();
+        return axios(config);
+      }
 
-    return Promise.reject(error);
+      return Promise.reject(error);
+    }
   }
 );
 
@@ -51,9 +53,7 @@ export const refreshAccessToken = async () => {
     setToken(token);
     return token;
   } catch (error) {
-    if (error.response.status === 401) {
-      history.push('/login');
-    }
+    history.push('/login');
   }
 }
 

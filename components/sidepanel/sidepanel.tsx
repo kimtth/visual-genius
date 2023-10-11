@@ -400,6 +400,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                         value={categoryTitle}
                         fontWeight='bold'
                         fontSize='2xl'
+                        submitOnBlur={true}
                         onChange={(value: string) => { handleTitleChange(value) }}
                         onSubmit={() => handleUpdateRequest()}
                     >

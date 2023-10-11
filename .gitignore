@@ -159,3 +159,4 @@ backend/infra/parameter.dev.json
 .idea/
 backend/infra/main.dev.ps1
 backend/*.mp3
+.env.production

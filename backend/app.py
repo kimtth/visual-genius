@@ -5,12 +5,14 @@ import random
 import uuid
 import io
 import zipfile
+import re
+import uvicorn
+import httpx
 from typing import List, Any, Optional
 from urllib.parse import urlparse, urlunparse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import httpx
-
-import uvicorn
+from io import BytesIO
+from PIL import Image
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import Vector
@@ -348,7 +350,8 @@ def get_categories(session: Session = Depends(get_db), credentials: HTTPAuthoriz
     if not user_id:
         raise HTTPException(403, "Not authorized")
     try:
-        items = session.query(CategoryModel).filter_by(deleteFlag=0, user_id=user_id).all()
+        items = session.query(CategoryModel).filter_by(
+            deleteFlag=0, user_id=user_id).all()
         # First 3 images for each category
         for item in items:
             imgs = item.images[0:3]
@@ -406,28 +409,40 @@ def remove_query_params(url: str):
 async def upload_image(img_path: str):
     container_client = blob_service_client.get_container_client(container_name)
 
-    from io import BytesIO
-    from PIL import Image
-    import re
-
-    async with httpx.AsyncClient() as client:
-        try:
+    try:
+        async with httpx.AsyncClient() as client:
             response = await client.get(img_path)
-            img = Image.open(BytesIO(response.content))
-            # Verify whether the Image link is broken.
-            # If this method finds any problems, it raises suitable exceptions.
-            img.verify()
-            # Get the file name from the response headers
-            content_disposition = response.headers['Content-Disposition']
-            file_name = re.findall('filename=(.+)', content_disposition)[0]
-            blob_client = container_client.get_blob_client(file_name)
 
-            async with blob_client:
-                await blob_client.upload_blob(img, overwrite=True)
-            return blob_client.url, img
-        except Exception as e:
-            print(e)
+        if response.content is None:
             return None, None
+
+        img = Image.open(BytesIO(response.content))
+        # Verify whether the Image link is broken.
+        # If this method finds any problems, it raises suitable exceptions.
+        img.verify()
+
+        # Get the file name from the response headers
+        content_disposition = response.headers.get('Content-Disposition')
+        if content_disposition:
+            file_name = re.findall('filename=(.+)', content_disposition)[0]
+        else:
+            file_name = img_path.split('/')[-1]
+
+        blob_client = container_client.get_blob_client(file_name)
+
+        # Reopen the content for unexpected error, 'NoneType' object has no attribute 'seek'.
+        with Image.open(BytesIO(response.content)) as save_img:
+            output_buffer = BytesIO()
+            save_img.save(output_buffer, img.format)
+            output_buffer.seek(0)
+
+        async with blob_client:
+            await blob_client.upload_blob(output_buffer, overwrite=True)
+
+        return blob_client.url, img
+    except Exception as e:
+        print(e)
+        return None, None
 
 
 @app.get('/category/{sid}')
@@ -574,9 +589,11 @@ def get_images(request: Request, session: Session = Depends(get_db), credentials
 
         if (category_id):
             if (category_id == 'file_upload'):
-                items = session.query(ImageModel).filter_by(categoryId = category_id).all()
+                items = session.query(ImageModel).filter_by(
+                    categoryId=category_id).all()
             else:
-                items = session.query(ImageModel).filter_by(deleteFlag='0', categoryId = category_id).all()
+                items = session.query(ImageModel).filter_by(
+                    deleteFlag='0', categoryId=category_id).all()
         else:
             items = session.query(ImageModel).filter_by(deleteFlag='0').all()
 
@@ -692,14 +709,15 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
             await blob_exist_check_delete_image(db_img_path)
         if req_img_path:
             item.imgPath, image_data = await upload_image(req_img_path)
+            if image_data is None:
+                raise HTTPException(500, "Failed to update an image")
 
         session.commit()
         session.refresh(item)
 
-        if image_data:
-            acs_doc_item = await gen_acs_document(item, image_data)
-            # Run azure cognitive search for updates
-            insert_acs_document([acs_doc_item])
+        acs_doc_item = await gen_acs_document(item, image_data)
+        # Run azure cognitive search for updates
+        insert_acs_document([acs_doc_item])
 
         return ImageDB.model_validate(item)
     except Exception as e:
@@ -731,13 +749,12 @@ async def delete_image(sid: str, session: Session = Depends(get_db), credentials
         raise HTTPException(403, "Not authorized")
     try:
         item = session.get(ImageModel, sid)
-        if not item:
-            raise HTTPException(status_code=404, detail="Category not found")
-        item.deleteFlag = 1
-        session.commit()
-        session.refresh(item)
+        if item:
+            item.deleteFlag = 1
+            session.commit()
+            session.refresh(item)
 
-        delete_acs_document([item.sid])
+            delete_acs_document([item.sid])
         return JSONResponse(content={"message": "Image deleted successfully"})
     except Exception as e:
         print(e)
@@ -993,7 +1010,8 @@ def insert_acs_document(acs_items: List[dict]):
             print('insert_acs_document:', result[0].succeeded)
     except Exception as e:
         print('Azure Cognitive Search index: ', e)
-        raise HTTPException(500, "Failed to upload files to Azure Cognitive Search index")
+        raise HTTPException(
+            500, "Failed to upload files to Azure Cognitive Search index")
 
 
 def delete_acs_document(acs_items: List[dict]):
@@ -1010,7 +1028,8 @@ def delete_acs_document(acs_items: List[dict]):
                 print("Delete new document succeeded: {}".format(result))
     except Exception as e:
         print(e)
-        raise HTTPException(500, "Failed to delete files to Azure Cognitive Search index")
+        raise HTTPException(
+            500, "Failed to delete files to Azure Cognitive Search index")
 
 
 directory_path = os.path.dirname(os.path.abspath(__file__))
@@ -1021,7 +1040,7 @@ static_path = os.path.join(directory_path, "public")
 
 @app.get("/")
 async def redirect_gen():
-    return RedirectResponse(url="/index.html")
+    return FileResponse(f'{static_path}/index.html') # RedirectResponse(url="/index.html")
 
 
 @app.get("/gen")
@@ -1056,6 +1075,8 @@ app.mount("/", StaticFiles(directory=static_path), name="public")
 
 if __name__ == '__main__':
     if os.getenv('ENV_TYPE') == 'dev':
-        uvicorn.run(app='app:app', host="127.0.0.1", port=5000) # app:app == filename:app <= FastAPI()
+        # app:app == filename:app <= FastAPI()
+        uvicorn.run(app='app:app', host="127.0.0.1", port=5000)
     else:
-        uvicorn.run(app='app:app', host="0.0.0.0", workers=4) # Azure App service uses 8000 as default port internally. 
+        # Azure App service uses 8000 as default port internally.
+        uvicorn.run(app='app:app', host="0.0.0.0", workers=4)
