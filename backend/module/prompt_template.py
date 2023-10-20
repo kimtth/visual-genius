@@ -10,8 +10,6 @@ class PromptType:
 class ImgListPrompt(PromptType):
     imgListPrompt = '''
     ###
-    User query: {query}
-
     You are a {persona}. As a {persona}, you are asked to generate a list of words.
     The list should be inspired by the user query and "{persona}". 
     
@@ -35,8 +33,6 @@ class ImgListPrompt(PromptType):
 class ImgStepPrompt(PromptType):
     imgStepPrompt = '''
     ###
-    User query: {query}
-
     You are a {persona}. As a {persona}, you are asked to generate a list of steps.
     The list should be inspired by the user query and "{persona}". 
 
