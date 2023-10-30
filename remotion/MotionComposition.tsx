@@ -23,7 +23,7 @@ export const MotionComposition = () => {
     useEffect(() => {
         if (Images && Images.length > idx) {
             const idx = Math.floor(frame / 50);
-            console.log('idx', idx);
+            // console.log('idx', idx);
             setIdx(idx);
         } else {
             setIdx(0);

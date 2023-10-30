@@ -3,7 +3,6 @@
 export const executeShareUrl = (categoryId: string) => {
     const root = location.protocol + '//' + location.host;
     navigator.clipboard.writeText(`${root}/gen?categoryId=${categoryId}`)
-    alert('The url has been copied to your clipboard.');
 }
 
 

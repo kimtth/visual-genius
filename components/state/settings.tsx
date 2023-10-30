@@ -16,7 +16,7 @@ export const setRowNumber = createAction(SET_ROW_NUMBER);
 export const setColumnNumber = createAction(SET_COLUMN_NUMBER);
 
 const initialSettingState: SettingState = {
-    showImgCaption: false,
+    showImgCaption: true,
     showTextSpeech: false,
     showNumbering: false,
     setImageNumber: 1,

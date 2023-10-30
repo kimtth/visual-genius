@@ -107,6 +107,14 @@ const SelectPage = () => {
 
     if (checkedItemsArray.length > 0) {
       try {
+        // data null check
+        if (!categoryData['sid']) {
+          alert("No data!");
+          throw new Error('No data!');
+        }
+
+        console.log('data:', data);
+
         const transformedData = data.filter((item: any) =>
           checkedItemsArray.includes(item['sid'])).map((item: any) =>
           ({

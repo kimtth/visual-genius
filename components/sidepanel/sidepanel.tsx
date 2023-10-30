@@ -238,8 +238,9 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
     }
 
     const handleAddPhoto = () => {
-        push(pathes.rtn);
-        //window.location.href = `${pathes.rtn}`;
+        if (confirm("Do you want to add a photo? Before proceeding, please save the task.") == true) {
+            push(pathes.rtn);
+        }
     }
 
     const handleImageRearrange = (e: MouseEvent<HTMLButtonElement>) => {
@@ -304,21 +305,72 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         setShowModal(true);
     }
 
+    const handleDelete = () => {
+        let alertMessage = '';
+        if (categoryData.sid) {
+            executeDelete();
+            alertMessage = 'The category has been deleted.';
+        } else {
+            alertMessage = 'Please save the category first.';
+        }
+        return alertMessage;
+    }
+
+    const handleSave = () => {
+        handlePostCategory();
+    }
+
+    const handleShare = () => {
+        let alertMessage = '';
+        if (categoryData.sid) {
+            executeShareUrl(categoryData.sid);
+            alertMessage = 'The url has been copied to your clipboard.';
+        } else {
+            alertMessage = 'Please save the category first.';
+        }
+        return alertMessage;
+    }
+
+    const handleDownload = () => {
+        let alertMessage = '';
+        if (categoryData.sid) {
+            executeDownload();
+        } else {
+            alertMessage = 'Please save the category first.';
+        }
+        return alertMessage;
+    }
+
+    const handlePrint = () => {
+        return 'Under construction';
+    }
+
     const handleCallback = () => {
         try {
-            if (modalMessageType === 'delete') {
-                executeDelete();
-                alert('The category has been deleted.');
-            } else if (modalMessageType === 'save') {
-                handlePostCategory();
-            } else if (modalMessageType === 'share') {
-                executeShareUrl(categoryData.sid);
-            } else if (modalMessageType === 'download') {
-                executeDownload();
-            } else if (modalMessageType === 'print') {
-                alert('Under construction');
-            } else {
-                console.log('The event is not supported.');
+            let alertMessage = '';
+
+            switch (modalMessageType) {
+                case 'delete':
+                    alertMessage = handleDelete();
+                    break;
+                case 'save':
+                    handleSave();
+                    break;
+                case 'share':
+                    alertMessage = handleShare();
+                    break;
+                case 'download':
+                    alertMessage = handleDownload();
+                    break;
+                case 'print':
+                    alertMessage = handlePrint();
+                    break;
+                default:
+                    console.log('The event is not supported.');
+            }
+
+            if (alertMessage) {
+                alert(alertMessage);
             }
         } catch (error) {
             console.error(error);

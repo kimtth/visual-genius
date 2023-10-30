@@ -74,17 +74,58 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
         setShowModal(true);
     }
 
+    const handleDelete = () => {
+        let alertMessage = '';
+        if (categoryId) {
+            executeDelete();
+            alertMessage = 'The category has been deleted.';
+        } else {
+            alertMessage = 'Please save the category first.';
+        }
+        return alertMessage;
+    }
+
+    const handleShare = () => {
+        let alertMessage = '';
+        if (categoryId) {
+            executeShareUrl(categoryId);
+            alertMessage = 'The url has been copied to your clipboard.';
+        } else {
+            alertMessage = 'Please save the category first.';
+        }
+        return alertMessage;
+    }
+
+    const handleDownload = () => {
+        let alertMessage = '';
+        if (categoryId) {
+            executeDownload();
+        } else {
+            alertMessage = 'Please save the category first.';
+        }
+        return alertMessage;
+    }
+
     const handleCallback = () => {
         try {
-            if (modalMessageType === 'delete') {
-                executeDelete();
-                alert('The category has been deleted.');
-            } else if (modalMessageType === 'share') {
-                executeShareUrl(categoryId);
-            } else if (modalMessageType === 'download') {
-                executeDownload();
-            } else {
-                console.log('The event is not supported.');
+            let alertMessage = '';
+
+            switch (modalMessageType) {
+                case 'delete':
+                    alertMessage = handleDelete();
+                    break;
+                case 'share':
+                    alertMessage = handleShare();
+                    break;
+                case 'download':
+                    alertMessage = handleDownload();
+                    break;
+                default:
+                    console.log('The event is not supported.');
+            }
+
+            if (alertMessage) {
+                alert(alertMessage);
             }
         } catch (error) {
             console.error(error);

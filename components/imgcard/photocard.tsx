@@ -44,8 +44,9 @@ const PhotoCard: FC<PhotoProps> = ({ item, index, number, imgPath }) => {
                         {...provided.dragHandleProps}
                     >
                         <Card
-                            maxW='sm'
-                            style={{ margin: '3px' }}
+                            maxW={{ sm: '15vw' }}
+                            style={{ margin: '2px' }}
+                            alignItems={"center"}
                         >
                             <CardBody>
                                 <Flex align="center">
