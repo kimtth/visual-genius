@@ -21,7 +21,7 @@ const initialSettingState: SettingState = {
     showNumbering: false,
     setImageNumber: 1,
     setRowNumber: 1,
-    setColumnNumber: 5
+    setColumnNumber: 4
 }
 
 export const settings = handleActions<SettingState>(

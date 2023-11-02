@@ -1,4 +1,4 @@
-import { Card, CardBody, Image, Text, Checkbox, Flex, Spacer, useDisclosure } from "@chakra-ui/react";
+import { Card, CardBody, Image, Text, Checkbox, Flex, Spacer, useDisclosure, Box, Stack, HStack } from "@chakra-ui/react";
 import SearchImageModal from "./searchModalCard";
 import { FC } from "react";
 
@@ -9,7 +9,7 @@ interface PhotoProps {
     onSelect: (checked: boolean) => void;
 }
 
-const ResultCard: FC<PhotoProps> = ({ title, imgPath, checked, onSelect }) => {
+const SearchResultCard: FC<PhotoProps> = ({ title, imgPath, checked, onSelect }) => {
     const { isOpen, onOpen, onClose } = useDisclosure();
 
     return (
@@ -21,30 +21,24 @@ const ResultCard: FC<PhotoProps> = ({ title, imgPath, checked, onSelect }) => {
                 : null}
             <div>
                 <Card>
-                    <CardBody alignContent={"center"}>
-                        <Flex minWidth='max-content' alignItems='center'>
-
-                            <Spacer />
-                            <Image
-                                src={imgPath ? imgPath : ""}
-                                borderRadius='lg'
-                                marginLeft={"2px"}
-                                objectFit='cover'
-                                maxW={{ sm: '10vw' }}
-                                onClick={onOpen}
-                            />
-                        </Flex>
+                    <CardBody>
+                        <Image
+                            maxW='100%'
+                            src={imgPath}
+                            fallbackSrc="https://via.placeholder.com/350x150/8ad5f0/08088A?text=-"
+                            borderRadius='lg'
+                            onClick={onOpen}
+                        />
                         <Spacer />
-                        <Flex>
+                        <HStack mt={2}>
                             <Checkbox
                                 size='sm'
                                 colorScheme='green'
-                                margin={"5px"}
                                 isChecked={checked}
                                 onChange={() => { onSelect(!checked) }}
                             />
                             <Text fontSize='sm' as="b" isTruncated>{title}</Text>
-                        </Flex>
+                        </HStack>
                     </CardBody>
                 </Card>
             </div>
@@ -52,4 +46,4 @@ const ResultCard: FC<PhotoProps> = ({ title, imgPath, checked, onSelect }) => {
     )
 }
 
-export default ResultCard;
+export default SearchResultCard;

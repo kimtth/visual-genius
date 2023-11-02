@@ -1,30 +1,45 @@
-import Header from "../../components/header/header";
-import CategoryCard from "../../components/imgcard/categoryCard";
+// @ts-nocheck
+import React, { useCallback, useEffect, useState, MouseEvent } from "react";
+import useAxios from "axios-hooks";
+import { useRouter } from "next/router";
+import { Paginator, Container, PageGroup, usePaginator } from "chakra-paginator";
 import { Box, Button, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
 import { useSelector, useDispatch } from "react-redux";
 import { setCategoriesDataPayload } from "../../components/state/datas";
-import React, { useCallback, useEffect, MouseEvent } from "react";
-import useAxios from "axios-hooks";
 import { IoCreate } from "react-icons/io5";
 import '../../components/util/axiosInterceptor';
 import { API_ENDPOINT } from "../../components/state/const";
-import { pathes } from "../../components/state/pathes";
+import Header from "../../components/header/header";
+import CategoryCard from "../../components/imgcard/categoryCard";
 
 
-const kbStyles = {
+const newBtnStyles = {
   display: 'flex',
   borderRadius: '8px',
-  paddingTop: '2%',
+  width: '100%',
+  paddingTop: '20px',
+  paddingRight: '15vw',
+  paddingBottom: '20px',
   justifyContent: 'right',
-  margin: 'auto 15vw auto',
 }
 
-console.log(`${API_ENDPOINT}/categories`);
+const footerStyles = {
+  position: 'absolute',
+  width: '100%',
+  height: '20px',
+  justifyContent: 'center'
+}
+
 
 const Home = () => {
-  // https://stackoverflow.com/questions/65146878/nextjs-router-seems-very-slow-compare-to-react-router
-  //const { push, refresh } = useRouter();
-  const [{ data, loading, error }, refetch] = useAxios(`${API_ENDPOINT}/categories`, { manual: true, autoCancel: false });
+  const { push, refresh } = useRouter();
+  const itemCountPerPage = 6;
+  const [pageNum, setPageNum] = useState(1);
+  const { currentPage, setCurrentPage } = usePaginator({
+    initialState: { currentPage: 1 }
+  });
+  const [{ data: cntData, loading: cntloading, error: cntError }, cntrefetch] = useAxios(`${API_ENDPOINT}/categories/count`, { manual: true, autoCancel: false });
+  const [{ data, loading, error }, refetch] = useAxios(`${API_ENDPOINT}/categories?page=${pageNum}&per_page=6`, { manual: true, autoCancel: false });
   const categoriesData = useSelector((state: any) => state.datas.CategoriesDataPayload);
   const dispatch = useDispatch();
 
@@ -34,13 +49,14 @@ const Home = () => {
   );
 
   useEffect(() => {
-    try {
-      refetch();
-    } catch (error) {
-      alert(error);
-      console.error(error);
-    }
+    handleFetch();
   }, []);
+
+  useEffect(() => {
+    if (cntData) {
+      setPageNum(Math.ceil(parseInt(cntData['count']) / itemCountPerPage));
+    }
+  }, [cntData]);
 
   useEffect(() => {
     if (data) {
@@ -48,12 +64,41 @@ const Home = () => {
     }
   }, [data]);
 
-  const handleNewCategory = (e: MouseEvent<HTMLButtonElement>) => {
-    //push('/gen');
-    window.location.href = `${pathes.gen}`;
+  const handleFetch = () => {
+    try {
+      refetch();
+      cntrefetch();
+    } catch (error) {
+      alert(error);
+      console.error(error);
+    }
   }
 
-  // if (loading) return <p>Loading...</p>;
+  const handleNewCategory = (e: MouseEvent<HTMLButtonElement>) => {
+    push('/gen');
+  }
+
+  const handlePageChange = (pageNum: number) => {
+    setCurrentPage(pageNum);
+    handleFetch();
+  }
+
+  const baseStyles = {
+    w: 4,
+    h: 5
+  };
+
+  const normalStyles = {
+    ...baseStyles,
+    bg: "white"
+  };
+
+  const activeStyles = {
+    ...baseStyles,
+    bg: "blue.100",
+    borderRadius: "5px"
+  };
+
   if (error) return <p>Error!</p>;
 
   return (
@@ -61,7 +106,8 @@ const Home = () => {
       <Box position="sticky" w="100%" top="0" zIndex="20">
         <Header />
       </Box>
-      <Center style={kbStyles}>
+      <Box position="sticky"
+        style={newBtnStyles}>
         <Button
           aria-label="New"
           colorScheme="twitter"
@@ -71,7 +117,7 @@ const Home = () => {
         >
           New
         </Button>
-      </Center>
+      </Box>
       <Center>
         <Tabs>
           <TabList>
@@ -93,6 +139,20 @@ const Home = () => {
           </TabPanels>
         </Tabs>
       </Center>
+      <Box>
+        {/* Add the Paginator component here */}
+        <Paginator
+          pagesQuantity={pageNum}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+          normalStyles={normalStyles}
+          activeStyles={activeStyles}
+        >
+          <Container align="center" w="full" p={4} style={footerStyles}>
+            <PageGroup align="center" />
+          </Container>
+        </Paginator>
+      </Box>
     </div>
   );
 };

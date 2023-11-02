@@ -1,7 +1,7 @@
 import dynamic from 'next/dynamic';
 import { Card, CardBody, Image, Flex, Text, useDisclosure, IconButton } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
-import BasicImageModal from "./modalCard";
+import BasicImageModal from "./imageModalCard";
 import { FcSpeaker } from "react-icons/fc";
 import synthesizeSpeech from "../util/speechUtil";
 import { FC } from "react";

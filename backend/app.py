@@ -16,7 +16,7 @@ from PIL import Image
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import Vector
-from azure.storage.blob.aio import BlobServiceClient
+from azure.storage.blob.aio import BlobServiceClient, ContainerClient
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, HTTPException, Depends, Request, Response, Security, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -344,17 +344,22 @@ def delete_user(user_id: str, session: Session = Depends(get_db), credentials: H
 
 
 @app.get('/categories')
-def get_categories(session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+def get_categories(page: Optional[int] = 1, per_page: Optional[int] = 6, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
     user_id = auth_handler.decode_token(token)
     if not user_id:
         raise HTTPException(403, "Not authorized")
     try:
+        # In the context of pagination, `(page - 1) * per_page` calculates the number of items to skip.
+        # - For `page` 1, `(page - 1) * per_page` equals 0, so no items are skipped and the first 6 items are returned.
+        # - For `page` 2, `(page - 1) * per_page` equals 6, so the first 6 items are skipped and the next 6 items are returned.
+        # - For `page` 3, `(page - 1) * per_page` equals 12, so the first 6 items are skipped and the next 6 items are returned.
         items = session.query(CategoryModel).filter_by(
-            deleteFlag=0, user_id=user_id).all()
+            deleteFlag=0, user_id=user_id).offset((page - 1) * per_page).limit(per_page).all()
         # First 3 images for each category
         for item in items:
-            imgs = item.images[0:3]
+            imgs = [img for img in item.images if img.deleteFlag == 0]
+            imgs = imgs[:3]
             item.contentUrl = [img.imgPath for img in imgs]
         return [CategoryDB.model_validate(item) for item in items]
     except Exception as e:
@@ -362,26 +367,61 @@ def get_categories(session: Session = Depends(get_db), credentials: HTTPAuthoriz
         raise HTTPException(500, "Failed to get categories")
 
 
+@app.get('/categories/count')
+def count_categories(session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    user_id = auth_handler.decode_token(token)
+    if not user_id:
+        raise HTTPException(403, "Not authorized")
+    try:
+        count = session.query(CategoryModel).filter_by(
+            deleteFlag=0, user_id=user_id).count()
+        return {"count": count}
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, "Failed to get category count")
+
+
+@app.get('/category/{sid}/exist')
+async def get_category(sid: str, session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    user_id = auth_handler.decode_token(token)
+    if not user_id:
+        raise HTTPException(403, "Not authorized")
+    try:
+        item = session.query(CategoryModel).filter_by(sid=sid).first()
+        if item and item.deleteFlag == 0:
+            return JSONResponse(content={"count": 1})
+        else:
+            return JSONResponse(content={"count": 0})
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, "Failed to get a category")
+
+
 @app.post('/category')
 async def create_category(category: CategorySchema, images: List[ImageSchema], session: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
-    if not auth_handler.decode_token(token):
+    user_id = auth_handler.decode_token(token)
+    if not user_id:
         raise HTTPException(403, "Not authorized")
     try:
+        container_client = blob_service_client.get_container_client(
+            container_name)
         new_category = CategoryModel(**category.model_dump())
 
         acs_items = list()
         # Create the associated images
         for image in images:
             new_image = ImageModel(**image.model_dump())
+            new_image.user_id = new_category.user_id
 
             # Upload the image to blob storage
-            # img_path = remove_query_params(new_image.imgPath)
-            new_image.imgPath, image_data = await upload_image(new_image.imgPath)
+            new_image.imgPath, image_data = await upload_image(container_client, new_image.imgPath)
 
             if image_data:
                 session.add(new_image)
-                acs_doc_item = await gen_acs_document(new_image, image_data)
+                acs_doc_item = await gen_acs_document(new_image)
                 acs_items.append(acs_doc_item)
 
         # The order in which you add objects to the session does not matter,
@@ -405,33 +445,45 @@ def remove_query_params(url: str):
     return cleaned_url
 
 
-# Speed up the upload process by using async
-async def upload_image(img_path: str):
-    container_client = blob_service_client.get_container_client(container_name)
-
+async def validate_image_url(img_path):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(img_path)
+    except Exception as e:
+        print(f"Request failed: {e}")
 
-        if response.content is None:
-            return None, None
+    if response.status_code != 200 or response.content is None:
+        raise "Failed to retrieve image"
 
+    try:
         img = Image.open(BytesIO(response.content))
+        img.verify()
         # Verify whether the Image link is broken.
         # If this method finds any problems, it raises suitable exceptions.
-        img.verify()
+    except Exception as e:
+        print(f"Image verification failed: {e}")
 
-        # Get the file name from the response headers
-        content_disposition = response.headers.get('Content-Disposition')
-        if content_disposition:
-            file_name = re.findall('filename=(.+)', content_disposition)[0]
-        else:
-            file_name = img_path.split('/')[-1]
+    # Get the file name from the response headers
+    content_disposition = response.headers.get('Content-Disposition')
+    if content_disposition:
+        file_name = re.findall('filename=(.+)', content_disposition)[0]
+    else:
+        file_name = img_path.split('/')[-1]
+        file_name = remove_query_params(file_name)
+
+    return img, response.content, file_name
+
+
+# Speed up the upload process by using async
+async def upload_image(container_client: ContainerClient, img_path: str):
+    try:
+        img, content, file_name = await validate_image_url(img_path)
 
         blob_client = container_client.get_blob_client(file_name)
 
         # Reopen the content for unexpected error, 'NoneType' object has no attribute 'seek'.
-        with Image.open(BytesIO(response.content)) as save_img:
+        img_byte_io = BytesIO(content)
+        with Image.open(img_byte_io) as save_img:
             output_buffer = BytesIO()
             save_img.save(output_buffer, img.format)
             output_buffer.seek(0)
@@ -439,7 +491,7 @@ async def upload_image(img_path: str):
         async with blob_client:
             await blob_client.upload_blob(output_buffer, overwrite=True)
 
-        return blob_client.url, img
+        return blob_client.url, img_byte_io
     except Exception as e:
         print(e)
         return None, None
@@ -503,7 +555,7 @@ def delete_category(sid: str, session: Session = Depends(get_db), credentials: H
 
         session.commit()
         session.refresh(item)
-        return JSONResponse(content={"message": "Category deleted successfully"})
+        return JSONResponse(content={"sid": sid, "message": "Category deleted successfully"})
     except Exception as e:
         print(e)
         raise HTTPException(500, "Failed to delete an category")
@@ -694,6 +746,8 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
     if not auth_handler.decode_token(token):
         raise HTTPException(403, "Not authorized")
     try:
+        container_client = blob_service_client.get_container_client(
+            container_name)
         item = session.get(ImageModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Image not found")
@@ -708,14 +762,14 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
         if db_img_path:
             await blob_exist_check_delete_image(db_img_path)
         if req_img_path:
-            item.imgPath, image_data = await upload_image(req_img_path)
+            item.imgPath, image_data = await upload_image(container_client, req_img_path)
             if image_data is None:
                 raise HTTPException(500, "Failed to update an image")
 
         session.commit()
         session.refresh(item)
 
-        acs_doc_item = await gen_acs_document(item, image_data)
+        acs_doc_item = await gen_acs_document(item)
         # Run azure cognitive search for updates
         insert_acs_document([acs_doc_item])
 
@@ -754,7 +808,9 @@ async def delete_image(sid: str, session: Session = Depends(get_db), credentials
             session.commit()
             session.refresh(item)
 
-            delete_acs_document([item.sid])
+            acs_item = []
+            acs_item.append({"sid": item.sid})
+            delete_acs_document(acs_item)
         return JSONResponse(content={"message": "Image deleted successfully"})
     except Exception as e:
         print(e)
@@ -985,8 +1041,9 @@ async def gen_synthesize_speech(text: str = Body(..., embed=True), credentials: 
         raise HTTPException(500, "Failed to synthesize speech")
 
 
-async def gen_acs_document(new_item: ImageModel, image_data: Optional[bytes] = None):
-    embed = await cog_embed_gen.generate_image_embeddings_by_stream(image_data, cogSvcsEndpoint, cogSvcsApiKey)
+async def gen_acs_document(new_item: ImageModel):
+    image_url = new_item.imgPath
+    embed = await cog_embed_gen.generate_image_embeddings(image_url, cogSvcsEndpoint, cogSvcsApiKey)
     acs_doc_item = {
         "id": base64.b64encode(new_item.sid.encode()).decode(),
         "sid": new_item.sid,
@@ -1021,15 +1078,24 @@ def delete_acs_document(acs_items: List[dict]):
                                      index_name=index_name,
                                      credential=credential)
 
+        keys_to_delete = []
         for acs_item in acs_items:
-            if search_client.get_document_count(documents=acs_item) > 0:
-                result = search_client.delete_documents(documents=[acs_item])
+            # the sid field was created with not searchable. temporary solution.
+            results = search_client.search(select="id, sid", search_text='*')
+            for item in results:
+                item = item
+                if item['sid'] == acs_item['sid']:
+                    keys_to_delete.append(item['id'])
 
-                print("Delete new document succeeded: {}".format(result))
+        if keys_to_delete:
+            documents_to_delete = [
+                {"@search.action": "delete", "id": key} for key in keys_to_delete]
+            search_client.delete_documents(documents=documents_to_delete)
+            print("Delete document succeeded")
     except Exception as e:
         print(e)
-        raise HTTPException(
-            500, "Failed to delete files to Azure Cognitive Search index")
+        raise Exception(
+            "Failed to delete files to Azure Cognitive Search index")
 
 
 directory_path = os.path.dirname(os.path.abspath(__file__))
@@ -1040,7 +1106,8 @@ static_path = os.path.join(directory_path, "public")
 
 @app.get("/")
 async def redirect_gen():
-    return FileResponse(f'{static_path}/index.html') # RedirectResponse(url="/index.html")
+    # RedirectResponse(url="/index.html")
+    return FileResponse(f'{static_path}/index.html')
 
 
 @app.get("/gen")

@@ -19,6 +19,7 @@
 				"@types/redux-actions": "^2.6.2",
 				"axios": "^1.4.0",
 				"axios-hooks": "^4.0.0",
+				"chakra-paginator": "^0.7.3",
 				"framer-motion": "^7.1.0",
 				"next": "12.2.2",
 				"react": "^18.2.0",

@@ -25,19 +25,19 @@ type Item = {
     sid: string;
 };
 
-type DataPayload = {
-    [key: string]: {
-        items?: Item[];
-    };
-};
+type CountResponse = {
+    count: string;
+}
 
 const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) => {
     const categoryPayload = useSelector((state: any) => state.datas.CategoryData);
-    const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
+    const imageDataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const [imgPath, setImgPath] = useState("");
     const [isGenLoading, setIsGenLoading] = useState(false);
     const dispatch = useDispatch();
 
+    const [{ data: cntData, loading: cntloading, error: cntError }, cntFetch] = useAxios<CountResponse>(
+        `${API_ENDPOINT}/category/${categoryPayload.sid}/exist`, { manual: true, autoCancel: false });
     const [{ data: bingImgUrl, loading: bingImgLoading, error: bingImgError }, getBingImg] = useAxios(
         {
             url: `${API_ENDPOINT}/bing_img/${item.title}?title=${categoryPayload.title}`,
@@ -71,9 +71,9 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
         [dispatch]
     );
 
-    const handleImageUpdate = (imgId: string) => {
+    const handleImageUpdate = async (imgId: string) => {
         const newImgPath = imgPath;
-        let clonedDataPayload = JSON.parse(JSON.stringify(dataPayload));
+        let clonedDataPayload = JSON.parse(JSON.stringify(imageDataPayload));
         const updatedPayload = Object.values(clonedDataPayload).map((obj: any) => {
             if (obj.items) {
                 obj.items = obj.items.map((item: any) => {
@@ -86,21 +86,27 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
             }
             return obj;
         });
-        // TODO: Need to check whether the image is exist or not
+        // Check whether the image is exist or not
         try {
             if (bingImgError) {
                 alert(bingImgError);
             } else {
-                updateImg({
-                    data: {
-                        ...item,
-                        imgPath: newImgPath
-                    }
-                });
-                onDataPayload(updatedPayload);
-                clonedDataPayload = null;
-                onClose();
+                console.log("debug", categoryPayload);
+                const cnt = await cntFetch();
+                console.log("debug", cnt.data);
+                // Wait until cntFetch() is done
+                if (parseInt(cnt?.data.count) > 0) {
+                    updateImg({
+                        data: {
+                            ...item,
+                            imgPath: newImgPath
+                        }
+                    });
+                }
             }
+            onDataPayload(updatedPayload);
+            clonedDataPayload = null;
+            onClose();
         } catch (err) {
             alert(err);
             console.error(err);
@@ -127,7 +133,7 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
 
     const handleImageDelete = (imgId: string) => {
         if (confirm("Are you sure you want to delete this image?")) {
-            let clonedDataPayload = JSON.parse(JSON.stringify(dataPayload));
+            let clonedDataPayload = JSON.parse(JSON.stringify(imageDataPayload));
             const updatedPayload = Object.values(clonedDataPayload).map((obj: any) => {
                 if (obj.items) {
                     obj.items = obj.items.filter((item: any) => item.sid !== imgId);

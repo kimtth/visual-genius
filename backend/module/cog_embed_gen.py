@@ -54,7 +54,7 @@ async def generate_image_embeddings(image_url, cogSvcsEndpoint, cogSvcsApiKey):
             embeddings = response.json()["vector"]  
             return embeddings  
     except Exception as exc:
-        # print(exc)
+        print('Embedding generation failed:', exc)
         return []
 
 
@@ -79,7 +79,7 @@ async def generate_image_embeddings_by_stream(image_stream, cogSvcsEndpoint, cog
             embeddings = response.json()["vector"]  
             return embeddings  
     except Exception as exc:
-        # print(exc)
+        print('Embedding generation failed:', exc)
         return []
 
 

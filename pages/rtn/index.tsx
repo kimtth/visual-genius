@@ -1,6 +1,6 @@
 import Header from "../../components/header/header";
 import { Button, Text, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs, Box, VStack, Divider, HStack, ButtonGroup, IconButton } from "@chakra-ui/react";
-import ResultCard from "../../components/imgcard/searchResultCard";
+import SearchResultCard from "../../components/imgcard/searchResultCard";
 import { BiUpload } from "react-icons/bi";
 import { HiChevronLeft } from "react-icons/hi";
 import { useRouter } from "next/router";
@@ -234,7 +234,7 @@ const SelectPage = () => {
                     {
                       searchDataPayload.map((item: any, index: any) => {
                         return (
-                          <ResultCard
+                          <SearchResultCard
                             key={item['sid']}
                             title={item['title']}
                             imgPath={item['imgPath']}
@@ -253,7 +253,7 @@ const SelectPage = () => {
                       Array.isArray(emojiData) ?
                         emojiData.map((item: any, index: any) => {
                           return (
-                            <ResultCard
+                            <SearchResultCard
                               key={item['sid']}
                               title={item['title']}
                               imgPath={item['imgPath']}
@@ -271,7 +271,7 @@ const SelectPage = () => {
                     {
                       myPhotoData.map((item: any, index: any) => {
                         return (
-                          <ResultCard
+                          <SearchResultCard
                             key={item['sid']}
                             title={item['title']}
                             imgPath={item['imgPath']}

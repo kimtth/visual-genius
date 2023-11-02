@@ -1,16 +1,17 @@
+
+import { useEffect, useCallback, useState } from "react";
+import { useRouter } from "next/router";
+import { useDispatch, useSelector } from "react-redux";
+import useAxios from "axios-hooks";
+import BasicModal from "./basicMessageModal";
+import { pathes } from "../state/pathes";
+import { setCategoriesDataPayload, setCategoryData } from "../state/datas";
+import { API_ENDPOINT } from "../state/const";
+import '../util/axiosInterceptor';
+import { downloadZip, executeShareUrl } from "../util/actionUtil";
 import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack } from "@chakra-ui/react";
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
-import { useEffect, useCallback, useState } from "react";
-import BasicModal from "./basicMessageModal";
-import { pathes } from "../state/pathes";
-import { useDispatch } from "react-redux";
-import { setCategoryData } from "../state/datas";
-import { API_ENDPOINT } from "../state/const";
-import useAxios from "axios-hooks";
-import '../util/axiosInterceptor';
-import { downloadZip, executeShareUrl } from "../util/actionUtil";
-import { useRouter } from "next/router";
 
 const footerIconsLyaoutSytle = {
     justifyContent: 'flex-end'
@@ -33,6 +34,8 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
     const [modalMessageType, setModalMessageType] = useState("");
+    const [popupAlertMessage, setPopupAlertMessage] = useState("");
+    const categoriesData = useSelector((state: any) => state.datas.CategoriesDataPayload);
     const dispatch = useDispatch();
 
     const [{ data: downloadData, loading: downloadLoading, error: downloadError }, executeDownload] = useAxios(
@@ -56,16 +59,26 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
         [dispatch]
     );
 
+    const onCategoriesDataPayload = useCallback(
+        (any: any) => dispatch(setCategoriesDataPayload(any)),
+        [dispatch]
+    );
+
     useEffect(() => {
         downloadZip(downloadData);
     }, [downloadData]);
 
+    useEffect(() => {
+        if (deleteData?.message) {
+            alert(deleteData.message);
+            const newCategoriesData = categoriesData.filter((item: any) => item.categoryId !== deleteData.categoryId);
+            onCategoriesDataPayload(newCategoriesData);
+        }
+    }, [deleteData]);
+
     const handleCategoryClick = (categoryId: string) => {
         onCategoryData(item);
-        //console.log(categoryId);
         push(`${pathes.gen}?categoryId=${categoryId}`);
-        //window.location.href= `${pathes.gen}?categoryId=${categoryId}`;
-
     }
 
     const handleModal = (modalTitle: string, modalMessageType: string) => {
@@ -78,7 +91,6 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
         let alertMessage = '';
         if (categoryId) {
             executeDelete();
-            alertMessage = 'The category has been deleted.';
         } else {
             alertMessage = 'Please save the category first.';
         }
@@ -150,26 +162,32 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
                     onClick={() => handleCategoryClick(categoryId)}
                 >
                     <HStack height={'12vh'} spacing='4px'>
-                        <Image
-                            src={item['contentUrl'].length > 0 ? item['contentUrl'][0] : ''}
-                            borderRadius='lg'
-                            objectFit='cover'
-                            boxSize='100px'
-                            transform='rotate(10deg)'
-                        />
-                        <Image
-                            src={item['contentUrl'].length > 1 ? item['contentUrl'][1] : ''}
-                            borderRadius='lg'
-                            objectFit='cover'
-                            boxSize='100px'
-                            transform='rotate(-10deg)'
-                        />
-                        <Image
-                            src={item['contentUrl'].length > 2 ? item['contentUrl'][2] : ''}
-                            borderRadius='lg'
-                            objectFit='cover'
-                            boxSize='100px'
-                        />
+                        {item['contentUrl'].length > 0 ?
+                            <Image
+                                src={item['contentUrl'][0]}
+                                borderRadius='lg'
+                                h='80%'
+                                w='30%'
+                                objectFit={'cover'}
+                                transform='rotate(10deg)'
+                            /> : ''}
+                        {item['contentUrl'].length > 1 ?
+                            <Image
+                                src={item['contentUrl'][1]}
+                                borderRadius='lg'
+                                h='80%'
+                                w='38%'
+                                objectFit={'cover'}
+                                transform='rotate(-10deg)'
+                            /> : ''}
+                        {item['contentUrl'].length > 2 ?
+                            <Image
+                                src={item['contentUrl'][2]}
+                                borderRadius='lg'
+                                h='80%'
+                                w='30%'
+                                objectFit={'cover'}
+                            /> : ''}
                     </HStack>
                     <Stack mt='5' spacing='3'>
                         <Text

@@ -61,7 +61,6 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
     const [persona, setPersona] = useState("any");
     const { isOpen, onOpen, onClose } = useDisclosure();
 
-    const dataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const imageNumber = useSelector((state: any) => state.settings.setImageNumber);
     const imgCaption = useSelector((state: any) => state.settings.showImgCaption);
     const categoryData = useSelector((state: any) => state.datas.CategoryData);
@@ -134,7 +133,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         (any: any) => dispatch(setCategoryData(any)),
         [dispatch]
     );
-    const onDataPayload = useCallback(
+    const onImageDataPayload = useCallback(
         (any: any) => dispatch(setImageDataPayload(any)),
         [dispatch]
     );
@@ -142,13 +141,20 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
     const onSetImageColRowNumber = (totalImgNum: number, rowNum: number, columnNumber: number) => {
         onSetImageNumber(totalImgNum > 0 ? totalImgNum : 1);
         onSetRowNumber(rowNum > 0 ? rowNum : 1);
-        onSetColumnNumber(columnNumber > 0 ? columnNumber : 5);
+        onSetColumnNumber(columnNumber > 0 ? columnNumber : 4);
         //console.log(totalImgNum, rowNum, columnNumber);
     }
 
     useEffect(() => {
         downloadZip(downloadData);
     }, [downloadData]);
+
+    useEffect(() => {
+        if (deleteData?.message) {
+            alert(deleteData.message);
+            push(pathes.home);
+        }
+    }, [deleteData]);
 
     useEffect(() => {
         if (router.isReady) {
@@ -171,14 +177,13 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
 
     useEffect(() => {
         if (data) {
-            //console.log(data);
             const arrangedData = arrangeDataToColumns(data, columnNumber,
                 // callback function
                 (totalImgNum: number, rowNum: number, columnNumber: number) => {
                     onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
                 }
             );
-            onDataPayload(arrangedData);
+            onImageDataPayload(arrangedData);
             setGenTriggered(false);
         }
     }, [data]);
@@ -238,15 +243,13 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
     }
 
     const handleAddPhoto = () => {
-        if (confirm("Do you want to add a photo? Before proceeding, please save the task.") == true) {
+        if (confirm("Do you want to add a photo? Before proceeding, please check if the task was saved.") == true) {
             push(pathes.rtn);
         }
     }
 
     const handleImageRearrange = (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
-        // console.log(categoryData);
-        // console.log(dataPayload);
         if (columnNumber > 6) {
             alert("Grid size is too big! (max.6)");
             handleAlert(true);
@@ -254,25 +257,25 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
             const rowNum = Math.ceil(imageNumber / columnNumber);
             onSetRowNumber(rowNum);
             onSetColumnNumber(columnNumber);
-            const flatData = Object.values(dataPayload).flatMap((obj: any) => obj.items);
+            const flatData = Object.values(imageData).flatMap((obj: any) => obj.items);
             const arrangedData = arrangeDataToColumns(flatData, columnNumber,
                 // callback function
                 (totalImgNum: number, rowNum: number, columnNumber: number) => {
                     onSetImageColRowNumber(totalImgNum, rowNum, columnNumber)
                 }
             );
-            onDataPayload(arrangedData);
+            onImageDataPayload(arrangedData);
         }
     }
 
     const handlePostCategory = () => {
         try {
             if (Object.keys(categoryData).length === 0) {
-                if (!dataPayload) {
+                if (!imageData) {
                     alert("Please generate the category first!")
                     return;
                 }
-                const flatData = Object.values(dataPayload).flatMap((obj: any) => obj.items);
+                const flatData = Object.values(imageData).flatMap((obj: any) => obj.items);
                 const newCategoryId = flatData[0].categoryId;
                 const newCategory = {
                     sid: newCategoryId,
@@ -288,7 +291,9 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                         category: newCategory,
                         images: flatData
                     }
-                })
+                });
+                onCategoryData(newCategory);
+                onImageDataPayload(imageData);
             } else {
                 alert("The category already exists!")
             }
@@ -309,7 +314,6 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         let alertMessage = '';
         if (categoryData.sid) {
             executeDelete();
-            alertMessage = 'The category has been deleted.';
         } else {
             alertMessage = 'Please save the category first.';
         }

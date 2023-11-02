@@ -65,7 +65,7 @@ const NewPage = () => {
   const onSetImageColRowNumber = (totalImgNum: number, rowNum: number, columnNumber: number) => {
     onSetImageNumber(totalImgNum > 0 ? totalImgNum : 1);
     onSetRowNumber(rowNum > 0 ? rowNum : 1);
-    onSetColumnNumber(columnNumber > 0 ? columnNumber : 5);
+    onSetColumnNumber(columnNumber > 0 ? columnNumber : 4);
     //console.log(totalImgNum, rowNum, columnNumber);
   }
 
