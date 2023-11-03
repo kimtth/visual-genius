@@ -21,7 +21,7 @@
 				"axios-hooks": "^4.0.0",
 				"chakra-paginator": "^0.7.3",
 				"framer-motion": "^7.1.0",
-				"next": "12.2.2",
+				"next": "13.5.0",
 				"react": "^18.2.0",
 				"react-beautiful-dnd": "^13.1.1",
 				"react-dom": "^18.2.0",
