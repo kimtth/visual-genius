@@ -48,7 +48,8 @@ const PhotoCard: FC<PhotoProps> = ({ item, index, number, imgPath }) => {
                             style={{ margin: '2px' }}
                             alignItems={"center"}
                         >
-                            <CardBody>
+                            <CardBody
+                            >
                                 <Flex align="center">
                                     <Image
                                         src={imgPath ? imgPath : "none.png"}
@@ -59,7 +60,7 @@ const PhotoCard: FC<PhotoProps> = ({ item, index, number, imgPath }) => {
                                     />
                                 </Flex>
                                 <Flex justifyContent={"space-between"} mt={1}>
-                                    {showImgCaption && <Text fontSize='sm' as='b'>{showNumbering && `${number}.`}{item.title}</Text>}
+                                    {showImgCaption && <Text fontSize='sm' as='b' noOfLines={1} wordBreak='break-all'>{showNumbering && `${number}.`}{item.title}</Text>}
                                     {showTextSpeech && <IconButton aria-label="Text2Speech" size={"sm"} variant='outline' icon={<FcSpeaker />} onClick={() => synthesizeSpeech(item.title)} />}
                                 </Flex>
                             </CardBody>

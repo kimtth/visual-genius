@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback, useState } from "react";
+import { FC, useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 import useAxios from "axios-hooks";
@@ -21,8 +21,6 @@ interface CategoryCardProps {
     categoryId: string;
     item: any;
 }
-
-import { FC } from "react";
 
 interface CategoryCardProps {
     categoryId: string;
@@ -87,10 +85,14 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
         setShowModal(true);
     }
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         let alertMessage = '';
         if (categoryId) {
-            executeDelete();
+            const msg = await executeDelete();
+            alertMessage = msg.data.message;
+            if (alertMessage) {
+                window.location.reload();
+            }
         } else {
             alertMessage = 'Please save the category first.';
         }
@@ -118,13 +120,13 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
         return alertMessage;
     }
 
-    const handleCallback = () => {
+    const handleCallback = async () => {
         try {
             let alertMessage = '';
 
             switch (modalMessageType) {
                 case 'delete':
-                    alertMessage = handleDelete();
+                    alertMessage = await handleDelete();
                     break;
                 case 'share':
                     alertMessage = handleShare();
@@ -158,10 +160,12 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
                 </> : null
             }
             <Card maxW='sm' key={categoryId}>
-                <CardBody
-                    onClick={() => handleCategoryClick(categoryId)}
-                >
-                    <HStack height={'12vh'} spacing='4px'>
+                <CardBody>
+                    <HStack
+                        height={'12vh'}
+                        spacing='4px'
+                        onClick={() => handleCategoryClick(categoryId)}
+                    >
                         {item['contentUrl'].length > 0 ?
                             <Image
                                 src={item['contentUrl'][0]}

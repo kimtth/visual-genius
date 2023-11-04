@@ -1,4 +1,4 @@
-import { Text, Image, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalOverlay, IconButton, Flex, Button } from "@chakra-ui/react";
+import { Image, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalOverlay, IconButton, Flex, Button, Editable, EditablePreview, EditableInput } from "@chakra-ui/react";
 import { MdOutlineYoutubeSearchedFor } from "react-icons/md";
 import { FaPaintBrush } from "react-icons/fa";
 import { VscSaveAll } from "react-icons/vsc";
@@ -9,6 +9,8 @@ import { FC, useCallback, useEffect, useState } from "react";
 import { setImageDataPayload } from "../state/datas";
 import { useDispatch, useSelector } from "react-redux";
 import { HiOutlineTrash } from "react-icons/hi";
+import { PiCursorClickLight } from "react-icons/pi";
+import { CountResponse } from "../state/type";
 
 
 interface BasicImageModalProps {
@@ -18,18 +20,9 @@ interface BasicImageModalProps {
     onClose: () => void;
 }
 
-type Item = {
-    categoryId: string;
-    title: string;
-    imgPath: string;
-    sid: string;
-};
-
-type CountResponse = {
-    count: string;
-}
 
 const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) => {
+    const [imageTitle, setImageTitle] = useState(item.title);
     const categoryPayload = useSelector((state: any) => state.datas.CategoryData);
     const imageDataPayload = useSelector((state: any) => state.datas.ImageDataPayload);
     const [imgPath, setImgPath] = useState("");
@@ -40,14 +33,14 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
         `${API_ENDPOINT}/category/${categoryPayload.sid}/exist`, { manual: true, autoCancel: false });
     const [{ data: bingImgUrl, loading: bingImgLoading, error: bingImgError }, getBingImg] = useAxios(
         {
-            url: `${API_ENDPOINT}/bing_img/${item.title}?title=${categoryPayload.title}`,
+            url: `${API_ENDPOINT}/bing_img/${imageTitle}?title=${categoryPayload.title}`,
             method: 'GET'
         }, { manual: true, autoCancel: false }
     );
 
     const [{ data: genImgUrl, loading: genImgLoading, error: genImgError }, getGenImg] = useAxios(
         {
-            url: `${API_ENDPOINT}/gen_img/${item.title}`,
+            url: `${API_ENDPOINT}/gen_img/${imageTitle}`,
             method: 'GET'
         }, { manual: true, autoCancel: false }
     );
@@ -71,6 +64,27 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
         [dispatch]
     );
 
+    useEffect(() => {
+        setImgPath(item.imgPath);
+    }, [])
+
+    useEffect(() => {
+        if (bingImgUrl) {
+            setImgPath(bingImgUrl);
+        } else {
+            setImgPath(item.imgPath);
+        }
+    }, [bingImgUrl])
+
+    useEffect(() => {
+        if (genImgUrl) {
+            setImgPath(genImgUrl);
+        } else {
+            setImgPath(item.imgPath);
+        }
+        setIsGenLoading(false);
+    }, [genImgUrl])
+
     const handleImageUpdate = async (imgId: string) => {
         const newImgPath = imgPath;
         let clonedDataPayload = JSON.parse(JSON.stringify(imageDataPayload));
@@ -78,7 +92,7 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
             if (obj.items) {
                 obj.items = obj.items.map((item: any) => {
                     if (item.sid === imgId) {
-                        return { ...item, imgPath: newImgPath };
+                        return { ...item, imgPath: newImgPath, title: imageTitle };
                     }
                     return item;
                 });
@@ -91,15 +105,14 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
             if (bingImgError) {
                 alert(bingImgError);
             } else {
-                console.log("debug", categoryPayload);
                 const cnt = await cntFetch();
-                console.log("debug", cnt.data);
                 // Wait until cntFetch() is done
                 if (parseInt(cnt?.data.count) > 0) {
                     updateImg({
                         data: {
                             ...item,
-                            imgPath: newImgPath
+                            imgPath: newImgPath,
+                            title: imageTitle
                         }
                     });
                 }
@@ -156,26 +169,9 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
         }
     }
 
-    useEffect(() => {
-        setImgPath(item.imgPath);
-    }, [])
-
-    useEffect(() => {
-        if (bingImgUrl) {
-            setImgPath(bingImgUrl);
-        } else {
-            setImgPath(item.imgPath);
-        }
-    }, [bingImgUrl])
-
-    useEffect(() => {
-        if (genImgUrl) {
-            setImgPath(genImgUrl);
-        } else {
-            setImgPath(item.imgPath);
-        }
-        setIsGenLoading(false);
-    }, [genImgUrl])
+    const handleTitleChange = (newTitle: string) => {
+        setImageTitle(newTitle);
+    }
 
     return (
         <>
@@ -193,7 +189,19 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
                         />
                     </ModalBody>
                     <ModalFooter justifyContent={"space-between"}>
-                        <Text as='b'>{item.title}</Text>
+                        <Flex>
+                            <Editable
+                                value={imageTitle}
+                                fontWeight='bold'
+                                fontSize='md'
+                                submitOnBlur={true}
+                                onChange={(value: string) => { handleTitleChange(value) }}
+                            >
+                                <EditablePreview />
+                                <EditableInput />
+                            </Editable>
+                            <PiCursorClickLight />
+                        </Flex>
                         <Flex>
                             <IconButton
                                 variant='ghost'

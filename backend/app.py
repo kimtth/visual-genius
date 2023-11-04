@@ -410,29 +410,45 @@ async def create_category(category: CategorySchema, images: List[ImageSchema], s
             container_name)
         new_category = CategoryModel(**category.model_dump())
 
-        acs_items = list()
+        acs_items, failed_images = [], []
         # Create the associated images
         for image in images:
-            new_image = ImageModel(**image.model_dump())
-            new_image.user_id = new_category.user_id
+            try:
+                new_image = ImageModel(**image.model_dump())
+                new_image.user_id = new_category.user_id
+                original_img_path = new_image.imgPath
 
-            # Upload the image to blob storage
-            new_image.imgPath, image_data = await upload_image(container_client, new_image.imgPath)
+                # Upload the image to blob storage
+                new_image.imgPath, image_data = await upload_image(container_client, new_image.imgPath)
 
-            if image_data:
+                trigger_exception = False
+                if image_data == None:
+                    # Without filtering the images that are failed, revert to image URL.
+                    new_image.imgPath = original_img_path
+                    trigger_exception = True
+
                 session.add(new_image)
                 acs_doc_item = await gen_acs_document(new_image)
                 acs_items.append(acs_doc_item)
 
+                if trigger_exception:
+                    raise Exception("Failed to upload image")
+            except Exception as e:
+                msg = f'{new_image.title}: {original_img_path}'
+                print(f'{e}: {msg}')
+                failed_images.append(msg)  # Add failed image to the list
+                continue
+
         # The order in which you add objects to the session does not matter,
         # as long as all the necessary relationships between the objects are properly set up
+        new_category.imgNum = len(images)
         session.add(new_category)
         session.commit()
 
         # Run azure cognitive search for updates
         insert_acs_document(acs_items)
 
-        return CategoryDB.model_validate(new_category)
+        return {"category": CategoryDB.model_validate(new_category), "failed_images": failed_images}
     except Exception as e:
         print(e)
         raise HTTPException(500, "Failed to create a category")
@@ -665,7 +681,7 @@ async def create_image(images: List[ImageSchema], session: Session = Depends(get
         items = []
         acs_items = list()
         for image in images:
-            if not check_image_path(image.categoryId, image.imgPath, session):
+            if not check_image_path_exist(image.categoryId, image.imgPath, session):
                 new_image = ImageModel(**image.model_dump())
                 new_image.sid = str(uuid.uuid4())
                 session.add(new_image)
@@ -687,12 +703,12 @@ async def create_image(images: List[ImageSchema], session: Session = Depends(get
         raise HTTPException(500, "Failed to create images")
 
 
-def check_image_path(category_id: str, img_path: str, session: Session) -> bool:
+def check_image_path_exist(category_id: str, img_path: str, session: Session) -> bool:
     """
     Check if the same imgPath exists based on the categoryId
     """
     query = session.query(ImageModel).filter(
-        ImageModel.categoryId == category_id, ImageModel.imgPath == img_path, ImageModel.deleteFlag != 1)
+        ImageModel.categoryId == category_id, ImageModel.imgPath == img_path, ImageModel.deleteFlag == 0)
     return session.query(query.exists()).scalar()
 
 
@@ -746,8 +762,6 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
     if not auth_handler.decode_token(token):
         raise HTTPException(403, "Not authorized")
     try:
-        container_client = blob_service_client.get_container_client(
-            container_name)
         item = session.get(ImageModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Image not found")
@@ -759,19 +773,26 @@ async def update_image(sid: str, image: ImageSchema, session: Session = Depends(
         db_img_path = item.imgPath
         req_img_path = image.imgPath
 
-        if db_img_path:
-            await blob_exist_check_delete_image(db_img_path)
-        if req_img_path:
-            item.imgPath, image_data = await upload_image(container_client, req_img_path)
-            if image_data is None:
-                raise HTTPException(500, "Failed to update an image")
+        acs_items = list()
+        # If image url was changed, delete the old image and upload the new image
+        if db_img_path != req_img_path:
+            container_client = blob_service_client.get_container_client(container_name)
+            if db_img_path:
+                await blob_exist_check_delete_image(db_img_path)
+            if req_img_path:
+                item.imgPath, image_data = await upload_image(container_client, req_img_path)
+                if image_data is None:
+                    # When the image upload fails, revert to the original image URL.
+                    item.imgPath = db_img_path
+                    raise HTTPException(500, "Failed to update an image")
+
+                acs_doc_item = await gen_acs_document(item)
+                # Run azure cognitive search for updates
+                acs_items.append(acs_doc_item)
+                insert_acs_document(acs_items)
 
         session.commit()
         session.refresh(item)
-
-        acs_doc_item = await gen_acs_document(item)
-        # Run azure cognitive search for updates
-        insert_acs_document([acs_doc_item])
 
         return ImageDB.model_validate(item)
     except Exception as e:
@@ -1004,19 +1025,23 @@ async def file_upload(files: List[UploadFile], session: Session = Depends(get_db
 
         for file in files:
             blob_url = f"{primary_endpoint}/{container_name}/{file.filename}"
-            if not check_image_path(category_id, blob_url, session):
-                contents = await file.read()
-                blob_client = container_client.get_blob_client(file.filename)
-                await blob_client.upload_blob(contents, overwrite=True)
+            if not check_image_path_exist(category_id, blob_url, session):
+                try:
+                    contents = await file.read()
+                    blob_client = container_client.get_blob_client(file.filename)
+                    await blob_client.upload_blob(contents, overwrite=True)
 
-                filename_without_extension = os.path.splitext(file.filename)[0]
-                new_item = ImageModel(sid=str(uuid.uuid4(
-                )), categoryId=category_id, imgPath=blob_client.url, title=filename_without_extension)
-                session.add(new_item)
-                session.commit()
+                    filename_without_extension = os.path.splitext(file.filename)[0]
+                    new_item = ImageModel(sid=str(uuid.uuid4(
+                    )), categoryId=category_id, imgPath=blob_client.url, title=filename_without_extension)
+                    session.add(new_item)
+                    session.commit()
 
-                acs_doc_item = await gen_acs_document(new_item)
-                acs_items.append(acs_doc_item)
+                    acs_doc_item = await gen_acs_document(new_item)
+                    acs_items.append(acs_doc_item)
+                except Exception as e:
+                    print(f'File upload failed: {e}: {file.filename}')
+                    continue
 
         if acs_items:
             insert_acs_document(acs_items)
@@ -1080,12 +1105,16 @@ def delete_acs_document(acs_items: List[dict]):
 
         keys_to_delete = []
         for acs_item in acs_items:
-            # the sid field was created with not searchable. temporary solution.
-            results = search_client.search(select="id, sid", search_text='*')
-            for item in results:
-                item = item
-                if item['sid'] == acs_item['sid']:
-                    keys_to_delete.append(item['id'])
+            try:
+                # the sid field was created with not searchable. temporary solution.
+                results = search_client.search(select="id, sid", search_text='*')
+                for item in results:
+                    item = item
+                    if item['sid'] == acs_item['sid']:
+                        keys_to_delete.append(item['id'])
+            except Exception as e:
+                print(e)
+                continue
 
         if keys_to_delete:
             documents_to_delete = [

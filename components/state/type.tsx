@@ -21,3 +21,7 @@ export interface DataFromBackend {
         items: any[];
     };
 }
+
+export type CountResponse = {
+    count: string;
+}

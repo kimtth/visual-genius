@@ -21,6 +21,7 @@ import { arrangeDataToColumns } from "../data/dataHandler";
 import { downloadZip, executeShareUrl, getSignInUserId } from "../util/actionUtil";
 import Axios from "axios";
 import { DeleteIcon } from "@chakra-ui/icons";
+import { CountResponse } from "../state/type";
 
 
 interface AlertPopupProps {
@@ -53,6 +54,8 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
     const [modalTitle, setModalTitle] = useState("");
     const [categoryIdState, setCategoryId] = useState("");
     const [categoryTitle, setCategoryTitle] = useState("New Category");
+    const [categoryDifficulty, setCategoryDifficulty] = useState("");
+    const [categoryTag, setCategoryTag] = useState("");
     const [modalMessageType, setModalMessageType] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
     const [showNumberingSt, setShowNumberingSt] = useState(false);
@@ -70,6 +73,8 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
     const columnNumber = useSelector((state: any) => state.settings.setColumnNumber);
     const dispatch = useDispatch();
 
+    const [{ data: cntData, loading: cntloading, error: cntError }, cntFetch] = useAxios<CountResponse>(
+        `${API_ENDPOINT}/category/${categoryData.sid}/exist`, { manual: true, autoCancel: false });
     const [{ data, loading, error }, refetch] = useAxios({
         url: `${API_ENDPOINT}/gen_img_list/${prompts}?mode=${mode}&persona=${persona}`,
         method: 'GET'
@@ -165,6 +170,8 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                     const data = result.data;
                     onCategoryData(data);
                     setCategoryTitle(data.title);
+                    setCategoryTag(data.category);
+                    setCategoryDifficulty(data.difficulty);
                     if (data && Object.keys(data).length !== 0) {
                         setDisableGenButton(true);
                     }
@@ -214,17 +221,15 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         }
     }
 
-    const handleTitleChange = (newTitle: string) => {
-        setCategoryTitle(newTitle);
-    }
-
     const handleUpdateRequest = () => {
         try {
             if (Object.keys(categoryData).length !== 0) {
                 executePut({
                     data: {
                         ...categoryData,
-                        title: categoryTitle
+                        title: categoryTitle,
+                        category: categoryTag,
+                        difficulty: categoryDifficulty,
                     }
                 })
             }
@@ -248,8 +253,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         }
     }
 
-    const handleImageRearrange = (e: MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
+    const handleImageRearrange = () => {
         if (columnNumber > 6) {
             alert("Grid size is too big! (max.6)");
             handleAlert(true);
@@ -268,30 +272,59 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         }
     }
 
-    const handlePostCategory = () => {
+    const createNewCategory = (imageData: any, categoryTitle: string, imageNumber: any) => {
+        const newCategoryId = imageData[0].categoryId;
+        return {
+            sid: newCategoryId,
+            title: categoryTitle,
+            category: "Object Recognition", //TODO: change to dynamic
+            difficulty: "Medium",  //TODO: change to dynamic
+            imgNum: imageNumber,
+            user_id: getSignInUserId()
+        };
+    }
+    
+    const getSavedImagesData = (flatData: any[], failedImages: any[]) => {
+        const savedImages = flatData.filter((item: any) => !failedImages.includes(item.sid));
+        return savedImages.reduce((acc: any, item: any) => {
+            const { categoryId, sid, imgPath, title, user_id } = item;
+            if (!acc[categoryId]) {
+                acc[categoryId] = { items: [] };
+            }
+            acc[categoryId].items.push({ sid, imgPath, title, user_id });
+            return acc;
+        }, {});
+    }
+    
+    const handlePostCategory = async () => {
         try {
-            if (Object.keys(categoryData).length === 0) {
+            const cnt = await cntFetch();
+            if (parseInt(cnt?.data.count) === 0) {
                 if (!imageData) {
                     alert("Please generate the category first!")
                     return;
                 }
                 const flatData = Object.values(imageData).flatMap((obj: any) => obj.items);
-                const newCategoryId = flatData[0].categoryId;
-                const newCategory = {
-                    sid: newCategoryId,
-                    title: categoryTitle,
-                    category: "Object Recognition", //TODO: change to dynamic
-                    difficulty: "Medium",  //TODO: change to dynamic
-                    imgNum: imageNumber,
-                    user_id: getSignInUserId()
-                }
-                //console.log(newCategory);
-                executePost({
+                const newCategory = createNewCategory(flatData, categoryTitle, imageNumber);
+                const rtn = await executePost({
                     data: {
                         category: newCategory,
                         images: flatData
                     }
                 });
+                const failedImages = rtn.data.failed_images;
+                if (failedImages.length === 0) {
+                    alert("The category has been saved successfully!");
+                }else{
+                    const message = JSON.stringify(failedImages, null, 2);
+                    alert(message);
+                }
+                // Approach #1: Filtering the images that are failed
+                // const savedImagesData = getSavedImagesData(flatData, failedImages);
+                // onCategoryData(newCategory);
+                // onImageDataPayload(savedImagesData);
+                // handleImageRearrange();
+                // Approach #2: Without filtering the uploading images that are failed, revert to image URL.
                 onCategoryData(newCategory);
                 onImageDataPayload(imageData);
             } else {
@@ -302,7 +335,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
             alert(error);
             console.error(error);
         }
-    }
+    }        
 
     const handleModal = (modalTitle: string, modalMessageType: string) => {
         setModalTitle(modalTitle);
@@ -457,7 +490,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                         fontWeight='bold'
                         fontSize='2xl'
                         submitOnBlur={true}
-                        onChange={(value: string) => { handleTitleChange(value) }}
+                        onChange={(val: string) => { setCategoryTitle(val) }}
                         onSubmit={() => handleUpdateRequest()}
                     >
                         <EditablePreview />
@@ -465,6 +498,33 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                     </Editable>
                     <PiCursorClickLight />
                 </Box>
+                {categoryTag ?
+                    <Box display="flex" alignItems="center" justifyContent="left" ml={5}>
+                        <Editable
+                            value={categoryTag}
+                            maxW={{ base: '100%', sm: '110px' }}
+                            fontSize='xs'
+                            color='blue.400'
+                            borderRadius='lg'
+                            backgroundColor='blue.100'
+                            textAlign="center"
+                            onChange={(val: string) => { setCategoryTag(val) }}
+                            onSubmit={() => handleUpdateRequest()}
+                        >
+                            <EditablePreview p={0} />
+                            <EditableInput />
+                        </Editable>
+                        <Text as='span' ml={1} mr={1}>|</Text>
+                        <Editable
+                            value={`${categoryDifficulty}`}
+                            fontSize='xs'
+                            onChange={(val: string) => { setCategoryDifficulty(val) }}
+                            onSubmit={() => handleUpdateRequest()}
+                        >
+                            <EditablePreview p={0} />
+                            <EditableInput />
+                        </Editable>
+                    </Box> : ''}
                 <Box display="flex" alignItems="center">
                     <IconButton aria-label='Back to Home'
                         variant="ghost"
@@ -654,7 +714,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                             leftIcon={<BiSort />}
                             size='xs'
                             marginBottom={1}
-                            onClick={(e) => { handleImageRearrange(e) }}
+                            onClick={() => { handleImageRearrange() }}
                         >
                             Rearrange
                         </Button>
