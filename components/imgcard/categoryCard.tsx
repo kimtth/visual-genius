@@ -160,10 +160,12 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
                 </> : null
             }
             <Card maxW='sm' key={categoryId}>
-                <CardBody>
+                <CardBody
+                    backgroundColor={'aliceblue'}
+                >
                     <HStack
                         height={'12vh'}
-                        spacing='4px'
+                        spacing={'4px'}
                         onClick={() => handleCategoryClick(categoryId)}
                     >
                         {item['contentUrl'].length > 0 ?

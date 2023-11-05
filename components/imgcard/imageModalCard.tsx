@@ -4,7 +4,7 @@ import { FaPaintBrush } from "react-icons/fa";
 import { VscSaveAll } from "react-icons/vsc";
 import useAxios from "axios-hooks";
 import '../util/axiosInterceptor';
-import { API_ENDPOINT } from "../state/const";
+import { API_ENDPOINT, FALLBACK_SRC } from "../state/const";
 import { FC, useCallback, useEffect, useState } from "react";
 import { setImageDataPayload } from "../state/datas";
 import { useDispatch, useSelector } from "react-redux";
@@ -183,7 +183,8 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
                         <Image
                             maxW='100%'
                             maxH='100%'
-                            src={imgPath ? imgPath : ""}
+                            src={imgPath}
+                            fallbackSrc={FALLBACK_SRC}
                             borderRadius='lg'
                             objectFit='cover'
                         />

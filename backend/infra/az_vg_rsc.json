@@ -1,0 +1,425 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.6.18.56646",
+      "templateHash": "9888356258355239701"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "prefix": {
+      "type": "string"
+    },
+    "pgsqlId": {
+      "type": "string"
+    },
+    "pgsqlPwd": {
+      "type": "secureString"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}-acsearch-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "standard"
+      },
+      "properties": {
+        "replicaCount": 1,
+        "partitionCount": 1,
+        "hostingMode": "default",
+        "publicNetworkAccess": "enabled",
+        "encryptionWithCmk": {
+          "enforcement": "Unspecified"
+        },
+        "disableLocalAuth": false,
+        "authOptions": {
+          "apiKeyOnly": {}
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "dnsEndpointType": "Standard",
+        "defaultToOAuthAuthentication": false,
+        "allowCrossTenantReplication": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": true,
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [],
+          "ipRules": [],
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "requireInfrastructureEncryption": false,
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)), 'default')]",
+      "properties": {
+        "changeFeed": {
+          "enabled": false
+        },
+        "restorePolicy": {
+          "enabled": false
+        },
+        "containerDeleteRetentionPolicy": {
+          "enabled": true,
+          "days": 3
+        },
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "allowPermanentDelete": false,
+          "enabled": true,
+          "days": 1
+        },
+        "isVersioningEnabled": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)), 'default', 'img-container')]",
+      "properties": {
+        "immutableStorageWithVersioning": {
+          "enabled": false
+        },
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)), 'default', 'img-emoji')]",
+      "properties": {
+        "immutableStorageWithVersioning": {
+          "enabled": false
+        },
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[format('{0}-pgsql', parameters('prefix'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_B1ms",
+        "tier": "Burstable"
+      },
+      "properties": {
+        "dataEncryption": {
+          "type": "SystemManaged"
+        },
+        "storage": {
+          "storageSizeGB": 128,
+          "autoGrow": "Disabled"
+        },
+        "authConfig": {
+          "activeDirectoryAuth": "Disabled",
+          "passwordAuth": "Enabled"
+        },
+        "version": "15",
+        "administratorLogin": "[parameters('pgsqlId')]",
+        "administratorLoginPassword": "[parameters('pgsqlPwd')]",
+        "availabilityZone": "1",
+        "backup": {
+          "backupRetentionDays": 7,
+          "geoRedundantBackup": "Disabled"
+        },
+        "network": {},
+        "highAvailability": {
+          "mode": "Disabled"
+        },
+        "maintenanceWindow": {
+          "customWindow": "Disabled",
+          "dayOfWeek": 0,
+          "startHour": 0,
+          "startMinute": 0
+        },
+        "replicationRole": "Primary"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "kind": "CognitiveServices",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+        "networkAcls": {
+          "defaultAction": "Allow",
+          "virtualNetworkRules": [],
+          "ipRules": []
+        },
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}-bing-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "standard"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "kind": "OpenAI",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+        "networkAcls": {
+          "defaultAction": "Allow",
+          "virtualNetworkRules": [],
+          "ipRules": []
+        },
+        "publicNetworkAccess": "Enabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id)), format('{0}-gpt35', parameters('prefix')))]",
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "gpt-35-turbo",
+          "version": "0301"
+        },
+        "raiPolicyName": "Microsoft.Default"
+      },
+      "sku": {
+        "name": "Standard",
+        "capacity": 80
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}-appsrvplan-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "B1",
+        "tier": "Basic",
+        "size": "B1",
+        "family": "B",
+        "capacity": 1
+      },
+      "kind": "linux",
+      "properties": {
+        "perSiteScaling": false,
+        "elasticScaleEnabled": false,
+        "maximumElasticWorkerCount": 1,
+        "isSpot": false,
+        "freeOfferExpirationTime": "2023-11-01T02:09:51.63",
+        "reserved": true,
+        "isXenon": false,
+        "hyperV": false,
+        "targetWorkerCount": 0,
+        "targetWorkerSizeId": 0,
+        "zoneRedundant": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}-webapp-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-appsrvplan-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "linuxFxVersion": "PYTHON|3.11",
+          "alwaysOn": true,
+          "http20Enabled": true,
+          "ftpsState": "AllAllowed",
+          "appSettings": [
+            {
+              "name": "AZURE_SEARCH_SERVICE_ENDPOINT",
+              "value": "[format('https://{0}.search.windows.net', format('{0}-acsearch-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]"
+            },
+            {
+              "name": "AZURE_SEARCH_INDEX_NAME",
+              "value": "vg-index"
+            },
+            {
+              "name": "AZURE_SEARCH_ADMIN_KEY",
+              "value": ""
+            },
+            {
+              "name": "COGNITIVE_SERVICES_ENDPOINT",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))).endpoint]"
+            },
+            {
+              "name": "COGNITIVE_SERVICES_API_KEY",
+              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id))), '2023-05-01').key1]"
+            },
+            {
+              "name": "BLOB_CONNECTION_STRING",
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id))), '2023-01-01').keys[0].value]"
+            },
+            {
+              "name": "BLOB_CONTAINER_NAME",
+              "value": "img-container"
+            },
+            {
+              "name": "BLOB_EMOJI_CONTAINER_NAME",
+              "value": "img-emoji"
+            },
+            {
+              "name": "AZURE_OPENAI_ENDPOINT",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))).endpoint]"
+            },
+            {
+              "name": "AZURE_OPENAI_API_KEY",
+              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id))), '2023-05-01').key1]"
+            },
+            {
+              "name": "AZURE_OPENAI_API_VERSION_IMG",
+              "value": "2023-05-01"
+            },
+            {
+              "name": "AZURE_OPENAI_API_VERSION_CHAT",
+              "value": "2023-05-01"
+            },
+            {
+              "name": "BING_IMAGE_SEARCH_KEY",
+              "value": ""
+            },
+            {
+              "name": "POSTGRE_HOST",
+              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pgsql', parameters('prefix')))).fullyQualifiedDomainName]"
+            },
+            {
+              "name": "POSTGRE_USER",
+              "value": "[parameters('pgsqlId')]"
+            },
+            {
+              "name": "POSTGRE_PORT",
+              "value": "5432"
+            },
+            {
+              "name": "POSTGRE_DATABASE",
+              "value": "vgdb"
+            },
+            {
+              "name": "POSTGRE_PASSWORD",
+              "value": "[parameters('pgsqlPwd')]"
+            },
+            {
+              "name": "APP_SECRET_STRING",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', format('{0}-appsrvplan-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)), 'default', 'img-container')]",
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)), 'default', 'img-emoji')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]",
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pgsql', parameters('prefix')))]",
+        "[resourceId('Microsoft.Search/searchServices', format('{0}-acsearch-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}-func-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp,linux",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-appsrvplan-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "linuxFxVersion": "PYTHON|3.11",
+          "alwaysOn": true,
+          "http20Enabled": true,
+          "ftpsState": "AllAllowed",
+          "appSettings": [
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~4"
+            },
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "python"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', format('{0}-appsrvplan-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))]"
+      ]
+    }
+  ]
+}

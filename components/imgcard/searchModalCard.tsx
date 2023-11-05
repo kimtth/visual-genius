@@ -1,5 +1,6 @@
 import { Text, Image, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalOverlay } from "@chakra-ui/react"
 import { FC } from "react";
+import { FALLBACK_SRC } from "../state/const";
 
 interface SearchImageModalProps {
     title: string;
@@ -20,7 +21,8 @@ const SearchImageModal: FC<SearchImageModalProps> = ({ title, imgPath, isOpen, o
                         <Image
                             maxW='100%'
                             maxH='100%'
-                            src={imgPath ? imgPath : ""}
+                            src={imgPath}
+                            fallbackSrc={FALLBACK_SRC}
                             borderRadius='lg'
                             objectFit='cover'
                         />

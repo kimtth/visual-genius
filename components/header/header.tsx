@@ -104,13 +104,13 @@ const Header = () => {
                         alt=""
                         width={'2vw'}
                         position={'absolute'}
-                        src="/persona@3x.png"
+                        src="persona@3x.png"
                         zIndex='1'
                     />
                     <Image
                         alt=""
                         position={'absolute'}
-                        src="/personacontainer.svg"
+                        src="personacontainer.svg"
                         zIndex='2'
                     />
                 </Box>

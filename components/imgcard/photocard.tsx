@@ -5,6 +5,7 @@ import BasicImageModal from "./imageModalCard";
 import { FcSpeaker } from "react-icons/fc";
 import synthesizeSpeech from "../util/speechUtil";
 import { FC } from "react";
+import { FALLBACK_SRC } from '../state/const';
 
 interface PhotoProps {
     item?: any;
@@ -48,11 +49,11 @@ const PhotoCard: FC<PhotoProps> = ({ item, index, number, imgPath }) => {
                             style={{ margin: '2px' }}
                             alignItems={"center"}
                         >
-                            <CardBody
-                            >
+                            <CardBody>
                                 <Flex align="center">
                                     <Image
-                                        src={imgPath ? imgPath : "none.png"}
+                                        src={imgPath}
+                                        fallbackSrc={FALLBACK_SRC}
                                         borderRadius='lg'
                                         objectFit='cover'
                                         maxW={{ sm: '10vw' }}

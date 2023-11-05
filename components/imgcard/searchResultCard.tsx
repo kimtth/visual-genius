@@ -1,6 +1,7 @@
 import { Card, CardBody, Image, Text, Checkbox, Flex, Spacer, useDisclosure, Box, Stack, HStack } from "@chakra-ui/react";
 import SearchImageModal from "./searchModalCard";
 import { FC } from "react";
+import { FALLBACK_SRC } from "../state/const";
 
 interface PhotoProps {
     title: string;
@@ -25,7 +26,7 @@ const SearchResultCard: FC<PhotoProps> = ({ title, imgPath, checked, onSelect })
                         <Image
                             maxW='100%'
                             src={imgPath}
-                            fallbackSrc="https://via.placeholder.com/350x150/8ad5f0/08088A?text=-"
+                            fallbackSrc={FALLBACK_SRC}
                             borderRadius='lg'
                             onClick={onOpen}
                         />
