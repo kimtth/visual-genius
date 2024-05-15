@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.6.18.56646",
-      "templateHash": "9888356258355239701"
+      "version": "0.27.1.19265",
+      "templateHash": "4106387566117711215"
     }
   },
   "parameters": {
@@ -20,7 +20,7 @@
       "type": "string"
     },
     "pgsqlPwd": {
-      "type": "secureString"
+      "type": "securestring"
     }
   },
   "resources": [
@@ -315,7 +315,7 @@
             },
             {
               "name": "COGNITIVE_SERVICES_ENDPOINT",
-              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))).endpoint]"
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-cog-{1}', parameters('prefix'), uniqueString(resourceGroup().id))), '2023-05-01').endpoint]"
             },
             {
               "name": "COGNITIVE_SERVICES_API_KEY",
@@ -335,15 +335,19 @@
             },
             {
               "name": "AZURE_OPENAI_ENDPOINT",
-              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id)))).endpoint]"
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id))), '2023-05-01').endpoint]"
             },
             {
               "name": "AZURE_OPENAI_API_KEY",
               "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-oai-{1}', parameters('prefix'), uniqueString(resourceGroup().id))), '2023-05-01').key1]"
             },
             {
-              "name": "AZURE_OPENAI_API_VERSION_IMG",
-              "value": "2023-05-01"
+              "name": "AZURE_OPENAI_MODEL_DEPLOYMENT_NAME",
+              "value": ""
+            },
+            {
+              "name": "AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME",
+              "value": ""
             },
             {
               "name": "AZURE_OPENAI_API_VERSION_CHAT",
@@ -355,7 +359,7 @@
             },
             {
               "name": "POSTGRE_HOST",
-              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pgsql', parameters('prefix')))).fullyQualifiedDomainName]"
+              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pgsql', parameters('prefix'))), '2023-03-01-preview').fullyQualifiedDomainName]"
             },
             {
               "name": "POSTGRE_USER",

@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState, MouseEvent } from "react";
 import useAxios from "axios-hooks";
 import { useRouter } from "next/router";
-import { Paginator, Container, PageGroup, usePaginator } from "chakra-paginator";
+import { Paginator, Container, PageGroup, usePaginator, Page } from "chakra-paginator";
 import { Box, Button, Center, SimpleGrid, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
 import { useSelector, useDispatch } from "react-redux";
 import { setCategoriesDataPayload } from "../../components/state/datas";
@@ -39,7 +39,7 @@ const Home = () => {
     initialState: { currentPage: 1 }
   });
   const [{ data: cntData, loading: cntloading, error: cntError }, cntrefetch] = useAxios(`${API_ENDPOINT}/categories/count`, { manual: true, autoCancel: false });
-  const [{ data, loading, error }, refetch] = useAxios(`${API_ENDPOINT}/categories?page=${pageNum}&per_page=6`, { manual: true, autoCancel: false });
+  const [{ data, error }, refetch] = useAxios(`${API_ENDPOINT}/categories`, { manual: true, autoCancel: false });
   const categoriesData = useSelector((state: any) => state.datas.CategoriesDataPayload);
   const dispatch = useDispatch();
 
@@ -64,9 +64,9 @@ const Home = () => {
     }
   }, [data]);
 
-  const handleFetch = () => {
+  const handleFetch = (pageNum: number) => {
     try {
-      refetch();
+      refetch({ params: { page: pageNum, per_page: 6 }});
       cntrefetch();
     } catch (error) {
       alert(error);
@@ -80,7 +80,7 @@ const Home = () => {
 
   const handlePageChange = (pageNum: number) => {
     setCurrentPage(pageNum);
-    handleFetch();
+    handleFetch(pageNum);
   }
 
   const baseStyles = {

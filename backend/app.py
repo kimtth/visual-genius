@@ -928,9 +928,10 @@ async def img_gen_handler(query: str, request: Request, credentials: HTTPAuthori
 
             # Generative Image
             img_query = img_queries[-1]
+            img_query_desc = await aoai_call.img_gen_desc(img_query)
             img_id = str(uuid.uuid4())
             try:
-                img_url = await aoai_call.img_gen(img_query)
+                img_url = await aoai_call.img_gen(img_query_desc)
                 img = ImageDB(sid=img_id, categoryId=category_id,
                               title=img_query, imgPath=img_url)
                 img_urls.append(img)

@@ -314,8 +314,12 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           value: openAI.listKeys().key1
         }
         {
-          name: 'AZURE_OPENAI_API_VERSION_IMG'
-          value: openAI.apiVersion
+          name: 'AZURE_OPENAI_MODEL_DEPLOYMENT_NAME'
+          value: ''
+        }
+        {
+          name: 'AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME'
+          value: ''
         }
         {
           name: 'AZURE_OPENAI_API_VERSION_CHAT'
