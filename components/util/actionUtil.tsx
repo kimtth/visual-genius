@@ -1,4 +1,4 @@
-
+import Cookies from 'js-cookie';
 
 export const executeShareUrl = (categoryId: string) => {
     const root = location.protocol + '//' + location.host;
@@ -21,36 +21,44 @@ export const downloadZip = (downloadData: any) => {
     }
 }
 
-export const getToken = () => {
-    const token = localStorage.getItem('token');
-    const access_token = token ? JSON.parse(token)['access_token'] : null;
+export const getAccessToken = () => {
+    const access_token = Cookies.get('access_token');
     return access_token;
 }
 
 export const getRefreshToken = () => {
-    const token = localStorage.getItem('refresh_token');
-    const refresh_token = token ? JSON.parse(token)['refresh_token'] : null;
+    const refresh_token = Cookies.get('refresh_token');
     return refresh_token;
 }
 
-export const setToken = (token: any) => {
-    // TODO
-    // 1. Storing JWT tokens in localStorage is a common practice, 
-    // but it can leave your application vulnerable to certain types of attacks, such as Cross-Site Scripting (XSS).
-    // 2. Storing JWT tokens in the cookie to be httpOnly on the server side like this: 
-    // res.cookie ("jwt", accessToken, { secure: true, httpOnly: true }). 
-    // You can’t set a httpOnly cookie from client-end code.
-    // 3. Session storage is a better option than local storage for storing JWT tokens. but both are vulnerable to XSS attacks.
-    // 4. The best way to store JWT tokens is in-memory.
+export const setAccessToken = (access_token: string) => {
     // https://stackoverflow.com/questions/48712923/where-to-store-a-jwt-token-properly-and-safely-in-a-web-based-application
-    localStorage.setItem('token', JSON.stringify(token));
+    const expiresInDays = 14; // Match the backend expiration
+    const cookieOptions = {
+        path: '/', // Ensure this matches backend setting
+        sameSite: 'Lax' as 'Lax', // Ensure this matches backend setting
+        secure: false, // Ensure this matches backend setting
+        expires: expiresInDays // Set expiration (e.g., 14 day)
+    };
+    Cookies.set('access_token', access_token, cookieOptions);
+}
+
+export const setRefreshToken = (refresh_token: string) => {
+    const expiresInDays = 14; // Match the backend expiration
+    const cookieOptions = {
+        path: '/', // Ensure this matches backend setting
+        sameSite: 'Lax' as 'Lax', // Ensure this matches backend setting
+        secure: false, // Ensure this matches backend setting
+        expires: expiresInDays // Set expiration (e.g., 14 day)
+    };
+    Cookies.set('refresh_token', refresh_token, cookieOptions);
 }
 
 export const getSignInUserId = () => {
-    const userId = localStorage.getItem('userId');
+    const userId = Cookies.get('userId');
     return userId;
 }
 
 export const setSignInUserId = (userId: string) => {
-    localStorage.setItem('userId', userId);
+    Cookies.set('userId', userId);
 }

@@ -2,8 +2,9 @@ import { Button, Flex, Heading, Input, } from "@chakra-ui/react";
 import axios from "axios";
 import { API_ENDPOINT } from "../components/state/const";
 import { useEffect, useState } from "react";
-import { setSignInUserId, setToken } from "../components/util/actionUtil";
+import { setSignInUserId, setAccessToken, setRefreshToken } from "../components/util/actionUtil";
 import { pathes } from "../components/state/pathes";
+import Cookies from "js-cookie";
 
 export default function LoginPage() {
     const [userId, setUserId] = useState("");
@@ -39,19 +40,20 @@ export default function LoginPage() {
             user_password: userPassword
         })
             .then((result: any) => {
-                const access_token = result.data.access_token;
+                // Store the tokens in local storage or session storage
+                const { access_token, refresh_token } = result.data;
                 //check if token is undefined or null
                 if (!access_token) {
                     alert("Login Failed!");
                     return;
                 } else {
-                    const token = result.data;
-                    setToken(token);
+                    setAccessToken(access_token);
+                    setRefreshToken(refresh_token);
                     setSignInUserId(userId);
                     window.location.href = `${pathes.home}`;
                 }
             }).catch((error: any) => {
-                //console.log(error);
+                console.error(error);
             });
     }
 

@@ -160,3 +160,4 @@ backend/infra/parameter.dev.json
 backend/infra/main.dev.ps1
 backend/*.mp3
 .env.production
+*.pyc

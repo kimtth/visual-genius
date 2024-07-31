@@ -1,74 +1,46 @@
 import axios from "axios";
-import { setToken, getToken } from "./actionUtil";
+import { getAccessToken } from "./actionUtil";
 import { API_ENDPOINT } from "../state/const";
 
-
+// Request interceptor to add authorization header
 axios.interceptors.request.use(
   async (config) => {
-    const token = getToken();
+    const accessToken = getAccessToken();
 
-    // Redirect to login page if token is invalid
-    if (!token) {
+    if (!accessToken) {
       history.push('/login');
+      return config;
     }
 
-    if (token) {
-      config.headers = {
-        authorization: `Bearer ${token}`,
-      }
-    }
+    config.headers.authorization = `Bearer ${accessToken}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-
-//response interceptor intercepting 401 responses, refreshing token and retrying the request
+// Response interceptor to handle 4xx errors
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const config = error.config;
-
-    if (error && typeof error === 'object' && error.hasOwnProperty('response')) {
-      if (error.response.status === 401 && error.response.data.detail === "Invalid token" && !config._retry) {
-        config._retry = true;
-        await refreshAccessToken();
-        return axios(config);
-      }
-
-      return Promise.reject(error);
+    if (error.response && error.response.status >= 400 && error.response.status < 500) {
+      console.error('An error occurred:', error.response.status, error.response.data);
     }
+    return Promise.reject(error);
   }
 );
 
-export const refreshAccessToken = async () => {
+// Function to check token validity
+export const checkTokenValidity = async () => {
   try {
-    const res = await axios.post(`${API_ENDPOINT}/refresh_token`, {
+    const res = await axios.post(`${API_ENDPOINT}/validate_token`, {}, {
       headers: {
-        authorization: `Bearer ${getRefreshToken()}`,
+        authorization: `Bearer ${getAccessToken()}`,
       }
     });
     console.log(res.data.status);
-    const token = res.data;
-    setToken(token);
-    return token;
   } catch (error) {
-    history.push('/login');
-  }
-}
-
-export const checkTokenValidity = async () => {
-  try {
-    const res = await axios.post(`${API_ENDPOINT}/validate_token`, {
-      headers: {
-        authorization: `Bearer ${getToken()}`,
-      }
-    }); // Make HTTP request to validate_token endpoint
-    console.log(res.data.status);
-  } catch (error) {
-    if (error.response.status === 401) {
-      history.push('/login'); // Redirect to login page if token is invalid
+    if (error.response && error.response.status === 401) {
+      history.push('/login');
     }
   }
-}
-
+};

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 # https://github.com/rohanshiva/Deta-FastAPI-JWT-Auth-Blog/tree/main
 
-class Auth():
+class AuthBase():
     hasher = CryptContext(schemes=['bcrypt'])
     secret = os.getenv("APP_SECRET_STRING")
 

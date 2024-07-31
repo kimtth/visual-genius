@@ -9,9 +9,10 @@ import { setCategoriesDataPayload, setCategoryData } from "../state/datas";
 import { API_ENDPOINT } from "../state/const";
 import '../util/axiosInterceptor';
 import { downloadZip, executeShareUrl } from "../util/actionUtil";
-import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack } from "@chakra-ui/react";
+import { Card, CardBody, CardFooter, Divider, Heading, Text, Image, Stack, IconButton, HStack, Link } from "@chakra-ui/react";
 import { HiOutlineTrash } from "react-icons/hi";
 import { LiaShareSquareSolid, LiaDownloadSolid } from "react-icons/lia";
+import NextLink from 'next/link';
 
 const footerIconsLyaoutSytle = {
     justifyContent: 'flex-end'
@@ -205,7 +206,7 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
                             backgroundColor='blue.100'
                             textAlign="center"
                         >{item['category']}</Text>
-                        <Heading size='sm' color='blue.400'>{item['title']}</Heading>
+                        <Heading size='sm' color='blue.400'><Link as={NextLink} href={`${pathes.gen}?categoryId=${categoryId}`}>{item['title']}</Link></Heading>
                         <Text fontSize='xs'>
                             {item['imgNum']} images | Difficulty {item['difficulty']}
                         </Text>
