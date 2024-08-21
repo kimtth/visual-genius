@@ -17,6 +17,8 @@ from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
+from azure.storage.blob import generate_container_sas, ContainerSasPermissions
+from azure.identity import DefaultAzureCredential
 from datetime import datetime, timedelta
 import datetime as dt
 from dotenv import load_dotenv
@@ -85,6 +87,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Set the connection string and container name
 connection_string = os.getenv("BLOB_CONNECTION_STRING")
+blob_account_name = os.getenv("BLOB_ACCOUNT_NAME")
+blob_account_key = os.getenv("BLOB_ACCOUNT_KEY")
 container_name = os.getenv("BLOB_CONTAINER_NAME")
 emoji_container_name = os.getenv("BLOB_EMOJI_CONTAINER_NAME")
 service_endpoint = os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")
@@ -97,6 +101,7 @@ speech_region = os.getenv("SPEECH_REGION")
 
 # Create the BlobServiceClient object which will be used to create a container client
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+
 
 security = HTTPBearer()
 auth_handler = AuthBase()
@@ -340,11 +345,12 @@ def get_categories(
             .limit(per_page)
             .all()
         )
+        sas_token = generate_blob_container_sas(container_name)
         # First 3 images for each category
         for item in items:
             imgs = [img for img in item.images if img.deleteFlag == 0]
             imgs = imgs[:3]
-            item.contentUrl = [img.imgPath for img in imgs]
+            item.contentUrl = [f"{img.imgPath}?{sas_token}" for img in imgs]
         return [CategoryDB.model_validate(item) for item in items]
     except Exception as e:
         print(e)
@@ -704,7 +710,9 @@ def get_images(
             items = session.query(ImageModel).filter_by(deleteFlag="0").all()
 
         items_list = [ImageDB.model_validate(item) for item in items]
-        return items_list
+        update_items_list = add_sas_token(items_list)
+
+        return update_items_list
     except Exception as e:
         print(e)
         raise HTTPException(500, "Failed to get images")
@@ -781,9 +789,9 @@ async def create_image(
         raise HTTPException(500, "Failed to create an image")
 
 
-@app.get("/images/{sid}")
+@app.get("/images/{categoryId}")
 def get_image(
-    sid: str,
+    categoryId: str,
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
@@ -791,14 +799,21 @@ def get_image(
     if not auth_handler.decode_token(token):
         raise HTTPException(403, "Not authorized")
     try:
-        if not sid:
+        if not categoryId:
             return []
-        items = session.query(ImageModel).filter_by(categoryId=sid, deleteFlag=0).all()
+        items = (
+            session.query(ImageModel)
+            .filter_by(categoryId=categoryId, deleteFlag=0)
+            .all()
+        )
         if not items:
             raise HTTPException(status_code=404, detail="Image not found")
 
+        sas_token = generate_blob_container_sas(container_name)
+
         image_list = []
         for item in items:
+            item.imgPath = f"{item.imgPath}?{sas_token}"
             image_dict = ImageDB.model_validate(item)
             image_list.append(image_dict)
 
@@ -1050,11 +1065,12 @@ async def emoji_handler(credentials: HTTPAuthorizationCredentials = Security(sec
             (emoji_url.split("/")[-1].split(".")[0], emoji_url)
             for emoji_url in emoji_urls
         ]
+        sas_token = generate_blob_container_sas(emoji_container_name)
         emoji_list = [
             Emoji(
                 sid=key.lower().replace("%20", "-"),
                 title=key.replace("%20", " "),
-                imgPath=emoji_url,
+                imgPath=f"{emoji_url}?{sas_token}",
             )
             for key, emoji_url in new_emoji_list
         ]
@@ -1094,7 +1110,9 @@ async def search_handler(
 
         # Perform vector search
         results = search_client.search(
-            search_text=None, vector_queries=[vector], select=["sid", "title", "imgPath"]
+            search_text=None,
+            vector_queries=[vector],
+            select=["sid", "title", "imgPath"],
         )
 
         # Return the search results
@@ -1106,9 +1124,10 @@ async def search_handler(
             .filter(ImageModel.sid.in_(img_ids), ImageModel.deleteFlag != 1)
             .all()
         )
-        items_list = [ImageDB.model_validate(item) for item in items]
 
-        return items_list
+        items_list = [ImageDB.model_validate(item) for item in items]
+        update_items_list = add_sas_token(items_list)
+        return update_items_list
     except Exception as e:
         print(e)
         raise HTTPException(500, "Failed to find images")
@@ -1183,6 +1202,30 @@ async def gen_synthesize_speech(
         raise JSONResponse(content={"error": str(e)})
     except Exception as e:
         raise HTTPException(500, "Failed to synthesize speech")
+
+
+def add_sas_token(items_list):
+    sas_token = generate_blob_container_sas(container_name)
+    updated_items_list = []
+    for item in items_list:
+        item_dict = item.dict()
+        item_dict["imgPath"] = f"{item_dict['imgPath']}?{sas_token}"
+        updated_item = ImageDB(**item_dict)
+        updated_items_list.append(updated_item)
+    return updated_items_list
+
+
+def generate_blob_container_sas(container_name: str) -> str:
+    sas_token = generate_container_sas(
+        account_name=blob_account_name,
+        container_name=container_name,
+        account_key=blob_account_key,
+        permission=ContainerSasPermissions(
+            read=True, write=True, delete=True, list=True
+        ),
+        expiry=datetime.utcnow() + timedelta(hours=1),
+    )
+    return sas_token
 
 
 async def gen_acs_document(new_item: ImageModel):

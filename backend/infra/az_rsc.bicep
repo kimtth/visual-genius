@@ -295,7 +295,15 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'BLOB_CONNECTION_STRING'
+          value: ''
+        }
+        {
+          name: 'BLOB_ACCOUNT_KEY'
           value: storageAccount.listKeys().keys[0].value
+        }
+        {
+          name: 'BLOB_ACCOUNT_NAME'
+          value: storageAccount.name
         }
         {
           name: 'BLOB_CONTAINER_NAME'
