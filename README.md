@@ -32,173 +32,38 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
 1. [Optional] Microsoft Coco dataset (Everyday Life Images)
    > The test dataset for Vector Image Search. Vector search seeks images based on their features, not by the associated metadata tags or the image file name.
 
-## Configure Development environment
+## Configuration
 
-  Note: Please ensure you have installed <code><a href="https://nodejs.org/en/download/">nodejs</a></code> and  <code><a href="https://www.python.org/downloads/">python3</a></code>.
+#### Deploy to Azure
 
-  To preview and run the project on your device:
+1. Set parameters under `infra\parameter.json`
+2. Execute `deploy.ps1` to upload the dataset, deploy Azure resources, initialize the database, and set up the search index.
+3. Create a DALL·E model on the Azure Portal and set the deployment model name in `Azure > WebApp > Environment variables > 'AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME'`. When attempting to deploy the model using Bicep, it was not possible to deploy at that time.
+4. Deploy the application code to Azure App Service: It is recommended to use the `Azure Extension` in VS Code to deploy the code to Azure App Service. You can follow the [Quickstart: Deploy a Python app](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python), or use `az webapp deployment source config-zip` to deploy if you have SCM Basic Auth credentials available.
 
-  1. Open project folder in <a href="https://code.visualstudio.com/download">Visual Studio Code</a>
-  2. In the terminal, run `npm install`
-  3. Run `npm run dev` to view the project in a browser
-  4. Run `python app.py` to launch the backend.
+- The Deployment step using Azure CLI is commented out in `deploy.ps1`.
 
-  !important: `react-beautiful-dnd` was not able to work well with `reactStrictMode: true` in NextJs.
-  Turn off the option at `next.config.js`.`
+   ```powershell
+   <# 
+   az webapp deployment source config-zip `
+      --resource-group $ResourceGroup `
+      --name $APP_SERVICE_NAME `
+      --src "app.zip"
+   Write-Host "Application deployed to Azure App Service." 
+   #>
+   ```
 
-## Configure Dataset
+- Note: Please ensure you have installed <code><a href="https://nodejs.org/en/download/">nodejs</a></code>, <code><a href="https://classic.yarnpkg.com/en/docs/install">yarn</a></code>, <code><a href="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli">Azure CLI</a></code>, and  <code><a href="https://www.python.org/downloads/">python3</a></code>.
 
-- The [Optional] steps are needed for demonstration purposes and are not mandatory for deploying the application.
+#### To dev:
 
-  1. Uploading your image data into Azure Blob Storage.
+1. Open project folder in <a href="https://code.visualstudio.com/download">Visual Studio Code</a>
+2. Rename `.env.template` to `.env`, then fill in the values in `.env`.
+3. In the terminal, run `yarn install`.
+4. Run `yarn run dev` to view the project in a browser.
+5. Run `python app.py` to launch the backend.
 
-      - [Optional] dataset > data > Upload to Blob image container
-      - dataset > emoji > Upload to Blob emoji container
+!important: `react-beautiful-dnd` was not able to work well with `reactStrictMode: true` in NextJs.
+Turn off the option at `next.config.js`.`
 
-  1. Image and Category metadata are managed on SQL database. 
-  
-      - DB Creation: `backend\infra\db_postgres.sql`
-      - [Optional] DB Data Generate: `backend\util\postgre_gen_db_data.py`
-
-  1. Image search requires to creation of Azure Cognitive Search Index. 
-  
-      - Azure AI Search Index Creation: `backend\util\acs_index_gen.py`
-      - [Optional] trigger indexer: The web skill (azure functions: acs_skillset_for_indexer) should be deployed before it is triggered.
-
-  1. [Optional] Update and synchronize the 'sid' attribute in Azure Cognitive Search based on metadata from the SQL database.
-  
-      - `backend\util\data_for_dev\acs_index_mapping_with_postgre.py`
-
-Data creation for development and Dataset. Please find the sample images in `dataset` and `backend\util` directories.
-
-## API Documentation (Swagger)
-
-  http://localhost:5000/docs
-
-## Configure for Deployment to Azure
-
-1. Deployment can be done using Azure Template or Azure Bicep.
-
-- Azure Template 
-
-  - Click the template button.
-
-    [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fkimtth%2Fvisual-genius%2Fmain%2Fbackend%2Finfra%2Faz_vg_rsc.json)
-  
-  - Convert Bicep to Json: [url](https://azure.github.io/bicep/)
-
-- Azure Bicep
-
-    1. Deploy Azure Resources > `backend\infra`
-
-    Set up your parameters for Azure Bicep.
-
-    ```json
-    "prefix": {
-        "value": "<your-value-for-prefix>"
-    },
-    "pgsqlId": {
-        "value": "<your-postgre-sql-id>"
-    },
-    "pgsqlPwd": {
-        "value": "<your-postgre-sql-password>"
-    }
-    ```
-
-    2. Execute the script for Azure Bicep
-
-    ```powershell
-    PS> .\main.ps1 -resourceGroup <your-resource-group-name> -location <your-resource-location>
-    ```
-
-2. Build Next.js application
-
-  - Execute the `npm run build` command. This will build UI code and create `public` directory under the `backend`.
-
-    ```json
-    "scripts": {
-        "dev": "next dev",
-        "build": "next build && next export -o backend/public",
-        "start": "next start",
-        "lint": "next lint"
-    }
-    ```
-
-  - The `.env.production` on root will be embedded into the javascript files.
-
-    ```powershell
-    NEXT_PUBLIC_MS_CLARITY_ID= //[Optional]
-    NEXT_PUBLIC_ENV_TYPE=prod
-    ```
-
-3. Upload UI and Python code to Azure App Service (by Visual Code Extension: [Azure Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.vscode-node-azure-pack))
-
-    - [Tutorial](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python?tabs=flask%2Cwindows%2Cvscode-aztools%2Cvscode-deploy%2Cdeploy-instructions-azportal%2Cterminal-bash%2Cdeploy-instructions-zip-azcli)
-
-    1. Navigate to Azure Tools (Visual Code Extension) > Resources > your Azure Subscription > App Service > your App service.
-    1. Click on Deploy to Web app...
-    1. Select the `backend` directory as the target directory.
-
-4. To set up the start-up command at Azure App service.
-
-    1. Open your Web App in the Azure Portal (portal.azure.com).
-    1. Scroll to Configuration under Settings.
-    1. Click on the General Settings tab.
-    1. Enter the startup command.
-
-        ```powershell
-        python app.py
-        ```
-
-5. To set up environment variables in Azure App Service, you can follow these steps:
-
-    - In the Azure Portal, locate your App Service.
-    1. On the left pane, click on "Configuration".
-    1. Under "Application settings", click on "New application setting".
-    1. Fill in the name and value for each environment variable:
-    1. Click "OK", then at the top, click "Save". 
-    
-    - Most of the values will be mapped during the deployment.
-
-      ```bash
-      AZURE_SEARCH_SERVICE_ENDPOINT=https://?.search.windows.net
-      AZURE_SEARCH_INDEX_NAME=
-      AZURE_SEARCH_ADMIN_KEY=
-      COGNITIVE_SERVICES_ENDPOINT=https://?.cognitiveservices.azure.com
-      COGNITIVE_SERVICES_API_KEY=
-      BLOB_CONNECTION_STRING=
-      BLOB_CONTAINER_NAME=
-      BLOB_EMOJI_CONTAINER_NAME=
-      AZURE_OPENAI_ENDPOINT=https://?.openai.azure.com/
-      AZURE_OPENAI_API_KEY=
-      AZURE_OPENAI_API_VERSION_IMG=2023-06-01-preview
-      AZURE_OPENAI_API_VERSION_CHAT=2023-07-01-preview
-      BING_IMAGE_SEARCH_KEY=
-      SPEECH_SUBSCRIPTION_KEY=
-      SPEECH_REGION=
-      POSTGRE_HOST=
-      POSTGRE_USER=
-      POSTGRE_PORT=5432
-      POSTGRE_DATABASE=
-      POSTGRE_PASSWORD=
-      ENV_TYPE=PROD
-      APP_SECRET_STRING= //JWT Token authentication key. e.g,. mysecret
-      ```
-
-    - [Optional]: `backend/util/env_to_app_service_fmt.py`: Convert the .env file to the `appsettings.json` for settings in Azure App Service.
-
-      ```json
-      [
-        {
-          "name": "AZURE_SEARCH_SERVICE_ENDPOINT",
-          "value": "https://?.search.windows.net"
-        },
-        {
-          ...
-        }
-        ...
-      ]
-      ```
-
-6. PostgreSQL offers a vector search feature through the installation of the pgvector plugin. This feature can be utilized to implement image search, potentially serving as an alternative to Azure AI Search.
 

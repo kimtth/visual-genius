@@ -161,3 +161,6 @@ backend/infra/main.dev.ps1
 backend/*.mp3
 .env.production
 *.pyc
+deploy.dev.ps1
+infra/parameter.dev.json
+backend/app.zip

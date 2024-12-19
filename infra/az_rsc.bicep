@@ -1,9 +1,13 @@
 param location string = resourceGroup().location
 param prefix string
-param pgsqlId string
+param pgdbName string
+param pgsqlUserId string
 @secure()
-param pgsqlPwd string //'ex) vgpgpwdpwd@123'
-
+param pgsqlPwd string
+@secure()
+param appSecretString string // ex) ok_secret
+param openAIModelVersion string = '2024-07-18' // https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models
+param searchServiceAPIVersion string = '2023-11-01' // az provider show --namespace Microsoft.Search --query "resourceTypes[?resourceType=='searchServices'].apiVersions[]" --output table
 
 // Azure Cognitive Search
 resource searchService 'Microsoft.Search/searchServices@2022-09-01' = {
@@ -38,7 +42,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   properties: {
     dnsEndpointType: 'Standard'
     defaultToOAuthAuthentication: false
-    // publicNetworkAccess: 'Enabled'
     allowCrossTenantReplication: false
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
@@ -103,7 +106,6 @@ resource imgContainer 'Microsoft.Storage/storageAccounts/blobServices/containers
     }
     defaultEncryptionScope: '$account-encryption-key'
     denyEncryptionScopeOverride: false
-    //publicAccess: 'Blob'
   }
 }
 
@@ -116,7 +118,6 @@ resource imgEmoji 'Microsoft.Storage/storageAccounts/blobServices/containers@202
     }
     defaultEncryptionScope: '$account-encryption-key'
     denyEncryptionScopeOverride: false
-    //publicAccess: 'Blob'
   }
 }
 
@@ -141,7 +142,7 @@ resource postgresqlServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-
       passwordAuth: 'Enabled'
     }
     version: '15'
-    administratorLogin: pgsqlId
+    administratorLogin: pgsqlUserId
     administratorLoginPassword: pgsqlPwd
     availabilityZone: '1'
     backup: {
@@ -159,6 +160,24 @@ resource postgresqlServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-
       startMinute: 0
     }
     replicationRole: 'Primary'
+  }
+}
+// Configure firewall rules for public access - @TODO
+resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
+  parent: postgresqlServer
+  name: 'AllowAllIps'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '255.255.255.255'
+  }
+}
+
+resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-03-01-preview' = {
+  parent: postgresqlServer
+  name: pgdbName
+  properties: {
+    charset: 'utf8'
+    collation: 'en_US.UTF8'
   }
 }
 
@@ -184,22 +203,18 @@ resource cognitiveServices 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
 resource bingSearchAccount 'Microsoft.Search/searchServices@2022-09-01' = {
   name: '${prefix}-bing-${uniqueString(resourceGroup().id)}'
   location: location
-  dependsOn: [
-    cognitiveServices
-  ]
   sku: {
     name: 'standard'
   }
-}
-
-
-// Azure OpenAI (ChatGPT and DALL-E 2): DALL-E 2 is not required to deploy the model.
-resource openAI 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: '${prefix}-oai-${uniqueString(resourceGroup().id)}'
-  location: location
   dependsOn: [
     cognitiveServices
   ]
+}
+
+// Azure OpenAI (ChatGPT and DALL-E): DALL-E is not available to deply by Bicep
+resource openAI 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+  name: '${prefix}-oai-${uniqueString(resourceGroup().id)}'
+  location: location
   kind: 'OpenAI'
   sku: {
     name: 'S0'
@@ -215,23 +230,22 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
 }
 
-resource oaiGPT35 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
+resource gpt4oMini 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
   parent: openAI
-  name: '${prefix}-gpt35'
+  name: '${prefix}-gpt4o-mini'
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-35-turbo'
-      version: '0301'
+      name: 'gpt-4o-mini'
+      version: openAIModelVersion
     }
     raiPolicyName: 'Microsoft.Default'
   }
   sku: {
     name: 'Standard'
-    capacity: 80
+    capacity: 40
   }
 }
-
 
 // Azure App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
@@ -250,7 +264,6 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
     elasticScaleEnabled: false
     maximumElasticWorkerCount: 1
     isSpot: false
-    freeOfferExpirationTime: '2023-11-01T02:09:51.63'
     reserved: true
     isXenon: false
     hyperV: false
@@ -283,7 +296,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'AZURE_SEARCH_ADMIN_KEY'
-          value: ''
+          value: listAdminKeys(searchService.name, searchServiceAPIVersion).primaryKey
         }
         {
           name: 'COGNITIVE_SERVICES_ENDPOINT'
@@ -295,7 +308,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'BLOB_CONNECTION_STRING'
-          value: ''
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
         }
         {
           name: 'BLOB_ACCOUNT_KEY'
@@ -323,10 +336,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'AZURE_OPENAI_MODEL_DEPLOYMENT_NAME'
-          value: ''
+          value: '${prefix}-gpt4o-mini'
         }
         {
-          name: 'AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME'
+          name: 'AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME' // DALL-E
           value: ''
         }
         {
@@ -335,7 +348,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'BING_IMAGE_SEARCH_KEY'
-          value: ''
+          value: listAdminKeys(bingSearchAccount.name, searchServiceAPIVersion).primaryKey
         }
         {
           name: 'POSTGRE_HOST'
@@ -343,7 +356,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'POSTGRE_USER'
-          value: pgsqlId
+          value: pgsqlUserId
         }
         {
           name: 'POSTGRE_PORT'
@@ -359,7 +372,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'APP_SECRET_STRING'
-          value: ''
+          value: appSecretString
         }
       ]
     }
@@ -392,3 +405,20 @@ resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
     }
   }
 }
+
+// Add outputs for necessary resources
+output appServiceName string = appService.name
+output functionAppName string = functionApp.name
+output storageAccountName string = storageAccount.name
+#disable-next-line outputs-should-not-contain-secrets
+output azureSearchAdminKey string = listAdminKeys(searchService.name, searchServiceAPIVersion).primaryKey
+output cognitiveServicesEndpoint string = cognitiveServices.properties.endpoint
+#disable-next-line outputs-should-not-contain-secrets
+output cognitiveServicesApiKey string = cognitiveServices.listKeys().key1
+output searchServiceEndpoint string = 'https://${searchService.name}.search.windows.net'
+#disable-next-line outputs-should-not-contain-secrets
+output blobConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+output blobContainerName string = imgContainer.name
+// output postgresqlServerName string = postgresqlServer.name
+output postgresqlServerName string = postgresqlServer.properties.fullyQualifiedDomainName
+output functionAppEndpoint string = 'https://${functionApp.name}.azurewebsites.net'

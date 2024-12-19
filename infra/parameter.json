@@ -5,11 +5,17 @@
         "prefix": {
             "value": "<your-value-for-prefix>"
         },
-        "pgsqlId": {
-            "value": "<your-postgre-sql-id>"
+        "pgdbName": {
+            "value": "vgdb"
+        },
+        "pgsqlUserId": {
+            "value": "<your-postgre-sql-user-id>"
         },
         "pgsqlPwd": {
             "value": "<your-postgre-sql-password>"
+        },
+        "appSecretString": {
+            "value": "<your-app-secret-typically-a-random-string>"
         }
     }
 }
