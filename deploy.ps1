@@ -19,6 +19,8 @@ param (
     [string]$DeploymentName = "az_rsc_deployment"
 )
 
+Start-Transcript -Path ".\Log.txt"
+
 # Check if Python 3.11 is installed
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
     Write-Error "Python is not installed or not in PATH. Please install it."
@@ -200,6 +202,11 @@ Set-Location -Path "func\acs_skillset_for_indexer"
 # Deploy Web Skill Azure function app under "backend\func\acs_skillset_for_indexer" folder
 func azure functionapp publish $FUNC_APP_NAME --python
 
+# Set environment variables in Azure Function App
+az functionapp config appsettings set --name $FUNC_APP_NAME --resource-group $ResourceGroup `
+    --settings COGNITIVE_SERVICES_ENDPOINT=$COGNITIVE_SERVICES_ENDPOINT `
+              COGNITIVE_SERVICES_API_KEY=$COGNITIVE_SERVICES_API_KEY
+
 Set-Location -Path "../.."
 
 # Create Azure Cognitive Search Index
@@ -300,3 +307,5 @@ az webapp config set `
     --name $APP_SERVICE_NAME `
     --startup-file "python app.py"
 Write-Host "Startup command configured."
+
+Stop-Transcript
