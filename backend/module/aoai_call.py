@@ -25,7 +25,6 @@ aoai_client = AzureOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY")
 )
 
-
 async def img_gen(query):
     try:
         response = aoai_client.images.generate(

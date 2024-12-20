@@ -203,9 +203,11 @@ Set-Location -Path "func\acs_skillset_for_indexer"
 func azure functionapp publish $FUNC_APP_NAME --python
 
 # Set environment variables in Azure Function App
+# API_VERSION: https://learn.microsoft.com/en-us/rest/api/computervision/vectorize/image
 az functionapp config appsettings set --name $FUNC_APP_NAME --resource-group $ResourceGroup `
     --settings COGNITIVE_SERVICES_ENDPOINT=$COGNITIVE_SERVICES_ENDPOINT `
-              COGNITIVE_SERVICES_API_KEY=$COGNITIVE_SERVICES_API_KEY
+              COGNITIVE_SERVICES_API_KEY=$COGNITIVE_SERVICES_API_KEY `
+              COGNITIVE_SERVICES_API_VERSION="2024-02-01"
 
 Set-Location -Path "../.."
 

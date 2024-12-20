@@ -200,12 +200,13 @@ resource cognitiveServices 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
 }
 
-resource bingSearchAccount 'Microsoft.Search/searchServices@2022-09-01' = {
+resource bingSearchService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   name: '${prefix}-bing-${uniqueString(resourceGroup().id)}'
-  location: location
+  location: 'global'
   sku: {
-    name: 'standard'
+    name: 'S1'
   }
+  kind: 'Bing.Search.v7'
   dependsOn: [
     cognitiveServices
   ]
@@ -328,7 +329,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'AZURE_OPENAI_ENDPOINT'
-          value: openAI.properties.endpoint
+          value: replace(openAI.properties.endpoint, '/$', '') // remove trailing slash
         }
         {
           name: 'AZURE_OPENAI_API_KEY'
@@ -339,8 +340,8 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           value: '${prefix}-gpt4o-mini'
         }
         {
-          name: 'AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME' // DALL-E
-          value: ''
+          name: 'AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME' // DALL-E-3 is not available to deploy by Bicep
+          value: 'dall-e-3'
         }
         {
           name: 'AZURE_OPENAI_API_VERSION_CHAT'
@@ -348,7 +349,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'BING_IMAGE_SEARCH_KEY'
-          value: listAdminKeys(bingSearchAccount.name, searchServiceAPIVersion).primaryKey
+          value: bingSearchService.listKeys().key1
         }
         {
           name: 'POSTGRE_HOST'
@@ -373,6 +374,18 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         {
           name: 'APP_SECRET_STRING'
           value: appSecretString
+        }
+        {
+          name: 'SPEECH_SUBSCRIPTION_KEY'
+          value: cognitiveServices.listKeys().key1
+        }
+        {
+          name: 'SPEECH_REGION'
+          value: location
+        }
+        {
+          name: 'ENV_TYPE'
+          value: 'prod'
         }
       ]
     }
@@ -412,7 +425,7 @@ output functionAppName string = functionApp.name
 output storageAccountName string = storageAccount.name
 #disable-next-line outputs-should-not-contain-secrets
 output azureSearchAdminKey string = listAdminKeys(searchService.name, searchServiceAPIVersion).primaryKey
-output cognitiveServicesEndpoint string = cognitiveServices.properties.endpoint
+output cognitiveServicesEndpoint string = replace(cognitiveServices.properties.endpoint, '/$', '')
 #disable-next-line outputs-should-not-contain-secrets
 output cognitiveServicesApiKey string = cognitiveServices.listKeys().key1
 output searchServiceEndpoint string = 'https://${searchService.name}.search.windows.net'

@@ -39,7 +39,7 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
 1. Set parameters under `infra\parameter.json`
 2. Execute `deploy.ps1` to upload the dataset, deploy Azure resources, initialize the database, and set up the search index.
 3. Create a DALL·E model on the Azure Portal and set the deployment model name in `Azure > WebApp > Environment variables > 'AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME'`. When attempting to deploy the model using Bicep, it was not possible to deploy at that time.
-4. Deploy the application code to Azure App Service: It is recommended to use the `Azure Extension` in VS Code to deploy the code to Azure App Service. You can follow the [Quickstart: Deploy a Python app](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python), or use `az webapp deployment source config-zip` to deploy if you have SCM Basic Auth credentials available.
+4. Open the `backend` directory. Deploy the application code to Azure App Service: It is recommended to use the `Azure Extension` in VS Code to deploy the code to Azure App Service. You can follow the [Quickstart: Deploy a Python app](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python), or use `az webapp deployment source config-zip` to deploy if you have SCM Basic Auth credentials available.
 
 - The Deployment step using Azure CLI is commented out in `deploy.ps1`.
 
@@ -53,7 +53,32 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
    #>
    ```
 
-- Note: Please ensure you have installed <code><a href="https://nodejs.org/en/download/">nodejs</a></code>, <code><a href="https://classic.yarnpkg.com/en/docs/install">yarn</a></code>, <code><a href="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli">Azure CLI</a></code>, and  <code><a href="https://www.python.org/downloads/">python3</a></code>.
+- Note: Please ensure you have installed <code><a href="https://nodejs.org/en/download/">nodejs</a></code>, <code><a href="https://classic.yarnpkg.com/en/docs/install">yarn</a></code>, <code><a href="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli">Azure CLI</a></code>, <code><a href="https://github.com/Azure/azure-functions-core-tools">Azure Functions Core Tools</a></code>, <code><a href="https://www.postgresql.org/download/">psql</a></code>, and  <code><a href="https://www.python.org/downloads/">python3</a></code>.
+
+   ```powershell
+   # Install Chocolatey
+   Set-ExecutionPolicy Bypass -Scope Process -Force; `
+   [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+   iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+   # Install Node.js
+   choco install nodejs -y
+
+   # Install Yarn
+   choco install yarn -y
+
+   # Install Azure CLI
+   choco install azure-cli -y
+
+   # Install Azure Functions Core Tools
+   choco install azure-functions-core-tools -y
+
+   # Install PostgreSQL
+   choco install postgresql -y
+
+   # Install Python 3.11
+   choco install python --version=3.11.0 -y
+   ```
 
 #### To dev:
 

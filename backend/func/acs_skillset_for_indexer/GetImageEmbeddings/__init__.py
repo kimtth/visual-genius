@@ -1,79 +1,99 @@
-import os  
-import json  
-import logging  
-import requests  
-  
-import azure.functions as func  
+import os
+import json
+import logging
+import requests
+import azure.functions as func
+
+# Sample of input and output data
+# https://learn.microsoft.com/en-us/azure/search/cognitive-search-custom-skill-web-api#sample-input-json-structure
+# https://learn.microsoft.com/en-us/azure/search/cognitive-search-custom-skill-web-api#sample-output-json-structure
 
 
-def main(req: func.HttpRequest) -> func.HttpResponse:  
-    logging.info('Python HTTP trigger function processed a request.')  
-  
-    # Extract values from request payload  
-    req_body = req.get_body().decode('utf-8')  
-    logging.info(f"Request body: {req_body}")
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info("Python HTTP trigger function processed a request.")
 
-    if req_body:
+    try:
+        req_body = req.get_body().decode("utf-8")
+        logging.info(f"Request body: {req_body}")
+
         request = json.loads(req_body)
-        values = request['values']
+        values = request.get("values", [])
 
-        # Process values and generate the response payload
-        response_values = []
+        if not values:
+            logging.info("No values provided in the request.")
+            return func.HttpResponse(
+                json.dumps({"values": []}), mimetype="application/json", status_code=200
+            )
+
+        response_results = []
         for value in values:
-            imageUrl = value['data']['imgPath']
-            recordId = value['recordId']
-            logging.info(f"Input imageUrl: {imageUrl}")
-            logging.info(f"Input recordId: {recordId}")
+            record_id = value.get("recordId", "Unknown")
+            logging.info(f"Processing recordId: {record_id}")
 
-            # Get image embeddings
-            vector = get_image_embeddings(imageUrl)
+            img_path = value.get("data", {}).get("imgPath")
+            if not img_path:
+                logging.error("imgPath is missing.")
+                response = create_error_response(record_id, "Missing key: imgPath")
+                response_results.append(response)
+                continue
 
-            # Add the processed value to the response payload
-            response_values.append({
-                "recordId": recordId,
-                "data": {
-                    "vector": vector
-                },
-                "errors": None,
-                "warnings": None
-            })
+            vector = get_image_embeddings(img_path)
+            if vector:
+                response = create_success_response(record_id, vector)
+            else:
+                response = create_error_response(
+                    record_id, "Failed to retrieve image embeddings."
+                )
+            response_results.append(response)
 
-        # Create the response object
-        response_body = {
-            "values": response_values
-        }
-        logging.info(f"Response body: {response_body}")
+        logging.info(f"Response body: {response_results}")
+        return func.HttpResponse(
+            json.dumps({"values": response_results}),
+            mimetype="application/json",
+            status_code=200,
+        )
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        return func.HttpResponse(f"Internal Server Error: {e}", status_code=500)
 
-        # Return the response
-        return func.HttpResponse(json.dumps(response_body), mimetype="application/json")
-    else:
-        logging.info("req_body is empty")
 
-  
-def get_image_embeddings(imageUrl):  
-    cogSvcsEndpoint = os.environ["COGNITIVE_SERVICES_ENDPOINT"]  
-    cogSvcsApiKey = os.environ["COGNITIVE_SERVICES_API_KEY"]  
-  
-    url = f"{cogSvcsEndpoint}/computervision/retrieval:vectorizeImage"  
-  
-    params = {  
-        "api-version": "2023-02-01-preview"  
-    }  
-  
-    headers = {  
-        "Content-Type": "application/json",  
-        "Ocp-Apim-Subscription-Key": cogSvcsApiKey  
-    }  
-  
-    data = {  
-        "url": imageUrl  
-    }  
-  
-    response = requests.post(url, params=params, headers=headers, json=data)  
-  
-    if response.status_code != 200:  
-        logging.error(f"Error: {response.status_code}, {response.text}")  
-        response.raise_for_status()  
-  
-    embeddings = response.json()["vector"]  
-    return embeddings  
+def get_image_embeddings(img_path):
+    cog_svcs_endpoint = os.getenv("COGNITIVE_SERVICES_ENDPOINT")
+    cog_svcs_api_key = os.getenv("COGNITIVE_SERVICES_API_KEY")
+    cog_svcs_api_version = os.getenv("COGNITIVE_SERVICES_API_VERSION", "2024-02-01")
+
+    url = f"{cog_svcs_endpoint}/computervision/retrieval:vectorizeImage"
+    params = {"api-version": cog_svcs_api_version}
+    headers = {
+        "Content-Type": "application/json",
+        "Ocp-Apim-Subscription-Key": cog_svcs_api_key,
+    }
+    data = {"url": img_path}
+
+    try:
+        response = requests.post(url, params=params, headers=headers, json=data)
+        if response.status_code != 200:
+            logging.error(f"Error: {response.status_code}, {response.text}")
+            return None
+        return response.json().get("vector", [])
+    except Exception as e:
+        logging.error(f"Error getting image embeddings: {e}")
+        return None
+
+
+def create_success_response(record_id, vector):
+    return {
+        "recordId": record_id,
+        "data": {"vector": vector},
+        "errors": [],
+        "warnings": None,
+    }
+
+
+def create_error_response(record_id, message):
+    return {
+        "recordId": record_id,
+        "data": None,
+        "errors": [{"message": message}],
+        "warnings": None,
+    }

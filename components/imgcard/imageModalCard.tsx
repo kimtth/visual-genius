@@ -105,16 +105,18 @@ const BasicImageModal: FC<BasicImageModalProps> = ({ item, isOpen, onClose }) =>
             if (bingImgError) {
                 alert(bingImgError);
             } else {
-                const cnt = await cntFetch();
-                // Wait until cntFetch() is done
-                if (parseInt(cnt?.data.count) > 0) {
-                    updateImg({
-                        data: {
-                            ...item,
-                            imgPath: newImgPath,
-                            title: imageTitle
-                        }
-                    });
+                if (categoryPayload.sid != null) { // Checks for both undefined and null
+                    const cnt = await cntFetch();
+                    // Wait until cntFetch() is done
+                    if (parseInt(cnt?.data.count) > 0) {
+                        updateImg({
+                            data: {
+                                ...item,
+                                imgPath: newImgPath,
+                                title: imageTitle
+                            }
+                        });
+                    }
                 }
             }
             onDataPayload(updatedPayload);

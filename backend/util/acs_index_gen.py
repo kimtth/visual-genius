@@ -1,5 +1,6 @@
 # Import libraries
 import argparse
+import os
 
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents.indexes import SearchIndexerClient
@@ -26,9 +27,12 @@ from azure.search.documents.indexes.models import (
 )
 from azure.search.documents.indexes.models import WebApiSkill
 from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
 
 # https://github.com/Azure/cognitive-search-vector-pr
 # demo-python/code/azure-search-vector-image-python-sample.ipynb
+
+load_dotenv(verbose=False)
 
 parser = argparse.ArgumentParser(description="Azure Cognitive Search Index Generator")
 parser.add_argument(
@@ -67,14 +71,14 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-service_endpoint = args.search_service_endpoint
-index_name = args.search_index_name
-key = args.search_admin_key
-cogSvcsEndpoint = args.cognitive_services_endpoint
-cogSvcsApiKey = args.cognitive_services_api_key
-customSkill_endpoint = args.custom_skill_endpoint
-blob_connection_string = args.blob_connection_string
-container_name = args.blob_container_name
+service_endpoint = args.search_service_endpoint or os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")
+index_name = args.search_index_name or os.getenv("AZURE_SEARCH_INDEX_NAME")
+key = args.search_admin_key or os.getenv("AZURE_SEARCH_ADMIN_KEY")
+cogSvcsEndpoint = args.cognitive_services_endpoint or os.getenv("COGNITIVE_SERVICES_ENDPOINT")
+cogSvcsApiKey = args.cognitive_services_api_key or os.getenv("COGNITIVE_SERVICES_API_KEY")
+customSkill_endpoint = args.custom_skill_endpoint or os.getenv("FUNCTION_CUSTOM_SKILL_ENDPOINT")
+blob_connection_string = args.blob_connection_string or os.getenv("BLOB_CONNECTION_STRING")
+container_name = args.blob_container_name or os.getenv("BLOB_CONTAINER_NAME")
 
 # Connect to Blob Storage
 blob_service_client = BlobServiceClient.from_connection_string(blob_connection_string)
@@ -84,47 +88,6 @@ blobs = container_client.list_blobs()
 first_blob = next(blobs)
 blob_url = container_client.get_blob_client(first_blob).url
 print(f"URL of the first blob: {blob_url}")
-
-# Create a data source
-ds_client = SearchIndexerClient(service_endpoint, AzureKeyCredential(key))
-container = SearchIndexerDataContainer(name=container_name)
-data_source_connection = SearchIndexerDataSourceConnection(
-    name=f"{index_name}-blob",
-    type="azureblob",
-    connection_string=blob_connection_string,
-    container=container,
-)
-data_source = ds_client.create_or_update_data_source_connection(data_source_connection)
-
-print(f"Data source '{data_source.name}' created or updated")
-
-# Create a skillset
-# WebSkill is a custom skill that is hosted in Azure Functions. > `backend\func\acs_skillset_for_indexer`
-skillset_name = f"{index_name}-skillset"
-skill_uri = customSkill_endpoint
-
-skill = WebApiSkill(
-    uri=skill_uri,
-    inputs=[
-        InputFieldMappingEntry(
-            name="imgPath", source="/document/metadata_storage_path"
-        ),
-        InputFieldMappingEntry(
-            name="recordId", source="/document/metadata_storage_name"
-        ),
-    ],
-    outputs=[OutputFieldMappingEntry(name="vector", target_name="imageVector")],
-)
-
-skillset = SearchIndexerSkillset(
-    name=skillset_name,
-    description="Skillset to extract image vector",
-    skills=[skill],
-)
-
-client = SearchIndexerClient(service_endpoint, AzureKeyCredential(key))
-client.create_or_update_skillset(skillset)
-print(f" {skillset.name} created")
 
 # Create a search index
 """
@@ -191,6 +154,47 @@ index = SearchIndex(name=index_name, fields=fields, vector_search=vector_search)
 result = index_client.create_or_update_index(index)
 print(f" {result.name} created")
 
+# Create a data source
+indexer_client = SearchIndexerClient(service_endpoint, AzureKeyCredential(key))
+data_source_connection = SearchIndexerDataSourceConnection(
+    name=f"{index_name}-blob",
+    type="azureblob",
+    connection_string=blob_connection_string,
+    container=SearchIndexerDataContainer(name=container_name),
+)
+data_source = indexer_client.create_or_update_data_source_connection(data_source_connection)
+
+print(f"Data source '{data_source.name}' created or updated")
+
+# Create a skillset
+# WebSkill is a custom skill that is hosted in Azure Functions. > `backend\func\acs_skillset_for_indexer`
+skillset_name = f"{index_name}-skillset"
+skill_uri = f"{customSkill_endpoint}/api/GetImageEmbeddings"
+
+# https://learn.microsoft.com/en-us/azure/search/search-howto-indexing-azure-blob-storage
+skill = WebApiSkill(
+    uri=skill_uri,
+    inputs=[
+        InputFieldMappingEntry(
+            name="imgPath", source="/document/metadata_storage_path"
+        ),
+        InputFieldMappingEntry(
+            name="recordId", source="/document/metadata_storage_name"
+        ),
+    ],
+    outputs=[OutputFieldMappingEntry(name="vector", target_name="imageVector")],
+)
+
+skillset = SearchIndexerSkillset(
+    name=skillset_name,
+    description="Skillset to extract image vector",
+    skills=[skill],
+)
+
+client = SearchIndexerClient(service_endpoint, AzureKeyCredential(key))
+client.create_or_update_skillset(skillset)
+print(f" {skillset.name} created")
+
 # Create an indexer
 indexer_name = f"{index_name}-indexer"
 indexer = SearchIndexer(
@@ -214,7 +218,6 @@ indexer = SearchIndexer(
     ],
 )
 
-indexer_client = SearchIndexerClient(service_endpoint, AzureKeyCredential(key))
 indexer_result = indexer_client.create_or_update_indexer(indexer)
 
 # Run the indexer

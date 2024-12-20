@@ -80,8 +80,12 @@ postgre_port = os.getenv("POSTGRE_PORT")
 postgre_db = os.getenv("POSTGRE_DATABASE")
 postgre_pwd = os.getenv("POSTGRE_PASSWORD")
 
+# url encode for postgre_pwd
+import urllib.parse
+encoded_postgre_pwd = urllib.parse.quote(postgre_pwd)
+
 engine = create_engine(
-    f"postgresql://{postgre_user}:{postgre_pwd}@{postgre_host}:{postgre_port}/{postgre_db}"
+    f"postgresql://{postgre_user}:{encoded_postgre_pwd}@{postgre_host}:{postgre_port}/{postgre_db}"
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -813,7 +817,12 @@ def get_image(
 
         image_list = []
         for item in items:
-            item.imgPath = f"{item.imgPath}?{sas_token}"
+            pattern = r"\?se=[^&]+&sig=[^&]+"
+            dalle_url_pattern = re.search(pattern, item.imgPath)
+            if dalle_url_pattern:
+                item.imgPath = item.imgPath
+            else:
+                item.imgPath = f"{item.imgPath}?{sas_token}"
             image_dict = ImageDB.model_validate(item)
             image_list.append(image_dict)
 
