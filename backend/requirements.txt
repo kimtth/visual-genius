@@ -1,6 +1,6 @@
 fastapi~=0.111.0
 uvicorn[standard]~=0.23.2
-aiohttp==3.9.4
+aiohttp==3.10.11
 azure-search-documents==11.5.2
 azure-storage-blob==12.21.0
 openai~=1.30.1
