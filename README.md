@@ -1,5 +1,5 @@
 
-# Visual Genius: Communication Assistant
+# 🪅Visual Genius: Communication Assistant
 
 Most children with autism spectrum disorders (ASD) are visual learners. They tend to comprehend visual information better than auditory input, making visual supports more effective for their learning process.
 
@@ -11,7 +11,9 @@ The project was initiated due to the laborious creation of a visual card and a m
 
 > **Important:** The code in this repository was developed during a hackathon and implemented within a limited timeline. It is intended for demonstration purposes only.
 
-## Key Features
+## 🤖 Overview
+
+#### Features 🪂:
 
 1. Switching between personas and modes of generation (List, Steps, Manual / Parents and Caregivers, Childs)
 1. Visual Card generation and management (Set the order of images by Drag and Drop)
@@ -19,9 +21,9 @@ The project was initiated due to the laborious creation of a visual card and a m
 1. Video generation from images (To teach work procedures)
 1. Text-to-Image
 
-## Application Preview
-
 https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-c288df2bc766
+
+#### Azure services ☁️:
 
 1. Vector-based image search: Azure Cognitive Search & Computer Vision API for Vector embedding
 1. Text-to-image generation: Azure OpenAI GPT-3.5 & Image Generation by Azure OpenAI Dall-E
@@ -32,9 +34,9 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
 1. [Optional] Microsoft Coco dataset (Everyday Life Images)
    > The test dataset for Vector Image Search. Vector search seeks images based on their features, not by the associated metadata tags or the image file name.
 
-## Configuration
+## 📦 Installation and Setup
 
-#### Deploy to Azure
+#### Deploy to Azure 🪟:
 
 1. Set parameters under `infra\parameter.json`
 2. Execute `deploy.ps1` to upload the dataset, deploy Azure resources, initialize the database, and set up the search index.
@@ -82,7 +84,7 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
 
 - Azure Storage account should have `Allow storage account key access` enabled under the Configuration settings.
 
-#### To dev:
+#### To dev 🖳:
 
 1. Open project folder in <a href="https://code.visualstudio.com/download">Visual Studio Code</a>
 2. Rename `.env.template` to `.env`, then fill in the values in `.env`.
