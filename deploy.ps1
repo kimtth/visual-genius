@@ -19,7 +19,7 @@ param (
     [string]$DeploymentName = "az_rsc_deployment"
 )
 
-Start-Transcript -Path ".\Log.txt"
+Start-Transcript -Path ".\deploy.log"
 
 # Check if Python 3.11 is installed
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
@@ -207,7 +207,8 @@ func azure functionapp publish $FUNC_APP_NAME --python
 az functionapp config appsettings set --name $FUNC_APP_NAME --resource-group $ResourceGroup `
     --settings COGNITIVE_SERVICES_ENDPOINT=$COGNITIVE_SERVICES_ENDPOINT `
               COGNITIVE_SERVICES_API_KEY=$COGNITIVE_SERVICES_API_KEY `
-              COGNITIVE_SERVICES_API_VERSION="2024-02-01"
+              COGNITIVE_SERVICES_API_VERSION="2024-02-01" `
+              COGNITIVE_SERVICES_MODEL_VERSION="2023-04-15"
 
 Set-Location -Path "../.."
 

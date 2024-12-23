@@ -3,7 +3,7 @@ import jwt  # used for encoding and decoding jwt tokens
 from fastapi import HTTPException  # used to handle error handling
 from passlib.context import CryptContext  # used for hashing the password
 # used to handle expiry time for tokens
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # https://github.com/rohanshiva/Deta-FastAPI-JWT-Auth-Blog/tree/main
 
@@ -19,8 +19,8 @@ class AuthBase():
 
     def encode_token(self, user_id):
         payload = {
-            'exp': datetime.utcnow() + timedelta(days=1, hours=12),
-            'iat': datetime.utcnow(),
+            'exp': datetime.now(timezone.utc) + timedelta(days=1, hours=12),
+            'iat': datetime.now(timezone.utc),
             'scope': 'access_token',
             'sub': user_id
         }
@@ -44,8 +44,8 @@ class AuthBase():
 
     def encode_refresh_token(self, user_id):
         payload = {
-            'exp': datetime.utcnow() + timedelta(days=1, hours=12),
-            'iat': datetime.utcnow(),
+            'exp': datetime.now(timezone.utc) + timedelta(days=1, hours=12),
+            'iat': datetime.now(timezone.utc),
             'scope': 'refresh_token',
             'sub': user_id
         }

@@ -77,8 +77,10 @@ https://github.com/kimtth/visual-genius/assets/13846660/7a39a3ba-32e7-4742-aea6-
    choco install postgresql -y
 
    # Install Python 3.11
-   choco install python --version=3.11.0 -y
+   choco install python --version 3.11.0 -y
    ```
+
+- Azure Storage account should have `Allow storage account key access` enabled under the Configuration settings.
 
 #### To dev:
 

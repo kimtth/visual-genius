@@ -61,9 +61,13 @@ def get_image_embeddings(img_path):
     cog_svcs_endpoint = os.getenv("COGNITIVE_SERVICES_ENDPOINT")
     cog_svcs_api_key = os.getenv("COGNITIVE_SERVICES_API_KEY")
     cog_svcs_api_version = os.getenv("COGNITIVE_SERVICES_API_VERSION", "2024-02-01")
+    cog_svcs_model_version = os.getenv("COGNITIVE_SERVICES_MODEL_VERSION", "2023-04-15")
 
     url = f"{cog_svcs_endpoint}/computervision/retrieval:vectorizeImage"
-    params = {"api-version": cog_svcs_api_version}
+    params = {
+        "api-version": cog_svcs_api_version,
+        "model-version": cog_svcs_model_version,
+    }
     headers = {
         "Content-Type": "application/json",
         "Ocp-Apim-Subscription-Key": cog_svcs_api_key,
@@ -72,10 +76,18 @@ def get_image_embeddings(img_path):
 
     try:
         response = requests.post(url, params=params, headers=headers, json=data)
+        logging.debug(f"API Response {response.status_code}: {response.text}")
+        if response.status_code == 404:
+            logging.error("API endpoint not found. Check the env variables.")
+            return None
         if response.status_code != 200:
             logging.error(f"Error: {response.status_code}, {response.text}")
             return None
-        return response.json().get("vector", [])
+        vector = response.json().get("vector")
+        if not vector:
+            logging.error("Vector not found in the API response.")
+            return None
+        return vector
     except Exception as e:
         logging.error(f"Error getting image embeddings: {e}")
         return None
