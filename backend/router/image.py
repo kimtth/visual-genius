@@ -17,28 +17,28 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import ClientAuthenticationError
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 
 from db_blob import get_blob_service_client
 from module import aoai_call, bing_img_search, cog_embed_gen, text_to_speech
+from module.common.const import FILE_UPLOAD
 from router.util import (
     add_sas_token,
+    append_sas_token,
     blob_exist_check_delete_image,
     check_dalle_img_path,
     check_image_path_exist,
+    check_uploaded_img_path,
     delete_acs_document,
     gen_acs_document,
     generate_blob_container_sas,
     insert_acs_document,
     upload_image,
+    verify_token,
 )
-from module.common.models import (
-    Emoji,
-    ImageDB,
-    ImageModel,
-    ImageSchema
-)
+from module.common.models import Emoji, ImageDB, ImageModel, ImageSchema
 from module.auth.auth_base import AuthBase
 from db_blob import get_db
 
@@ -64,15 +64,13 @@ def get_images(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         params = request.query_params
         category_id = params["categoryId"] if "categoryId" in params else ""
 
         if category_id:
-            if category_id == "file_upload":
+            if category_id == FILE_UPLOAD:
                 items = (
                     session.query(ImageModel).filter_by(categoryId=category_id).all()
                 )
@@ -100,20 +98,27 @@ async def create_image(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         items = []
         acs_items = list()
         for image in images:
+            if check_uploaded_img_path(image.imgPath, container_name):
+                # Remove the SAS token from the image path.
+                image.imgPath = image.imgPath.split("?")[0]
             if not check_image_path_exist(image.categoryId, image.imgPath, session):
                 new_image = ImageModel(**image.model_dump())
                 new_image.sid = str(uuid.uuid4())
                 session.add(new_image)
                 items.append(new_image)
 
-            acs_doc_item = await gen_acs_document(new_image)
+            # Append an SAS token to access the image for the embedding API.
+            if check_uploaded_img_path(new_image.imgPath, container_name):
+                cp_new_image: ImageModel = append_sas_token(new_image)
+            else:
+                cp_new_image: ImageModel = new_image
+
+            acs_doc_item = await gen_acs_document(cp_new_image)
             acs_items.append(acs_doc_item)
 
         session.commit()
@@ -135,16 +140,20 @@ async def create_image(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         new_item = ImageModel(**image.model_dump())
         session.add(new_item)
         session.commit()
 
+        # Append an SAS token to access the image for the embedding API.
+        if check_uploaded_img_path(new_item.imgPath, container_name):
+            cp_new_image: ImageModel = append_sas_token(new_item)
+        else:
+            cp_new_image: ImageModel = new_item
+
         # Update for Azure Cognitive Search Index
-        acs_doc_item = await gen_acs_document(new_item)
+        acs_doc_item = await gen_acs_document(cp_new_image)
         insert_acs_document([acs_doc_item])
 
         return ImageDB.model_validate(new_item)
@@ -159,9 +168,7 @@ def get_image(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         if not categoryId:
             return []
@@ -198,20 +205,18 @@ async def update_image(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.get(ImageModel, sid)
         if not item:
             raise HTTPException(status_code=404, detail="Image not found")
 
-        for k, value in image.model_dump().items():
-            setattr(item, k, value)
-
-        # Upload the image to blob storage
         db_img_path = item.imgPath
         req_img_path = image.imgPath
+
+        # Copy values in ImageSchema to ImageModel
+        for k, value in image.model_dump().items():
+            setattr(item, k, value)
 
         acs_items = list()
         # If image url was changed, delete the old image and upload the new image
@@ -219,27 +224,32 @@ async def update_image(
             container_client = blob_service_client.get_container_client(container_name)
             if db_img_path:
                 await blob_exist_check_delete_image(db_img_path)
-            if req_img_path:
+            if check_dalle_img_path(req_img_path):
+                # A DALLE-e created image will have 'generated-00.png', so, it should be renamed.
                 item.imgPath, image_data = await upload_image(
-                    container_client, req_img_path
+                    container_client, req_img_path, True
                 )
                 if image_data is None:
                     # When the image upload fails, revert to the original image URL.
-                    item.imgPath = db_img_path
-                    raise HTTPException(500, "Failed to update an image")
+                    raise HTTPException(500, "Failed to upload an image")
+                
+            # Append an SAS token to access the image for the embedding API.
+            if check_uploaded_img_path(item.imgPath, container_name):
+                cp_new_image: ImageModel = append_sas_token(item)
+            else:
+                cp_new_image: ImageModel = item
 
-                acs_doc_item = await gen_acs_document(item)
-                # Run azure cognitive search for updates
-                acs_items.append(acs_doc_item)
-                insert_acs_document(acs_items)
+            acs_doc_item = await gen_acs_document(cp_new_image)
+            # Run azure cognitive search for updates
+            acs_items.append(acs_doc_item)
+            insert_acs_document(acs_items)
 
         session.commit()
         session.refresh(item)
 
         return ImageDB.model_validate(item)
     except Exception as e:
-        print(e)
-        raise HTTPException(500, "Failed to update an image")
+        raise e
 
 
 @router.delete("/images/{sid}")
@@ -248,9 +258,7 @@ async def delete_image_all(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.get(ImageModel, sid)
         if not item:
@@ -267,9 +275,7 @@ async def delete_image_all(
 async def img_gen_handler(
     query: str, credentials: HTTPAuthorizationCredentials = Security(security)
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         image_url = await aoai_call.img_gen(query)
         return image_url
@@ -283,9 +289,7 @@ async def img_gen_handler(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         params = request.query_params
         title = params["title"] if "title" in params else ""
@@ -311,9 +315,7 @@ async def img_gen_handler(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         params = request.query_params
         mode = params["mode"] if "mode" in params else ""
@@ -374,9 +376,7 @@ async def img_gen_handler(
 
 @router.get("/emojies")
 async def emoji_handler(credentials: HTTPAuthorizationCredentials = Security(security)):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         container_client = blob_service_client.get_container_client(
             emoji_container_name
@@ -415,9 +415,7 @@ async def search_handler(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         params = request.query_params
         k_num = int(params["count"]) if "count" in params else 3
@@ -451,9 +449,7 @@ async def search_handler(
         items = (
             session.query(ImageModel)
             .filter(
-                (
-                    ImageModel.imgPath.in_(img_ids)
-                ),
+                (ImageModel.imgPath.in_(img_ids)),
                 ImageModel.deleteFlag != 1,
             )
             .all()
@@ -473,13 +469,12 @@ async def file_upload(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         container_client = blob_service_client.get_container_client(container_name)
         acs_items = list()
-        category_id = "file_upload"
+        failed_files = []
+        category_id = FILE_UPLOAD
         primary_endpoint = (
             f"https://{blob_service_client.account_name}.blob.core.windows.net"
         )
@@ -490,7 +485,7 @@ async def file_upload(
                 try:
                     contents = await file.read()
                     blob_client = container_client.get_blob_client(file.filename)
-                    await blob_client.upload_blob(contents, overwrite=True)
+                    await blob_client.upload_blob(contents, overwrite=True, max_concurrency=4)
 
                     filename_without_extension = os.path.splitext(file.filename)[0]
                     new_item = ImageModel(
@@ -502,18 +497,37 @@ async def file_upload(
                     session.add(new_item)
                     session.commit()
 
-                    acs_doc_item = await gen_acs_document(new_item)
+                    # Append an SAS token to access the image for the embedding API.
+                    if check_uploaded_img_path(new_item.imgPath, container_name):
+                        cp_new_image: ImageModel = append_sas_token(new_item)
+                    else:
+                        cp_new_image: ImageModel = new_item
+
+                    acs_doc_item = await gen_acs_document(cp_new_image)
                     acs_items.append(acs_doc_item)
+                except ClientAuthenticationError as cae:
+                    print(
+                        f"Authentication with Azure Storage failed.: {cae}: {file.filename}"
+                    )
+                    failed_files.append(file.filename)
+                    continue
                 except Exception as e:
                     print(f"File upload failed: {e}: {file.filename}")
+                    failed_files.append(file.filename)
                     continue
+            else:
+                return JSONResponse(
+                    content={"message": "File already exists."}
+                )
 
         if acs_items:
             insert_acs_document(acs_items)
 
-        return JSONResponse(
-            content={"message": "Files uploaded successfully except existing files"}
-        )
+        message = "Files uploaded completed."
+        if failed_files:
+            message += f" failed_files: {os.linesep.join(failed_files)}"
+        
+        return JSONResponse(content={"message": message})
     except Exception as e:
         print(e)
         raise HTTPException(401, "Something went wrong..")
@@ -526,9 +540,7 @@ async def delete_image(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.get(ImageModel, sid)
         if item:
@@ -550,9 +562,7 @@ async def gen_synthesize_speech(
     text: str = Body(..., embed=True),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         audio_data = await text_to_speech.synthesize_speech(
             text, speech_subscription_key, speech_region

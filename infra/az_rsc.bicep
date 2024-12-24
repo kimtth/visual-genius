@@ -123,7 +123,7 @@ resource imgEmoji 'Microsoft.Storage/storageAccounts/blobServices/containers@202
 
 // Azure PostgreSQL
 resource postgresqlServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview' = {
-  name: '${prefix}-pgsql'
+  name: '${prefix}-pgsql-${uniqueString(resourceGroup().id)}'
   location: location
   sku: {
     name: 'Standard_B1ms'
@@ -162,7 +162,7 @@ resource postgresqlServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-
     replicationRole: 'Primary'
   }
 }
-// Configure firewall rules for public access - @TODO
+// Configure firewall rules for public access
 resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
   parent: postgresqlServer
   name: 'AllowAllIps'
@@ -200,17 +200,24 @@ resource cognitiveServices 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
 }
 
-resource bingSearchService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: '${prefix}-bing-${uniqueString(resourceGroup().id)}'
-  location: 'global'
-  sku: {
-    name: 'S1'
-  }
-  kind: 'Bing.Search.v7'
-  dependsOn: [
-    cognitiveServices
-  ]
-}
+// Azure Bing Search can not be deployed by Bicep - Deployed by Azure Portal
+// resource bingSearchService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+//   name: '${prefix}-bing-${uniqueString(resourceGroup().id)}'
+//   location: 'global'
+//   sku: {
+//     name: 'S1'
+//   }
+//   kind: 'Bing.Search.v7'
+//   properties: {
+//     customSubDomainName: '${prefix}-bing-${uniqueString(resourceGroup().id)}'
+//     networkAcls: {
+//       defaultAction: 'Allow'
+//     }
+//   }
+//   dependsOn: [
+//     cognitiveServices
+//   ]
+// }
 
 // Azure OpenAI (ChatGPT and DALL-E): DALL-E is not available to deply by Bicep
 resource openAI 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
@@ -253,7 +260,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: '${prefix}-appsrvplan-${uniqueString(resourceGroup().id)}'
   location: location
   sku: {
-    name: 'B1'
+    name: 'B1' // Maximum Apps -> 8
     tier: 'Basic'
     size: 'B1'
     family: 'B'
@@ -308,6 +315,14 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           value: cognitiveServices.listKeys().key1
         }
         {
+          name: 'COGNITIVE_SERVICES_API_VERSION'
+          value: '2024-02-01'
+        }
+        {
+          name: 'COGNITIVE_SERVICES_MODEL_VERSION'
+          value: '2023-04-15'
+        }
+        {
           name: 'BLOB_CONNECTION_STRING'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
         }
@@ -349,7 +364,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'BING_IMAGE_SEARCH_KEY'
-          value: bingSearchService.listKeys().key1
+          value: '' // Azure Bing Search can not be deployed by Bicep
         }
         {
           name: 'POSTGRE_HOST'
@@ -393,7 +408,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
 }
 
 // Azure App Service (Function App Python)
-resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
+resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   name: '${prefix}-func-${uniqueString(resourceGroup().id)}'
   location: location
   kind: 'functionapp,linux'
@@ -414,6 +429,88 @@ resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'python'
         }
+        {
+          name: 'COGNITIVE_SERVICES_ENDPOINT'
+          value: replace(cognitiveServices.properties.endpoint, '/$', '')
+        }
+        {
+          name: 'COGNITIVE_SERVICES_API_KEY'
+          value: cognitiveServices.listKeys().key1
+        }
+        {
+          name: 'COGNITIVE_SERVICES_API_VERSION'
+          value: '2024-02-01'
+        }
+        {
+          name: 'COGNITIVE_SERVICES_MODEL_VERSION'
+          value: '2023-04-15'
+        }
+      ]
+    }
+  }
+}
+
+resource functionApp2 'Microsoft.Web/sites@2024-04-01' = {
+  name: '${prefix}-func2-${uniqueString(resourceGroup().id)}'
+  location: location
+  kind: 'functionapp,linux'
+  properties: {
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'PYTHON|3.11'
+      alwaysOn: true
+      http20Enabled: true
+      ftpsState: 'AllAllowed'
+      appSettings: [
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'python'
+        }
+        {
+          name: 'POSTGRE_HOST'
+          value: postgresqlServer.properties.fullyQualifiedDomainName
+        }
+        {
+          name: 'POSTGRE_USER'
+          value: pgsqlUserId
+        }
+        {
+          name: 'POSTGRE_PORT'
+          value: '5432'
+        }
+        {
+          name: 'POSTGRE_DATABASE'
+          value: 'vgdb'
+        }
+        {
+          name: 'POSTGRE_PASSWORD'
+          value: pgsqlPwd
+        }
+        {
+          name: 'BLOB_CONNECTION_STRING'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+        }
+        {
+          name: 'BLOB_CONTAINER_NAME'
+          value: imgContainer.name
+        }
+        {
+          name: 'AZURE_SEARCH_SERVICE_ENDPOINT'
+          value: 'https://${searchService.name}.search.windows.net'
+        }
+        {
+          name: 'AZURE_SEARCH_INDEX_NAME'
+          value: 'vg-index'
+        }
+        {
+          name: 'AZURE_SEARCH_ADMIN_KEY'
+          value: listAdminKeys(searchService.name, searchServiceAPIVersion).primaryKey
+        }
       ]
     }
   }
@@ -422,6 +519,7 @@ resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
 // Add outputs for necessary resources
 output appServiceName string = appService.name
 output functionAppName string = functionApp.name
+output functionApp2Name string = functionApp2.name
 output storageAccountName string = storageAccount.name
 #disable-next-line outputs-should-not-contain-secrets
 output azureSearchAdminKey string = listAdminKeys(searchService.name, searchServiceAPIVersion).primaryKey
@@ -435,3 +533,8 @@ output blobContainerName string = imgContainer.name
 // output postgresqlServerName string = postgresqlServer.name
 output postgresqlServerName string = postgresqlServer.properties.fullyQualifiedDomainName
 output functionAppEndpoint string = 'https://${functionApp.name}.azurewebsites.net'
+output azureOpenAIEndpoint string = replace(openAI.properties.endpoint, '/$', '')
+output azureOpenAIModelDeploymentName string = '${prefix}-gpt4o-mini'
+#disable-next-line outputs-should-not-contain-secrets
+output azureOpenAIKey string = openAI.listKeys().key1
+output azureOpenAIapiVersion string = openAI.apiVersion

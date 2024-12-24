@@ -2,9 +2,6 @@
 -- Manually create the database if it doesn't exist:
 -- CREATE DATABASE vgdb;
 
--- Connect to the vgdb database
-\c vgdb;
-
 -- Create user table
 CREATE TABLE IF NOT EXISTS "user" (
     "user_id" VARCHAR PRIMARY KEY,
@@ -23,7 +20,7 @@ ON CONFLICT (user_id) DO NOTHING;
 -- Create category table
 CREATE TABLE IF NOT EXISTS "category" (
     "sid" VARCHAR PRIMARY KEY, 
-    "category" VARCHAR,
+    "topic" VARCHAR,
     "title" VARCHAR,
     "difficulty" VARCHAR,
     "imgNum" INTEGER,
@@ -33,6 +30,11 @@ CREATE TABLE IF NOT EXISTS "category" (
     "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("user_id") REFERENCES "user"("user_id")
 );
+
+-- Insert into "file_upload" category 
+INSERT INTO "category" (sid, topic, title, difficulty, "imgNum", user_id)
+VALUES ('file_upload', '-', 'File Upload', 'Easy', 0, 'sys')
+ON CONFLICT (sid) DO NOTHING;
 
 -- Create image table
 CREATE TABLE IF NOT EXISTS "image" (

@@ -19,7 +19,13 @@ param (
     [string]$DeploymentName = "az_rsc_deployment"
 )
 
-Start-Transcript -Path ".\deploy.log"
+# Get current directory
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
+# Joint the path
+$LogFilePath = Join-Path -Path $scriptPath -ChildPath "deploy.log"
+
+Start-Transcript -Path $LogFilePath
 
 # Check if Python 3.11 is installed
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
@@ -76,38 +82,15 @@ $deployment = az deployment group create `
     --name $DeploymentName `
     --output json | ConvertFrom-Json
 
-# Poll the deployment status
-$retryCount = 0
-$maxRetries = 60  # 10 minutes (60 retries * 10 seconds)
-do {
-    Start-Sleep -Seconds 10
-    $provisioningState = az deployment group show `
-        --resource-group $ResourceGroup `
-        --name $DeploymentName `
-        --query "properties.provisioningState" `
-        --output tsv
-    Write-Host "Current Provisioning State: $provisioningState"
-    $retryCount++
-} while ($provisioningState -eq "Running" -and $retryCount -lt $maxRetries)
-
-if ($provisioningState -eq "Running") {
-    Write-Error "Deployment polling timed out."
-    exit 1
-}
-
-Write-Host "Final Provisioning State: $provisioningState"
+$provisioningState = $deployment.properties.provisioningState
 
 # Check if the provisioning state is 'Succeeded'
-if ($provisioningState -ne "Succeeded") {
-    Write-Error "Deployment failed with provisioning state '$provisioningState'."
-    exit 1
-} else {
-    Write-Host "Deployment succeeded."
-}
+Write-Host "Deployment provisioning state: $provisioningState"
 
 # Manually set the variables (replace these with actual values or logic to retrieve them)
 $APP_SERVICE_NAME = $deployment.properties.outputs.appServiceName.value
 $FUNC_APP_NAME = $deployment.properties.outputs.functionAppName.value
+$FUNC_APP2_NAME = $deployment.properties.outputs.functionApp2Name.value
 $STORAGE_ACCOUNT_NAME = $deployment.properties.outputs.storageAccountName.value
 $AZURE_SEARCH_ADMIN_KEY = $deployment.properties.outputs.azureSearchAdminKey.value
 $COGNITIVE_SERVICES_ENDPOINT = $deployment.properties.outputs.cognitiveServicesEndpoint.value
@@ -117,12 +100,18 @@ $BLOB_CONNECTION_STRING = $deployment.properties.outputs.blobConnectionString.va
 $BLOB_CONTAINER_NAME = $deployment.properties.outputs.blobContainerName.value
 $POSTGRESQL_SERVER_NAME = $deployment.properties.outputs.pgServerName.value
 $FUCNTION_APP_ENDPOINT = $deployment.properties.outputs.functionAppEndpoint.value
+$AZUREOPENAI_ENDPOINT = $deployment.properties.outputs.azureOpenAIEndpoint.value
+$AZUREOPENAI_MODEL_DEPLOYMENT_NAME = $deployment.properties.outputs.azureOpenAIModelDeploymentName.value
+$AZUREOPENAI_API_KEY = $deployment.properties.outputs.azureOpenAIApiKey.value
+$AZUREOPENAI_API_VERSION_CHAT = $deployment.properties.outputs.azureOpenAIApiVersionChat.value
+
 
 # Print the parameters and values
 Write-Debug "Resource Group: $ResourceGroup"
 Write-Debug "Location: $Location"
 Write-Debug "App Service Name: $APP_SERVICE_NAME"
 Write-Debug "Function App Name: $FUNC_APP_NAME"
+Write-Debug "Function App2 Name: $FUNC_APP2_NAME"
 Write-Debug "Storage Account Name: $STORAGE_ACCOUNT_NAME"
 Write-Debug "Azure Search Admin Key: $AZURE_SEARCH_ADMIN_KEY"
 Write-Debug "Cognitive Services Endpoint: $COGNITIVE_SERVICES_ENDPOINT"
@@ -132,6 +121,15 @@ Write-Debug "Blob Connection String: $BLOB_CONNECTION_STRING"
 Write-Debug "Blob Container Name: $BLOB_CONTAINER_NAME"
 Write-Debug "PostgreSQL Server Name: $POSTGRESQL_SERVER_NAME"
 Write-Debug "Function App Endpoint: $FUCNTION_APP_ENDPOINT"
+Write-Debug "Azure OpenAI Endpoint: $AZUREOPENAI_ENDPOINT"
+Write-Debug "Azure OpenAI Model Deployment Name: $AZUREOPENAI_MODEL_DEPLOYMENT_NAME"
+Write-Debug "Azure OpenAI API Key: $AZUREOPENAI_API_KEY"
+Write-Debug "Azure OpenAI API Version Chat: $AZUREOPENAI_API_VERSION_CHAT"
+
+If ($null -eq $AZUREOPENAI_ENDPOINT) {
+    Write-Error "Azure OpenAI Endpoint is not available. Please check the deployment."
+    exit 1
+}
 
 # Get subscription ID (optional)
 # $SUBSCRIPTION_ID = az account show --query id -o tsv
@@ -171,7 +169,7 @@ if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
 }
 
 # Execute SQL script
-psql "host=$PGSQL_SERVER dbname=$DATABASE_NAME user=$PGSQL_USERID password=$PGSQL_PWD_Plain" -f infra/db_postgres.sql
+psql "host=$PGSQL_SERVER dbname=$DATABASE_NAME user=$PGSQL_USERID password=$PGSQL_PWD_Plain" -f "infra/db_postgres.sql"
 
 # Move to the backend directory
 Set-Location -Path "backend"
@@ -197,18 +195,18 @@ if (-not (Get-Command func -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-Set-Location -Path "func\acs_skillset_for_indexer"
+Set-Location -Path "func\acs_skillset_indexer"
 
-# Deploy Web Skill Azure function app under "backend\func\acs_skillset_for_indexer" folder
+# Deploy Web Skill Azure function app under "backend\func\acs_skillset_indexer" folder
 func azure functionapp publish $FUNC_APP_NAME --python
 
+Set-Location -Path ".."
+Set-Location -Path "batch_schedule_delete"
+
+func azure functionapp publish $FUNC_APP2_NAME --python
+
 # Set environment variables in Azure Function App
-# API_VERSION: https://learn.microsoft.com/en-us/rest/api/computervision/vectorize/image
-az functionapp config appsettings set --name $FUNC_APP_NAME --resource-group $ResourceGroup `
-    --settings COGNITIVE_SERVICES_ENDPOINT=$COGNITIVE_SERVICES_ENDPOINT `
-              COGNITIVE_SERVICES_API_KEY=$COGNITIVE_SERVICES_API_KEY `
-              COGNITIVE_SERVICES_API_VERSION="2024-02-01" `
-              COGNITIVE_SERVICES_MODEL_VERSION="2023-04-15"
+# az functionapp config appsettings set --name $FUNC_APP_NAME --resource-group $ResourceGroup `
 
 Set-Location -Path "../.."
 
@@ -233,7 +231,7 @@ Write-Host "Deploying the application code to Azure App Service."
 Set-Location -Path ".."
 # Yarn can sometimes handle dependency conflicts better than npm.
 yarn install
-yarn run build
+yarn build
 Write-Host "Next.js application built."
 
 # Zip the application files
@@ -312,3 +310,40 @@ az webapp config set `
 Write-Host "Startup command configured."
 
 Stop-Transcript
+
+# Create .env file with the following environment variables
+# Replace the values with the actual values or secrets
+
+$envFilePath = Join-Path -Path $scriptPath -ChildPath "_dev.env"
+
+@"
+AZURE_SEARCH_SERVICE_ENDPOINT=$AZURE_SEARCH_SERVICE_ENDPOINT
+AZURE_SEARCH_INDEX_NAME=vg-index
+AZURE_SEARCH_ADMIN_KEY=$AZURE_SEARCH_ADMIN_KEY
+COGNITIVE_SERVICES_ENDPOINT=$COGNITIVE_SERVICES_ENDPOINT
+COGNITIVE_SERVICES_API_KEY=$COGNITIVE_SERVICES_API_KEY
+COGNITIVE_SERVICES_API_VERSION=2024-02-01
+COGNITIVE_SERVICES_MODEL_VERSION=2023-04-15
+FUNCTION_CUSTOM_SKILL_ENDPOINT=$FUCNTION_APP_ENDPOINT
+BLOB_CONNECTION_STRING=$BLOB_CONNECTION_STRING
+BLOB_ACCOUNT_KEY=$($BLOB_CONNECTION_STRING.Split(';')[-1].Split('=')[-1])
+BLOB_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME
+BLOB_CONTAINER_NAME=$BLOB_CONTAINER_NAME
+BLOB_EMOJI_CONTAINER_NAME=$BLOB_EMOJI_CONTAINER_NAME
+AZURE_OPENAI_ENDPOINT=$AZUREOPENAI_ENDPOINT
+AZURE_OPENAI_API_KEY=$AZUREOPENAI_API_KEY
+AZURE_OPENAI_MODEL_DEPLOYMENT_NAME=$AZUREOPENAI_MODEL_DEPLOYMENT_NAME
+AZURE_OPENAI_IMG_MODEL_DEPLOYMENT_NAME=dall-e-3
+AZURE_OPENAI_API_VERSION_CHAT=$AZUREOPENAI_API_VERSION_CHAT
+BING_IMAGE_SEARCH_KEY=
+SPEECH_SUBSCRIPTION_KEY=$COGNITIVE_SERVICES_API_KEY
+SPEECH_REGION=$Location
+POSTGRE_HOST=$POSTGRESQL_SERVER_NAME
+POSTGRE_USER=$PGSQL_USERID
+POSTGRE_PORT=5432
+POSTGRE_DATABASE=$DATABASE_NAME
+POSTGRE_PASSWORD=$PGSQL_PWD_Plain
+ENV_TYPE=prod
+APP_SECRET_STRING=
+"@ | Out-File -FilePath $envFilePath -Encoding utf8 -Force
+

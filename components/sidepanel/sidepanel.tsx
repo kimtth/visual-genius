@@ -55,7 +55,7 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
     const [categoryIdState, setCategoryId] = useState("");
     const [categoryTitle, setCategoryTitle] = useState("New Category");
     const [categoryDifficulty, setCategoryDifficulty] = useState("");
-    const [categoryTag, setCategoryTag] = useState("");
+    const [categoryTopic, setCategoryTopic] = useState("");
     const [modalMessageType, setModalMessageType] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
     const [showNumberingSt, setShowNumberingSt] = useState(false);
@@ -169,8 +169,8 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                 Axios.get(`${API_ENDPOINT}/category/${categoryId}`).then((result: any) => {
                     const data = result.data;
                     onCategoryData(data);
+                    setCategoryTopic(data.topic);
                     setCategoryTitle(data.title);
-                    setCategoryTag(data.category);
                     setCategoryDifficulty(data.difficulty);
                     if (data && Object.keys(data).length !== 0) {
                         setDisableGenButton(true);
@@ -227,8 +227,8 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                 executePut({
                     data: {
                         ...categoryData,
+                        topic: categoryTopic,
                         title: categoryTitle,
-                        category: categoryTag,
                         difficulty: categoryDifficulty,
                     }
                 })
@@ -276,9 +276,9 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
         const newCategoryId = imageData[0].categoryId;
         return {
             sid: newCategoryId,
+            topic: "Object Recognition", //TODO: change to dynamic
             title: categoryTitle,
-            category: "Object Recognition", //TODO: change to dynamic
-            difficulty: "Medium",  //TODO: change to dynamic
+            difficulty: "Medium", 
             imgNum: imageNumber,
             user_id: getSignInUserId()
         };
@@ -498,17 +498,17 @@ const NewSidePanel: FC<NewSidePanelProps> = ({ disableGenButton, setDisableGenBu
                     </Editable>
                     <PiCursorClickLight />
                 </Box>
-                {categoryTag ?
+                {categoryTopic ?
                     <Box display="flex" alignItems="center" justifyContent="left" ml={5}>
                         <Editable
-                            value={categoryTag}
+                            value={categoryTopic}
                             maxW={{ base: '100%', sm: '110px' }}
                             fontSize='xs'
                             color='blue.400'
                             borderRadius='lg'
                             backgroundColor='blue.100'
                             textAlign="center"
-                            onChange={(val: string) => { setCategoryTag(val) }}
+                            onChange={(val: string) => { setCategoryTopic(val) }}
                             onSubmit={() => handleUpdateRequest()}
                         >
                             <EditablePreview p={0} />

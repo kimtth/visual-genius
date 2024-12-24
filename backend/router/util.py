@@ -1,5 +1,6 @@
 import base64
 import os
+from fastapi.security import HTTPAuthorizationCredentials
 import httpx
 import re
 
@@ -15,9 +16,12 @@ from azure.storage.blob import ContainerSasPermissions
 from azure.storage.blob.aio import ContainerClient
 from azure.storage.blob import generate_container_sas
 from sqlalchemy.orm import Session
+from copy import deepcopy
 
 from db_blob import get_blob_service_client
 from module import cog_embed_gen
+from module.auth.auth_base import AuthBase
+from module.common.const import HTTP_IDENTIFIER
 from module.common.models import ImageDB, ImageModel
 
 
@@ -41,18 +45,30 @@ async def process_dalle_image(
     new_image.imgPath, image_data = await upload_image(
         container_client, new_image.imgPath
     )
-    trigger_exception = False
+
     if image_data is None:
-        # Without filtering the images that failed, revert to the original image URL.
         new_image.imgPath = original_img_path
-        trigger_exception = True
-    if trigger_exception:
-        raise Exception("Failed to upload image")
+    
+    return new_image
 
 
 def check_dalle_img_path(img_path: str) -> bool:
     pattern = r"\?se=[^&]+&sig=[^&]+"
     return re.search(pattern, img_path)
+
+
+def check_uploaded_img_path(img_path: str, container_name: str) -> bool:
+    pattern = r"\?se=[^&]+&sig=[^&]+"
+    matches = re.findall(pattern, img_path)
+    if container_name in img_path and len(matches) == 0:
+        return True
+    return False
+
+
+def append_sas_token(new_image: ImageModel) -> ImageModel:
+    cp_new_image: ImageModel = deepcopy(new_image)
+    cp_new_image.imgPath = f"{cp_new_image.imgPath}?{generate_blob_container_sas(container_name)}"
+    return cp_new_image
 
 
 def remove_query_params(url: str):
@@ -92,9 +108,13 @@ async def validate_image_url(img_path: str):
 
 
 # Speed up the upload process by using async and concurrent upload
-async def upload_image(container_client: ContainerClient, img_path: str):
+async def upload_image(container_client: ContainerClient, img_path: str, rename: bool = False):
     try:
         img, content, file_name = await validate_image_url(img_path)
+
+        if rename:
+            file_extension = file_name.split(".")[-1]
+            file_name = f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}.{file_extension}"
 
         blob_client = container_client.get_blob_client(file_name)
 
@@ -117,14 +137,24 @@ async def upload_image(container_client: ContainerClient, img_path: str):
 
 
 # Speed up the download process by using async
-async def download_image(container_client, img_path: str):
+async def download_image(container_client: ContainerClient, img_path: str):
     try:
         file_name = img_path.split("/")[-1]
-        blob_client = container_client.get_blob_client(file_name)
-        async with blob_client:
-            stream = await blob_client.download_blob(max_concurrency=4)
-            rtn = await stream.readall()
-            return rtn
+        # if image path is web url, download the image, then convert it to bytes
+        rtn = None
+        if HTTP_IDENTIFIER in img_path:
+            async with httpx.AsyncClient() as client:
+                rtn = await client.get(img_path)
+                return rtn.content
+        else:
+            blob_client = container_client.get_blob_client(file_name)
+            async with blob_client:
+                stream = await blob_client.download_blob(max_concurrency=4)
+                rtn = await stream.readall()
+                return rtn
+            
+        if rtn is None:
+            raise Exception("Failed to download image")
     except Exception as e:
         # print(f"The blob {img_path} was not found. {e}")
         return None
@@ -176,13 +206,15 @@ def generate_blob_container_sas(container_name: str) -> str:
         permission=ContainerSasPermissions(
             read=True, write=True, delete=True, list=True
         ),
-        expiry=datetime.now(timezone.utc) + timedelta(hours=1),
+        expiry=datetime.now(timezone.utc) + timedelta(days=1),
+        start=datetime.now(timezone.utc) - timedelta(minutes=1),
+        protocol="https"
     )
     return sas_token
 
 
-async def gen_acs_document(new_item: ImageModel):
-    image_url = new_item.imgPath
+async def gen_acs_document(new_item: ImageModel, sas_token: str=None):
+    image_url = new_item.imgPath if sas_token is None else f"{new_item.imgPath}?{sas_token}"
     embed = await cog_embed_gen.generate_image_embeddings(
         image_url, cogSvcsEndpoint, cogSvcsApiKey
     )
@@ -206,7 +238,7 @@ def insert_acs_document(acs_items: List[dict]):
         result = search_client.merge_or_upload_documents(documents=acs_items)
 
         if result:
-            print("insert_acs_document:", result[0].succeeded)
+            print("Insert documents to Azure Search Index:", result[0].succeeded)
     except Exception as e:
         print("Azure Cognitive Search index: ", e)
         raise HTTPException(
@@ -243,3 +275,15 @@ def delete_acs_document(acs_items: List[dict]):
     except Exception as e:
         print(e)
         raise Exception("Failed to delete files to Azure Cognitive Search index")
+    
+    
+def verify_token(credentials: HTTPAuthorizationCredentials, auth_handler: AuthBase) -> str:    
+    token = credentials.credentials
+    try:
+        if not auth_handler.decode_token(token):
+            raise HTTPException(status_code=403, detail="Not authorized")
+        else:
+            user_id = auth_handler.decode_token(token)
+            return user_id
+    except Exception as e:
+        raise HTTPException(status_code=403, detail="Invalid authentication token") from e

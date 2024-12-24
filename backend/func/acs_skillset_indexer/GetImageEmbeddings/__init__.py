@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import uuid
 import requests
 import azure.functions as func
 
@@ -96,7 +97,7 @@ def get_image_embeddings(img_path):
 def create_success_response(record_id, vector):
     return {
         "recordId": record_id,
-        "data": {"vector": vector},
+        "data": {"vector": vector, "sid": str(uuid.uuid4())},
         "errors": [],
         "warnings": None,
     }

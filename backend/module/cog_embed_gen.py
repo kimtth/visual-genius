@@ -1,13 +1,17 @@
+import os
 import httpx
 import requests
 
 
-def generate_embeddings(text, cogSvcsEndpoint, cogSvcsApiKey):  
+def generate_embeddings(text, cogSvcsEndpoint, cogSvcsApiKey):
+    cog_svcs_api_version = os.getenv("COGNITIVE_SERVICES_API_VERSION", "2024-02-01")
+    cog_svcs_model_version = os.getenv("COGNITIVE_SERVICES_MODEL_VERSION", "2023-04-15")
     url = f"{cogSvcsEndpoint}/computervision/retrieval:vectorizeText"  
-  
-    params = {  
-        "api-version": "2023-02-01-preview"  
-    }  
+
+    params = {
+        "api-version": cog_svcs_api_version,
+        "model-version": cog_svcs_model_version,
+    } 
   
     headers = {  
         "Content-Type": "application/json",  
@@ -28,11 +32,15 @@ def generate_embeddings(text, cogSvcsEndpoint, cogSvcsApiKey):
         return None
     
 
-async def generate_image_embeddings(image_url, cogSvcsEndpoint, cogSvcsApiKey):  
+async def generate_image_embeddings(image_url, cogSvcsEndpoint, cogSvcsApiKey):
+    cog_svcs_api_version = os.getenv("COGNITIVE_SERVICES_API_VERSION", "2024-02-01")
+    cog_svcs_model_version = os.getenv("COGNITIVE_SERVICES_MODEL_VERSION", "2023-04-15")
     url = f"{cogSvcsEndpoint}/computervision/retrieval:vectorizeImage"  
-    params = {  
-        "api-version": "2023-02-01-preview"  
-    }  
+
+    params = {
+        "api-version": cog_svcs_api_version,
+        "model-version": cog_svcs_model_version,
+    } 
   
     headers = {  
         "Content-Type": "application/json",  
@@ -44,36 +52,10 @@ async def generate_image_embeddings(image_url, cogSvcsEndpoint, cogSvcsApiKey):
     }
 
     try:
-        print(image_url)
         async with httpx.AsyncClient() as client:
             response = await client.post(url, params=params, headers=headers, json=data)
             if response.status_code != 200:  
-                print(f"Error: {response.status_code}, {response.text}")  
-                response.raise_for_status()  
-        
-            embeddings = response.json()["vector"]  
-            return embeddings  
-    except Exception as exc:
-        print('Embedding generation failed:', exc)
-        return []
-
-
-async def generate_image_embeddings_by_stream(image_stream, cogSvcsEndpoint, cogSvcsApiKey):  
-    url = f"{cogSvcsEndpoint}/computervision/retrieval:vectorizeImage"  
-    params = {  
-        "api-version": "2023-02-01-preview"  
-    }  
-  
-    headers = {  
-        "Content-Type": "application/octet-stream",
-        "Ocp-Apim-Subscription-Key": cogSvcsApiKey  
-    }  
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, params=params, headers=headers, data=image_stream) 
-            if response.status_code != 200:  
-                print(f"Error: {response.status_code}, {response.text}")  
+                print(f"Error: {response.status_code}, {response.text}: {image_url}")  
                 response.raise_for_status()  
         
             embeddings = response.json()["vector"]  

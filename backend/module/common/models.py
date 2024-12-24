@@ -43,8 +43,8 @@ class UserDB(UserSchema):
 class CategoryModel(Base):
     __tablename__ = "category"
     sid = Column(String, primary_key=True, index=True)
-    title = Column(String, index=True)
-    category = Column(String)
+    topic = Column(String)
+    title = Column(String)
     difficulty = Column(String)
     imgNum = Column(Integer)
     user_id = Column(String, ForeignKey("user.user_id"))
@@ -57,8 +57,8 @@ class CategoryModel(Base):
 # Pydantic model - request body
 class CategorySchema(BaseModel):
     sid: str
+    topic: str
     title: str
-    category: str
     difficulty: str
     imgNum: int
     user_id: str

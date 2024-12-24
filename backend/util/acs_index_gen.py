@@ -1,6 +1,7 @@
 # Import libraries
 import argparse
 import os
+import uuid
 
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents.indexes import SearchIndexerClient
@@ -13,7 +14,7 @@ from azure.search.documents.indexes.models import (
     SearchFieldDataType,
     VectorSearch,
     # VectorSearchAlgorithmConfiguration,
-    HnswAlgorithmConfiguration, 
+    HnswAlgorithmConfiguration,
     VectorSearchProfile,
     InputFieldMappingEntry,
     OutputFieldMappingEntry,
@@ -33,52 +34,77 @@ from dotenv import load_dotenv
 # demo-python/code/azure-search-vector-image-python-sample.ipynb
 
 load_dotenv(verbose=False)
+args = None
 
-parser = argparse.ArgumentParser(description="Azure Cognitive Search Index Generator")
-parser.add_argument(
-    "--search-service-endpoint",
-    type=str,
-    required=True,
-    help="Azure Search Service Endpoint",
-)
-parser.add_argument(
-    "--search-index-name", type=str, required=True, help="Azure Search Index Name"
-)
-parser.add_argument(
-    "--search-admin-key", type=str, required=True, help="Azure Search Admin Key"
-)
-parser.add_argument(
-    "--cognitive-services-endpoint",
-    type=str,
-    required=True,
-    help="Cognitive Services Endpoint",
-)
-parser.add_argument(
-    "--cognitive-services-api-key",
-    type=str,
-    required=True,
-    help="Cognitive Services API Key",
-)
-parser.add_argument(
-    "--custom-skill-endpoint", type=str, required=True, help="Custom Skill Endpoint"
-)
-parser.add_argument(
-    "--blob-connection-string", type=str, required=True, help="Blob Connection String"
-)
-parser.add_argument(
-    "--blob-container-name", type=str, required=True, help="Blob Container Name"
-)
+# Use argparse when os.getenv is not available
+if not os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT"):
+    parser = argparse.ArgumentParser(
+        description="Azure Cognitive Search Index Generator"
+    )
+    parser.add_argument(
+        "--search-service-endpoint",
+        type=str,
+        required=True,
+        help="Azure Search Service Endpoint",
+    )
+    parser.add_argument(
+        "--search-index-name", type=str, required=True, help="Azure Search Index Name"
+    )
+    parser.add_argument(
+        "--search-admin-key", type=str, required=True, help="Azure Search Admin Key"
+    )
+    parser.add_argument(
+        "--cognitive-services-endpoint",
+        type=str,
+        required=True,
+        help="Cognitive Services Endpoint",
+    )
+    parser.add_argument(
+        "--cognitive-services-api-key",
+        type=str,
+        required=True,
+        help="Cognitive Services API Key",
+    )
+    parser.add_argument(
+        "--custom-skill-endpoint", type=str, required=True, help="Custom Skill Endpoint"
+    )
+    parser.add_argument(
+        "--blob-connection-string",
+        type=str,
+        required=True,
+        help="Blob Connection String",
+    )
+    parser.add_argument(
+        "--blob-container-name", type=str, required=True, help="Blob Container Name"
+    )
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-service_endpoint = args.search_service_endpoint or os.getenv("AZURE_SEARCH_SERVICE_ENDPOINT")
-index_name = args.search_index_name or os.getenv("AZURE_SEARCH_INDEX_NAME")
-key = args.search_admin_key or os.getenv("AZURE_SEARCH_ADMIN_KEY")
-cogSvcsEndpoint = args.cognitive_services_endpoint or os.getenv("COGNITIVE_SERVICES_ENDPOINT")
-cogSvcsApiKey = args.cognitive_services_api_key or os.getenv("COGNITIVE_SERVICES_API_KEY")
-customSkill_endpoint = args.custom_skill_endpoint or os.getenv("FUNCTION_CUSTOM_SKILL_ENDPOINT")
-blob_connection_string = args.blob_connection_string or os.getenv("BLOB_CONNECTION_STRING")
-container_name = args.blob_container_name or os.getenv("BLOB_CONTAINER_NAME")
+
+def get_config(args, attr_name, env_var):
+    if hasattr(args, attr_name):
+        return getattr(args, attr_name) or os.getenv(env_var)
+    return os.getenv(env_var)
+
+
+service_endpoint = get_config(
+    args, "search_service_endpoint", "AZURE_SEARCH_SERVICE_ENDPOINT"
+)
+index_name = get_config(args, "search_index_name", "AZURE_SEARCH_INDEX_NAME")
+key = get_config(args, "search_admin_key", "AZURE_SEARCH_ADMIN_KEY")
+cogSvcsEndpoint = get_config(
+    args, "cognitive_services_endpoint", "COGNITIVE_SERVICES_ENDPOINT"
+)
+cogSvcsApiKey = get_config(
+    args, "cognitive_services_api_key", "COGNITIVE_SERVICES_API_KEY"
+)
+customSkill_endpoint = get_config(
+    args, "custom_skill_endpoint", "FUNCTION_CUSTOM_SKILL_ENDPOINT"
+)
+blob_connection_string = get_config(
+    args, "blob_connection_string", "BLOB_CONNECTION_STRING"
+)
+container_name = get_config(args, "blob_container_name", "BLOB_CONTAINER_NAME")
 
 # Connect to Blob Storage
 blob_service_client = BlobServiceClient.from_connection_string(blob_connection_string)
@@ -105,13 +131,10 @@ index_client = SearchIndexClient(
 vector_search = VectorSearch(
     profiles=[
         VectorSearchProfile(
-            name="vector-profile",
-            algorithm_configuration_name="hnsw-config"
+            name="vector-profile", algorithm_configuration_name="hnsw-config"
         )
     ],
-    algorithms=[
-        HnswAlgorithmConfiguration(name="hnsw-config")
-    ]
+    algorithms=[HnswAlgorithmConfiguration(name="hnsw-config")],
 )
 
 # Define the search index fields
@@ -162,7 +185,9 @@ data_source_connection = SearchIndexerDataSourceConnection(
     connection_string=blob_connection_string,
     container=SearchIndexerDataContainer(name=container_name),
 )
-data_source = indexer_client.create_or_update_data_source_connection(data_source_connection)
+data_source = indexer_client.create_or_update_data_source_connection(
+    data_source_connection
+)
 
 print(f"Data source '{data_source.name}' created or updated")
 
@@ -182,7 +207,12 @@ skill = WebApiSkill(
             name="recordId", source="/document/metadata_storage_name"
         ),
     ],
-    outputs=[OutputFieldMappingEntry(name="vector", target_name="imageVector")],
+    outputs=[
+        # The name should be the same as the field name in webskill response.
+        # The taget_name must match with FieldMapping > source_field_name
+        OutputFieldMappingEntry(name="vector", target_name="imageVector"),
+        OutputFieldMappingEntry(name="sid", target_name="sid"),
+    ],
 )
 
 skillset = SearchIndexerSkillset(
@@ -205,16 +235,29 @@ indexer = SearchIndexer(
     data_source_name=data_source.name,
     field_mappings=[
         FieldMapping(
-            source_field_name="metadata_storage_path", target_field_name="imgPath"
+            # The source_field_name: The field name in the data source
+            # The target_field_name: The field name in the index
+            # In metadata_storage_path, for example, https://myaccount.blob.core.windows.net/my-container/my-folder/subfolder/resume.pdf
+            # In metadata_storage_name, for example, if you have a blob /my-container/my-folder/subfolder/resume.pdf, the value is resume.pdf.
+            source_field_name="metadata_storage_path",
+            target_field_name="imgPath",
         ),
         FieldMapping(
-            source_field_name="metadata_storage_name", target_field_name="title"
+            source_field_name="metadata_storage_name", 
+            target_field_name="title"
         ),
     ],
     output_field_mappings=[
+        # The source_field_name: Required. Specifies a path to enriched content. An example might be /document/content.
+        # The target_field_name: The field name in the index
+        # /document is the root node and indicates an entire blob in Azure Storage, or a row in a SQL table.
+        # In this case, WebApiSkill > OutputFieldMappingEntry should match with source_field_name
         FieldMapping(
             source_field_name="/document/imageVector", target_field_name="imageVector"
-        )
+        ),
+        FieldMapping(
+            source_field_name="/document/sid", target_field_name="sid"
+        ),
     ],
 )
 

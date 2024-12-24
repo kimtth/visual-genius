@@ -205,7 +205,7 @@ const CategoryCard: FC<CategoryCardProps> = ({ categoryId, item }) => {
                             borderRadius='lg'
                             backgroundColor='blue.100'
                             textAlign="center"
-                        >{item['category']}</Text>
+                        >{item['topic']}</Text>
                         <Heading size='sm' color='blue.400'><Link as={NextLink} href={`${pathes.gen}?categoryId=${categoryId}`}>{item['title']}</Link></Heading>
                         <Text fontSize='xs'>
                             {item['imgNum']} images | Difficulty {item['difficulty']}

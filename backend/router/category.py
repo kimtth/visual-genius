@@ -9,14 +9,18 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
 from db_blob import get_blob_service_client
+from module.common.const import FILE_UPLOAD
 from router.util import (
+    append_sas_token,
     check_dalle_img_path,
+    check_uploaded_img_path,
     delete_acs_document,
     download_image,
     gen_acs_document,
     generate_blob_container_sas,
     insert_acs_document,
     process_dalle_image,
+    verify_token,
 )
 from module.common.models import (
     CategoryDB,
@@ -43,28 +47,34 @@ def get_categories(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    user_id = auth_handler.decode_token(token)
-    if not user_id:
-        raise HTTPException(403, "Not authorized")
+    user_id = verify_token(credentials, auth_handler)
     try:
         # In the context of pagination, `(page - 1) * per_page` calculates the number of items to skip.
         # - For `page` 1, `(page - 1) * per_page` equals 0, so no items are skipped and the first 6 items are returned.
         # - For `page` 2, `(page - 1) * per_page` equals 6, so the first 6 items are skipped and the next 6 items are returned.
         # - For `page` 3, `(page - 1) * per_page` equals 12, so the first 6 items are skipped and the next 6 items are returned.
-        items = (
+        items: List[CategoryDB] = (
             session.query(CategoryModel)
-            .filter_by(deleteFlag=0, user_id=user_id)
-            .offset((page - 1) * per_page)
+            .filter(CategoryModel.deleteFlag == 0, CategoryModel.user_id == user_id, CategoryModel.sid != FILE_UPLOAD)
+            .offset((page - 1) * per_page) 
             .limit(per_page)
             .all()
         )
         sas_token = generate_blob_container_sas(container_name)
         # First 3 images for the preview of each category
         for item in items:
-            imgs = [img for img in item.images if img.deleteFlag == 0]
+            content_urls = []
+            imgs: List[ImageModel] = [img for img in item.images if img.deleteFlag == 0]
             imgs = imgs[:3]
-            item.contentUrl = [f"{img.imgPath}?{sas_token}" for img in imgs]
+            
+            for img in imgs:
+                img_path = img.imgPath
+                if check_uploaded_img_path(img_path, container_name):
+                    content_urls.append(f"{img.imgPath}?{sas_token}")
+                else:
+                    content_urls.append(img.imgPath)
+            item.contentUrl = content_urls
+
         return [CategoryDB.model_validate(item) for item in items]
     except Exception as e:
         print(e)
@@ -76,14 +86,11 @@ def count_categories(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    user_id = auth_handler.decode_token(token)
-    if not user_id:
-        raise HTTPException(403, "Not authorized")
+    user_id = verify_token(credentials, auth_handler)
     try:
         count = (
             session.query(CategoryModel)
-            .filter_by(deleteFlag=0, user_id=user_id)
+            .filter(CategoryModel.deleteFlag == 0, CategoryModel.user_id == user_id, CategoryModel.sid != FILE_UPLOAD)
             .count()
         )
         return {"count": count}
@@ -98,10 +105,7 @@ async def get_category(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    user_id = auth_handler.decode_token(token)
-    if not user_id:
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.query(CategoryModel).filter_by(sid=sid).first()
         if item and item.deleteFlag == 0:
@@ -120,10 +124,7 @@ async def create_category(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    user_id = auth_handler.decode_token(token)
-    if not user_id:
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         container_client = blob_service_client.get_container_client(container_name)
         new_category = CategoryModel(**category.model_dump())
@@ -136,17 +137,29 @@ async def create_category(
                 new_image.user_id = new_category.user_id
                 original_img_path = new_image.imgPath
 
-                # A DALLE-e created image exists in Azure storage account temporarily. so, we need to upload it to the blob storage.
+                """ 
+                A DALL-E generated image is temporarily stored in an Azure storage account. 
+                Therefore, it needs to be uploaded to blob storage.  
+                - URL Patterns:  
+                1. Image URL retrieved from the search engine result.  
+                2. DALL-E generated image URL, which includes an SAS token.  
+                3. Image uploaded directly by the user.  
+                """
                 # Upload the image to blob storage
-                if check_dalle_img_path(new_image.imgPath):
-                    await process_dalle_image(
+                if check_dalle_img_path(original_img_path):
+                    new_image.imgPath = await process_dalle_image(
                         container_client, new_image, original_img_path
                     )
-                else:
-                    new_image.imgPath = new_image.imgPath
 
                 session.add(new_image)
-                acs_doc_item = await gen_acs_document(new_image)
+
+                # Append an SAS token to access the image for the embedding API.
+                if check_uploaded_img_path(new_image.imgPath, container_name):
+                    cp_new_image: ImageModel = append_sas_token(new_image)
+                else:
+                    cp_new_image: ImageModel = new_image
+                    
+                acs_doc_item = await gen_acs_document(cp_new_image)
                 acs_items.append(acs_doc_item)
             except Exception as e:
                 msg = f"{new_image.title}: {original_img_path}"
@@ -178,11 +191,15 @@ def get_category(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.get(CategoryModel, sid)
+
+        for img in item.images:
+            assert isinstance(img, ImageModel)
+            if check_uploaded_img_path(img.imgPath, container_name):
+                img.imgPath = f"{img.imgPath}?{generate_blob_container_sas(container_name)}"
+
         if not item:
             raise HTTPException(status_code=404, detail="Category not found")
         return CategoryDB.model_validate(item)
@@ -198,9 +215,7 @@ def update_category(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.get(CategoryModel, sid)
         if not item:
@@ -223,9 +238,7 @@ def delete_category(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.get(CategoryModel, sid)
         if not item:
@@ -257,9 +270,7 @@ def delete_category_all(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         item = session.get(CategoryModel, sid)
         if not item:
@@ -278,9 +289,7 @@ async def download_images(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         container_client = blob_service_client.get_container_client(container_name)
 

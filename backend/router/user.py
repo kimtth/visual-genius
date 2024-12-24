@@ -4,7 +4,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
 
-from router.util import delete_acs_document
+from router.util import delete_acs_document, verify_token
 from module.common.models import UserDB, UserModel, UserSchema
 from module.auth.auth_base import AuthBase
 from db_blob import get_db
@@ -114,9 +114,7 @@ def create_user(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         db_user = UserModel(**user.model_dump())
         db_user.user_password = auth_handler.encode_password(user.user_password)
@@ -136,9 +134,7 @@ def read_user(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         user = session.get(UserModel, user_id)
         return UserDB.model_validate(user)
@@ -154,9 +150,7 @@ def update_user(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         user = session.get(UserModel, user_id)
         for key, value in user.model_dump().items():
@@ -176,9 +170,7 @@ def update_user(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         user = session.get(UserModel, user_id)
         user.deleteFlag = 1
@@ -208,9 +200,7 @@ def delete_user(
     session: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Security(security),
 ):
-    token = credentials.credentials
-    if not auth_handler.decode_token(token):
-        raise HTTPException(403, "Not authorized")
+    verify_token(credentials, auth_handler)
     try:
         user = session.get(UserModel, user_id)
         session.delete(user)
