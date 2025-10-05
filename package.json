@@ -23,7 +23,7 @@
 				"chakra-paginator": "^0.7.3",
 				"framer-motion": "^7.1.0",
 				"js-cookie": "^3.0.5",
-				"next": "14.2.21",
+				"next": "14.2.32",
 				"react": "^18.2.0",
 				"react-beautiful-dnd": "^13.1.1",
 				"react-dom": "^18.2.0",
