@@ -14,8 +14,15 @@ export function QuickResponseTray({ responses, onSelect }: QuickResponseTrayProp
         <button
           key={card.id}
           onClick={() => onSelect?.(card)}
-          className="rounded-full border border-brand/60 bg-brand px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
+          className="flex items-center gap-2 rounded-full border border-brand/60 bg-brand px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
         >
+          {card.imageUrl && (
+            <img 
+              src={card.imageUrl} 
+              alt={card.title}
+              className="w-6 h-6 object-cover rounded-full bg-white"
+            />
+          )}
           {card.title}
         </button>
       ))}

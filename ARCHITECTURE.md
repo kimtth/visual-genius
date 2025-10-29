@@ -13,7 +13,7 @@ Visual Genius is a Next.js application designed to facilitate communication betw
 - **ORM**: Drizzle ORM
 - **AI Services**: 
   - Azure OpenAI
-  - Bing Image Search API
+  - Unsplash API (free image search)
 - **Language**: TypeScript
 
 ## Project Structure
@@ -23,12 +23,17 @@ src/
 ├── app/
 │   ├── (routes)/
 │   │   ├── child/          # Child interface
+│   │   ├── letterboard/    # Letter board spelling interface
 │   │   ├── parent/         # Parent conversation interface
 │   │   ├── settings/       # Configuration page
 │   │   └── teach/          # Card creation and teaching
 │   ├── api/
 │   │   ├── cards/         # Card generation endpoint
+│   │   ├── collections/   # Card collection management
 │   │   ├── conversations/ # Session management
+│   │   ├── images/
+│   │   │   └── search/    # Image search endpoint
+│   │   ├── settings/      # Settings management
 │   │   └── speech/        # Speech/interaction logging
 │   ├── globals.css
 │   ├── layout.tsx
@@ -44,21 +49,25 @@ src/
 │   └── ui/                         # shadcn/ui components
 ├── lib/
 │   ├── constants/
-│   │   ├── demoCards.ts    # Demo data for development
-│   │   └── presets.ts      # Conversation topics and card presets
+│   │   ├── demoCards.ts        # Demo data for development
+│   │   ├── demoCollections.ts  # Demo collections data
+│   │   └── presets.ts          # Conversation topics and card presets
 │   ├── observability/
 │   │   └── logger.ts       # Logging utility
 │   ├── state/
 │   │   └── sessionStore.ts # Zustand session state
+│   ├── env.ts              # Environment variable validation
 │   └── utils.ts
 └── server/
     ├── azure/
-    │   ├── bingImageSearch.ts  # Bing Image Search integration
+    │   ├── imageSearch.ts      # Image search integration (Unsplash)
     │   └── openai.ts           # Azure OpenAI integration
     ├── db/
     │   ├── client.ts           # PostgreSQL connection
+    │   ├── collections.ts      # Card collection data access
     │   ├── conversations.ts    # Conversation data access
-    │   └── schema.ts           # Drizzle schema definitions
+    │   ├── schema.ts           # Database schema definitions
+    │   └── settings.ts         # Settings data access
     └── services/
         ├── cardService.ts      # Card generation business logic
         └── conversationService.ts # Conversation management
@@ -70,26 +79,52 @@ src/
 
 **conversation_session**
 - `id` (uuid, primary key)
-- `created_at` (timestamp)
-- `status` (varchar) - "active", "paused", "completed"
-- `metadata` (jsonb) - flexible storage for session data
+- `parent_id` (text, not null)
+- `child_id` (text, not null)
+- `started_at` (timestamptz, not null, default NOW())
 
 **visual_card**
 - `id` (uuid, primary key)
-- `title` (varchar)
+- `session_id` (uuid, foreign key to conversation_session, cascade delete)
+- `title` (text, not null)
 - `description` (text, nullable)
 - `image_url` (text, nullable)
-- `category` (varchar) - "topic", "action", "emotion", "response"
-- `session_id` (uuid, foreign key to conversation_session)
-- `created_at` (timestamp)
+- `category` (text, not null) - "topic", "action", "emotion", "response"
+- `created_at` (timestamptz, not null, default NOW())
 
 **utterance**
 - `id` (uuid, primary key)
-- `session_id` (uuid, foreign key to conversation_session)
-- `speaker` (varchar) - "parent" or "child"
-- `content` (text)
+- `session_id` (uuid, foreign key to conversation_session, cascade delete)
+- `speaker` (text, not null) - "parent" or "child"
 - `card_id` (uuid, nullable, foreign key to visual_card)
-- `created_at` (timestamp)
+- `transcript` (text, nullable)
+- `recording_url` (text, nullable)
+- `created_at` (timestamptz, not null, default NOW())
+
+**app_settings**
+- `id` (uuid, primary key, default gen_random_uuid())
+- `key` (text, not null, unique)
+- `value` (text, nullable)
+- `is_encrypted` (boolean, default false)
+- `description` (text, nullable)
+- `updated_at` (timestamptz, not null, default NOW())
+- `created_at` (timestamptz, not null, default NOW())
+
+**card_collection**
+- `id` (uuid, primary key, default gen_random_uuid())
+- `name` (text, not null)
+- `user_id` (text, not null, default 'default-user')
+- `created_at` (timestamptz, not null, default NOW())
+- `updated_at` (timestamptz, not null, default NOW())
+
+**card_order**
+- `id` (uuid, primary key, default gen_random_uuid())
+- `collection_id` (uuid, foreign key to card_collection, cascade delete)
+- `card_id` (uuid, not null)
+- `card_data` (jsonb, not null)
+- `position` (integer, not null)
+- `created_at` (timestamptz, not null, default NOW())
+- Index: `idx_card_order_collection` on (collection_id, position)
 
 ## Main Features
 
@@ -108,7 +143,7 @@ src/
 **Conversation Flow**:
 1. Parent selects topic or enters custom prompt
 2. Clicks "Start Conversation" → generates cards via Azure OpenAI
-3. Bing Image Search suggests images for each card
+3. Unsplash API suggests images for each card
 4. Cards are saved to database and displayed
 5. Parent can pause, resume, or stop the conversation
 6. All interactions logged to `utterance` table
@@ -238,7 +273,7 @@ savePhrase()              // Add to library
 
 **Process**:
 1. Call Azure OpenAI to generate card ideas
-2. For each card, query Bing Image Search
+2. For each card, query Unsplash API for images
 3. Save cards to `visual_card` table
 4. Return card array
 
@@ -363,11 +398,13 @@ Each topic includes:
 - **Authentication**: DefaultAzureCredential (Managed Identity)
 - **Usage**: Card generation from prompts
 
-### Bing Image Search
-- **Endpoint**: `BING_IMAGE_SEARCH_ENDPOINT`
-- **Key**: `BING_IMAGE_SEARCH_KEY` env var
+### Unsplash API (Image Search)
+- **Endpoint**: `https://api.unsplash.com/search/photos`
+- **Key**: `UNSPLASH_ACCESS_KEY` env var
 - **Usage**: Suggest images for generated cards
-- **Filters**: Safe search, image type, size
+- **Filters**: Orientation (squarish), content filter (high), quality (regular)
+- **Rate Limits**: 50 requests/hour (free tier demo apps)
+- **Documentation**: https://unsplash.com/developers
 
 ### PostgreSQL
 - **Connection**: `POSTGRES_URL` env var
@@ -417,7 +454,7 @@ Each topic includes:
 
 **Integration Points**:
 - Azure OpenAI API responses
-- Bing Image Search results
+- Unsplash API image results
 - PostgreSQL queries
 - Session state persistence
 
@@ -445,15 +482,18 @@ Each topic includes:
 **Azure Resources Required**:
 1. Azure App Service (Linux, Node.js 18+)
 2. Azure OpenAI Service
-3. Bing Search API (Cognitive Services)
-4. Azure Database for PostgreSQL Flexible Server
-5. (Optional) Application Insights for monitoring
+3. Azure Database for PostgreSQL Flexible Server
+4. (Optional) Application Insights for monitoring
+
+**External Services**:
+- Unsplash API (free image search - https://unsplash.com/developers)
 
 **Environment Configuration**:
 - Set all env vars in App Service Configuration
 - Enable Managed Identity for OpenAI access
 - Configure PostgreSQL firewall rules
 - Set up continuous deployment from GitHub
+- Add UNSPLASH_ACCESS_KEY to configuration
 
 ---
 
