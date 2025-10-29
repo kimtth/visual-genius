@@ -3,13 +3,15 @@ import { AzureOpenAI } from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import "@azure/openai/types";
 import { log } from "@/lib/observability/logger";
+import { env, envWithDefault, ENV_KEYS } from "@/lib/env";
 
 let client: AzureOpenAI | undefined;
 
 function getClient() {
   if (!client) {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const apiVersion = process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
+    const endpoint = env(ENV_KEYS.AZURE_OPENAI_ENDPOINT);
+    const apiKey = env(ENV_KEYS.AZURE_OPENAI_API_KEY);
+    const apiVersion = envWithDefault(ENV_KEYS.AZURE_OPENAI_API_VERSION, "2024-10-21");
 
     if (!endpoint) {
       log({
@@ -18,21 +20,30 @@ function getClient() {
       });
     }
 
-    const scope = "https://cognitiveservices.azure.com/.default";
-    const credential = new DefaultAzureCredential();
-    const azureADTokenProvider = getBearerTokenProvider(credential, scope);
+    // Use API key if provided, otherwise use Azure AD
+    if (apiKey) {
+      client = new AzureOpenAI({
+        endpoint: endpoint ?? "",
+        apiKey,
+        apiVersion
+      });
+    } else {
+      const scope = "https://cognitiveservices.azure.com/.default";
+      const credential = new DefaultAzureCredential();
+      const azureADTokenProvider = getBearerTokenProvider(credential, scope);
 
-    client = new AzureOpenAI({
-      endpoint: endpoint ?? "",
-      apiVersion,
-      azureADTokenProvider
-    });
+      client = new AzureOpenAI({
+        endpoint: endpoint ?? "",
+        apiVersion,
+        azureADTokenProvider
+      });
+    }
   }
 
   return client;
 }
 
-const deploymentName = () => process.env.AZURE_OPENAI_DEPLOYMENT ?? "";
+const deploymentName = () => env(ENV_KEYS.AZURE_OPENAI_DEPLOYMENT_NAME) ?? "";
 
 export interface CardIdea {
   title: string;
@@ -46,8 +57,16 @@ export async function generateCardIdeas(prompt: string) {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content:
-        "You design concise visual learning cards for autistic children. Respond using pure JSON with shape {\"cards\":[{\"title\":string,\"description\":string,\"category\":\"topic\"|\"action\"|\"emotion\",\"steps\":[string]}]}."
+      content: `Create visual learning cards for autistic children. Card titles MUST be ONE WORD. Generate 3-4 cards per category.
+
+Output JSON format:
+{"cards":[
+  {"title":"Park","description":"Going to the park","category":"topic","steps":[]},
+  {"title":"Draw","description":"Drawing pictures","category":"action","steps":[]},
+  {"title":"Happy","description":"Feeling happy","category":"emotion","steps":[]}
+]}
+
+Categories: "topic" (conversation subjects), "action" (activities), "emotion" (feelings). Keep it simple.`
     },
     { role: "user", content: prompt }
   ];
@@ -56,12 +75,39 @@ export async function generateCardIdeas(prompt: string) {
     const response = await openAi.chat.completions.create({
       model: deploymentName(),
       messages,
-      temperature: 0.4,
-      max_tokens: 256
+      max_completion_tokens: 2048,
+      response_format: { type: "json_object" }
     });
 
     const content = response.choices[0]?.message?.content ?? "";
-    const parsed = JSON.parse(content) as { cards?: CardIdea[] };
+
+    // Log full response for debugging
+    log({
+      level: "info",
+      message: "OpenAI raw response",
+      diagnostics: JSON.stringify({
+        finishReason: response.choices[0]?.finish_reason,
+        contentLength: content?.length || 0,
+        content: content
+      })
+    });
+
+    if (!content || content.trim() === "") {
+      log({
+        level: "error",
+        message: "Empty response from OpenAI",
+        diagnostics: JSON.stringify(response)
+      });
+      return [];
+    }
+
+    // Try to extract JSON if wrapped in markdown code blocks
+    let jsonContent = content.trim();
+    if (jsonContent.startsWith("```")) {
+      jsonContent = jsonContent.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+
+    const parsed = JSON.parse(jsonContent) as { cards?: CardIdea[] };
     return parsed.cards ?? [];
   } catch (error) {
     log({

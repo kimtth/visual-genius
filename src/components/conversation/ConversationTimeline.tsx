@@ -3,9 +3,10 @@
 interface TimelineEntry {
   createdAt: string;
   speaker: string;
-  card: {
+  card?: {
     title: string;
   };
+  transcript?: string;
 }
 
 interface ConversationTimelineProps {
@@ -24,7 +25,7 @@ export function ConversationTimeline({ log }: ConversationTimelineProps) {
   // Group consecutive entries by speaker and timestamp proximity (within 5 seconds)
   const groupedMessages: Array<{
     speaker: string;
-    cards: string[];
+    messages: string[];
     createdAt: string;
   }> = [];
 
@@ -33,14 +34,19 @@ export function ConversationTimeline({ log }: ConversationTimelineProps) {
     const currentTime = new Date(entry.createdAt).getTime();
     const lastTime = lastGroup ? new Date(lastGroup.createdAt).getTime() : 0;
     const timeDiff = Math.abs(currentTime - lastTime);
+    
+    // Get the display text - either card title or transcript
+    const displayText = entry.card?.title || entry.transcript || "";
 
     // Group if same speaker and within 5 seconds
     if (lastGroup && lastGroup.speaker === entry.speaker && timeDiff < 5000) {
-      lastGroup.cards.push(entry.card.title);
+      if (displayText) {
+        lastGroup.messages.push(displayText);
+      }
     } else {
       groupedMessages.push({
         speaker: entry.speaker,
-        cards: [entry.card.title],
+        messages: displayText ? [displayText] : [],
         createdAt: entry.createdAt,
       });
     }
@@ -76,8 +82,8 @@ export function ConversationTimeline({ log }: ConversationTimelineProps) {
                 </span>
               </div>
               <div className="text-sm break-words space-y-1">
-                {message.cards.map((cardTitle, cardIndex) => (
-                  <p key={cardIndex}>{cardTitle}</p>
+                {message.messages.map((text, textIndex) => (
+                  <p key={textIndex}>{text}</p>
                 ))}
               </div>
             </div>

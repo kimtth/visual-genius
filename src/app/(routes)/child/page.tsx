@@ -27,22 +27,28 @@ async function logSelection(
 
 export default function ChildBoard() {
   const router = useRouter();
-  const { activeSessionId, addEntry, currentSpeaker, setCurrentSpeaker } = useSessionStore();
+  const { 
+    activeSessionId, 
+    addEntry, 
+    currentSpeaker, 
+    setCurrentSpeaker,
+    generatedCards 
+  } = useSessionStore();
   const [status, setStatus] = useState<string | null>(null);
   const [mySelections, setMySelections] = useState<VisualCard[]>([]);
   
-  // TODO: Replace with API call when backend is ready
-  // const [availableCards, setAvailableCards] = useState<VisualCard[]>([]);
-  // useEffect(() => {
-  //   async function loadCards() {
-  //     if (activeSessionId) {
-  //       const cards = await fetchCardsFromAPI(activeSessionId);
-  //       setAvailableCards(cards);
-  //     }
-  //   }
-  //   loadCards();
-  // }, [activeSessionId]);
-  const [availableCards] = useState<VisualCard[]>(getDemoCards());
+  // Use generated cards from session store instead of demo cards
+  const [availableCards, setAvailableCards] = useState<VisualCard[]>([]);
+
+  useEffect(() => {
+    // Update available cards when generatedCards change
+    if (generatedCards && generatedCards.length > 0) {
+      setAvailableCards(generatedCards);
+    } else {
+      // Fallback to demo cards if no cards have been generated yet
+      setAvailableCards(getDemoCards());
+    }
+  }, [generatedCards]);
 
   const handleCardClick = async (card: VisualCard) => {
     // Add to my selections only, don't add to timeline yet
@@ -108,6 +114,8 @@ export default function ChildBoard() {
   const actionCards = categorizeCards("action");
   const emotionCards = categorizeCards("emotion");
 
+  const hasGeneratedCards = generatedCards && generatedCards.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Next Turn Button - Top Right */}
@@ -122,6 +130,16 @@ export default function ChildBoard() {
         </Button>
       </div>
 
+      {/* No Cards Message */}
+      {!hasGeneratedCards && (
+        <section className="rounded-2xl border bg-blue-50 border-blue-200 p-6 backdrop-blur-sm">
+          <h2 className="text-lg font-semibold text-blue-900 mb-2">Waiting for Parent</h2>
+          <p className="text-sm text-blue-700">
+            Ask your parent to start a conversation first. They will create special cards just for you to use!
+          </p>
+        </section>
+      )}
+
       {/* Selected Cards Section */}
       <section className="rounded-2xl border bg-white/95 p-6 backdrop-blur-sm">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">My Selected Cards</h2>
@@ -132,6 +150,13 @@ export default function ChildBoard() {
                 key={`selected-${card.id}-${Math.random()}`}
                 className="relative flex flex-col items-start gap-2 rounded-lg border border-brand bg-brand/10 px-4 py-2 shadow-sm max-w-xs"
               >
+                {card.imageUrl && (
+                  <img 
+                    src={card.imageUrl} 
+                    alt={card.title}
+                    className="w-12 h-12 object-cover rounded"
+                  />
+                )}
                 <span className="text-sm font-medium text-slate-900 whitespace-normal break-words">{card.title}</span>
                 <button
                   onClick={() => handleRemoveSelection(card.id)}
@@ -163,8 +188,15 @@ export default function ChildBoard() {
                     key={card.id}
                     onClick={() => handleCardClick(card)}
                     variant="outline"
-                    className="h-auto flex-col items-start justify-start p-3 text-left transition hover:-translate-y-1 hover:border-purple-500 hover:shadow-md border-purple-200"
+                    className="h-auto flex-col items-center justify-start p-3 text-center transition hover:-translate-y-1 hover:border-purple-500 hover:shadow-md border-purple-200"
                   >
+                    {card.imageUrl && (
+                      <img 
+                        src={card.imageUrl} 
+                        alt={card.title}
+                        className="w-full h-20 object-cover rounded mb-2"
+                      />
+                    )}
                     <h3 className="text-sm font-semibold text-slate-900 break-words w-full">{card.title}</h3>
                     {card.description && <p className="mt-1 text-xs text-slate-600 line-clamp-2 break-words w-full">{card.description}</p>}
                   </Button>
@@ -189,8 +221,15 @@ export default function ChildBoard() {
                     key={card.id}
                     onClick={() => handleCardClick(card)}
                     variant="outline"
-                    className="h-auto flex-col items-start justify-start p-3 text-left transition hover:-translate-y-1 hover:border-blue-500 hover:shadow-md border-blue-200"
+                    className="h-auto flex-col items-center justify-start p-3 text-center transition hover:-translate-y-1 hover:border-blue-500 hover:shadow-md border-blue-200"
                   >
+                    {card.imageUrl && (
+                      <img 
+                        src={card.imageUrl} 
+                        alt={card.title}
+                        className="w-full h-20 object-cover rounded mb-2"
+                      />
+                    )}
                     <h3 className="text-sm font-semibold text-slate-900 break-words w-full">{card.title}</h3>
                     {card.description && <p className="mt-1 text-xs text-slate-600 line-clamp-2 break-words w-full">{card.description}</p>}
                   </Button>
@@ -215,8 +254,15 @@ export default function ChildBoard() {
                     key={card.id}
                     onClick={() => handleCardClick(card)}
                     variant="outline"
-                    className="h-auto flex-col items-start justify-start p-3 text-left transition hover:-translate-y-1 hover:border-green-500 hover:shadow-md border-green-200"
+                    className="h-auto flex-col items-center justify-start p-3 text-center transition hover:-translate-y-1 hover:border-green-500 hover:shadow-md border-green-200"
                   >
+                    {card.imageUrl && (
+                      <img 
+                        src={card.imageUrl} 
+                        alt={card.title}
+                        className="w-full h-20 object-cover rounded mb-2"
+                      />
+                    )}
                     <h3 className="text-sm font-semibold text-slate-900 break-words w-full">{card.title}</h3>
                     {card.description && <p className="mt-1 text-xs text-slate-600 line-clamp-2 break-words w-full">{card.description}</p>}
                   </Button>

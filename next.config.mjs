@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone', // Enable standalone output for Docker deployment
   images: {
     remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**"
+      },
       {
         protocol: "https",
         hostname: "**.bing.com",
@@ -10,6 +16,11 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "**.bing.net",
+        pathname: "**"
+      },
+      {
+        protocol: "https",
+        hostname: "images.pexels.com",
         pathname: "**"
       }
     ]

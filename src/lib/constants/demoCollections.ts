@@ -2,12 +2,6 @@ import { VisualCard } from "./presets";
 
 /**
  * Demo card collections for testing and demonstration purposes.
- * Replace this file with API calls when backend is ready.
- * 
- * To replace with API:
- * 1. Create a new file: src/lib/api/collections.ts
- * 2. Add async functions for CRUD operations
- * 3. Update imports in teach/page.tsx
  */
 
 export interface CardCollection {
@@ -15,6 +9,7 @@ export interface CardCollection {
   name: string;
   cards: VisualCard[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export const demoCollections: CardCollection[] = [

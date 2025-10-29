@@ -9,6 +9,10 @@ Visual Genius is an application that helps facilitate communication between pare
 - **Communication mode**: Uses cards inspired by this paper: [AACessTalk](https://www.eurekalert.org/news-releases/1084528).
 - **Letterboard**: Inspired by the book *The Reason I Jump*.
 
+## 🎡 Screens
+
+![teach_screen](./docs/teach.png)
+
 ## 🌟 Features
 
 ### 1. **Parent Interface** - Conversation Facilitation
@@ -49,7 +53,7 @@ Spell-based communication inspired by *The Reason I Jump*:
 - **ORM**: Drizzle ORM
 - **AI Services**: 
   - Azure OpenAI (card generation)
-  - Bing Image Search (visual suggestions)
+  - Unsplash API (free image search for visual suggestions)
 
 ## 📋 Prerequisites
 
@@ -57,8 +61,8 @@ Spell-based communication inspired by *The Reason I Jump*:
 - pnpm/npm/yarn
 - Azure account with:
   - Azure OpenAI resource (GPT-4o deployment)
-  - Bing Image Search API (Cognitive Services)
   - Azure Database for PostgreSQL Flexible Server
+- Unsplash API key (free at https://unsplash.com/developers)
 
 ## 🚀 Getting Started
 
@@ -77,7 +81,15 @@ npm install
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory:
+**Option A: Web UI (Recommended)**
+1. Start the development server: `npm run dev`
+2. Navigate to `/settings` in your browser
+3. Configure all settings through the web interface
+4. Settings are stored in the database
+
+**Option B: Environment File**
+
+Create a `.env.local` file in the root directory:
 
 ```env
 # PostgreSQL Connection
@@ -85,12 +97,14 @@ POSTGRES_URL=postgres://user:password@hostname:5432/visualgenius
 
 # Azure OpenAI
 AZURE_OPENAI_ENDPOINT=https://<your-openai-name>.openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT=<gpt-4o-deployment-name>
+AZURE_OPENAI_DEPLOYMENT_NAME=<gpt-4o-deployment-name>
 
-# Bing Image Search
-BING_IMAGE_SEARCH_ENDPOINT=https://api.bing.microsoft.com/v7.0/images/search
-BING_IMAGE_SEARCH_KEY=<your-bing-search-key>
+# Unsplash Image Search (Free)
+# Get your free API key at: https://unsplash.com/developers
+UNSPLASH_ACCESS_KEY=<your-unsplash-access-key>
 ```
+
+**Note**: Settings in the database override `.env.local` values. See [SETTINGS_SYSTEM.md](./SETTINGS_SYSTEM.md) for details.
 
 ### 4. Authenticate Azure Services
 
@@ -163,12 +177,17 @@ src/
 ├── app/
 │   ├── (routes)/
 │   │   ├── child/      # Child response interface
+│   │   ├── letterboard/ # Letter board spelling interface
 │   │   ├── parent/     # Parent conversation interface
 │   │   ├── settings/   # Configuration
 │   │   └── teach/      # Card creation
 │   └── api/
 │       ├── cards/      # Card generation endpoint
+│       ├── collections/ # Card collection management
 │       ├── conversations/ # Session management
+│       ├── images/
+│       │   └── search/ # Image search endpoint
+│       ├── settings/   # Settings management
 │       └── speech/     # Interaction logging
 ├── components/
 │   ├── cards/          # Card display components
@@ -177,11 +196,18 @@ src/
 │   └── ui/             # shadcn/ui components
 ├── lib/
 │   ├── constants/      # Presets and demo data
+│   ├── observability/  # Logging utilities
 │   ├── state/          # Zustand store
+│   ├── env.ts          # Environment validation
 │   └── utils.ts
 └── server/
     ├── azure/          # Azure service integrations
     ├── db/             # Database layer
+    │   ├── client.ts   # PostgreSQL connection
+    │   ├── collections.ts # Card collections
+    │   ├── conversations.ts # Conversations
+    │   ├── schema.ts   # Database schema
+    │   └── settings.ts # App settings
     └── services/       # Business logic
 ```
 
@@ -198,7 +224,7 @@ For development without Azure credentials:
 
 Requires all environment variables:
 - Azure OpenAI for card generation
-- Bing Image Search for visual suggestions
+- Unsplash API for visual suggestions
 - PostgreSQL for persistence
 
 ## 🎨 Predefined Conversation Topics
@@ -216,36 +242,94 @@ Requires all environment variables:
 
 ### conversation_session
 - `id` (uuid) - Primary key
-- `created_at` (timestamp)
-- `status` (varchar) - "active", "paused", "completed"
-- `metadata` (jsonb) - Additional session data
+- `parent_id` (text) - Parent identifier
+- `child_id` (text) - Child identifier
+- `started_at` (timestamptz) - Session start time
 
 ### visual_card
 - `id` (uuid) - Primary key
-- `title` (varchar)
-- `description` (text)
-- `image_url` (text)
-- `category` (varchar) - "topic", "action", "emotion", "response"
-- `session_id` (uuid) - Foreign key
-- `created_at` (timestamp)
+- `session_id` (uuid) - Foreign key (cascade delete)
+- `title` (text) - Card title
+- `description` (text) - Card description
+- `image_url` (text) - Card image URL
+- `category` (text) - "topic", "action", "emotion", "response"
+- `created_at` (timestamptz) - Creation timestamp
 
 ### utterance
 - `id` (uuid) - Primary key
-- `session_id` (uuid) - Foreign key
-- `speaker` (varchar) - "parent" or "child"
-- `content` (text)
-- `card_id` (uuid, nullable) - Foreign key
-- `created_at` (timestamp)
+- `session_id` (uuid) - Foreign key (cascade delete)
+- `speaker` (text) - "parent" or "child"
+- `card_id` (uuid, nullable) - Foreign key to visual_card
+- `transcript` (text) - Text content of utterance
+- `recording_url` (text) - Audio recording URL
+- `created_at` (timestamptz) - Creation timestamp
+
+### app_settings
+- `id` (uuid) - Primary key
+- `key` (text, unique) - Setting key name
+- `value` (text) - Setting value
+- `is_encrypted` (boolean) - Whether value is encrypted
+- `description` (text) - Setting description
+- `updated_at` (timestamptz) - Last update time
+- `created_at` (timestamptz) - Creation timestamp
+
+### card_collection
+- `id` (uuid) - Primary key
+- `name` (text) - Collection name
+- `user_id` (text) - User identifier
+- `created_at` (timestamptz) - Creation timestamp
+- `updated_at` (timestamptz) - Last update time
+
+### card_order
+- `id` (uuid) - Primary key
+- `collection_id` (uuid) - Foreign key (cascade delete)
+- `card_id` (uuid) - Card identifier
+- `card_data` (jsonb) - Full card data
+- `position` (integer) - Order position in collection
+- `created_at` (timestamptz) - Creation timestamp
 
 ## 🚢 Deployment
 
-### Azure Resources Needed
+### Docker Deployment
 
-1. **Azure App Service** (Linux, Node.js 18+)
+The application is fully containerized and can be deployed to any cloud service or on-premises infrastructure.
+
+**Quick Start with Docker Compose:**
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Edit .env with your credentials
+nano .env
+
+# 3. Build and start services
+docker-compose up --build -d
+
+# 4. Access the application
+open http://localhost:3001
+```
+
+**What's Included:**
+- Multi-stage optimized Next.js Docker image
+- PostgreSQL database with automatic schema initialization
+- Health checks and automatic restart policies
+- Volume persistence for database data
+- Production-ready configuration
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for comprehensive deployment guides for each platform.
+
+### Azure Native Deployment
+
+**Azure Resources Needed:**
+
+1. **Azure App Service** (Linux, Node.js 18+) or **Container Instances**
 2. **Azure OpenAI Service** (GPT-4o deployment)
-3. **Bing Search API** (Cognitive Services)
-4. **Azure Database for PostgreSQL Flexible Server**
-5. **Application Insights** (optional, for monitoring)
+3. **Azure Database for PostgreSQL Flexible Server**
+4. **Application Insights** (optional, for monitoring)
+
+**External Services:**
+- Unsplash API (free image search)
 
 ### Deployment Steps
 
@@ -262,25 +346,6 @@ Requires all environment variables:
 - PostgreSQL connections over SSL
 - Input validation on all API endpoints
 - No sensitive data exposed to frontend
-
-## 📈 Future Enhancements
-
-### Near-term
-- [ ] Audio recording and transcription (Azure AI Speech)
-- [ ] Conversation analytics dashboard
-- [ ] Export conversation logs as PDF
-- [ ] Multi-child profile support
-
-### Long-term
-- [ ] Vector search for similar cards (pgvector)
-- [ ] AI-suggested topics based on history
-- [ ] Mobile app (React Native)
-- [ ] Offline mode with sync
-- [ ] Role-based authentication (parent vs. child)
-
-## 🤝 Contributing
-
-This project is designed for educational and therapeutic purposes. Contributions that enhance accessibility, usability, or therapeutic value are welcome.
 
 ## 📄 License
 

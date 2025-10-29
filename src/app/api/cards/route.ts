@@ -9,6 +9,18 @@ const requestSchema = z.object({
   sessionId: z.string().uuid().optional()
 });
 
+const saveCardsSchema = z.object({
+  sessionId: z.string().uuid(),
+  cards: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    imageUrl: z.string().optional(),
+    category: z.string(),
+    createdAt: z.string()
+  }))
+});
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -17,7 +29,7 @@ export async function POST(request: Request) {
     const cards = await createCardsFromPrompt(prompt);
 
     if (sessionId) {
-      await storeCards(sessionId, cards);
+      await storeCards(sessionId, cards as Parameters<typeof storeCards>[1]);
     }
 
     return NextResponse.json({ cards });
@@ -28,5 +40,24 @@ export async function POST(request: Request) {
       diagnostics: error instanceof Error ? error.stack : String(error)
     });
     return NextResponse.json({ error: "Unable to generate cards" }, { status: 400 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { sessionId, cards } = saveCardsSchema.parse(body);
+
+    // Save all cards to database
+    await storeCards(sessionId, cards as Parameters<typeof storeCards>[1]);
+
+    return NextResponse.json({ success: true, saved: cards.length });
+  } catch (error) {
+    log({
+      level: "error",
+      message: "Card save failed",
+      diagnostics: error instanceof Error ? error.stack : String(error)
+    });
+    return NextResponse.json({ error: "Unable to save cards" }, { status: 400 });
   }
 }
