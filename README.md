@@ -3,25 +3,66 @@
 Visual Genius is an application that helps facilitate communication between parents and children with autism spectrum disorders (ASD) through visual cards and structured conversations.
 
 > [!IMPORTANT]  
-> This application is developed in my spare time, so I cannot be sure when it will be ready.
+> This application was developed for proof-of-concept purposes. Please make sure to test and verify its features before using it.
 
-- **Teach mode**: Uses visual cards inspired by Applied Behavior Analysis (ABA) and addresses problems of existing solutions. Examples of visual aid products on the market can be seen here: [Bing Search Results](https://www.bing.com/images/search?q=ASD+for+visual+aids). These products can be quite costly: [Amazon Search Result](https://www.amazon.com/Special-Communication-Speech-Verbal-Children/dp/B08CFNDHYY).
+- **Teach mode**: Uses visual cards inspired by Applied Behavior Analysis (ABA) and addresses problems of existing solutions. Examples of visual aid products on the market, These products can be quite costly: [Bing Search Results](https://www.bing.com/images/search?q=ASD+for+visual+aids), [Amazon Search Result](https://www.amazon.com/Special-Communication-Speech-Verbal-Children/dp/B08CFNDHYY).
 - **Communication mode**: Uses cards inspired by this paper: [AACessTalk](https://www.eurekalert.org/news-releases/1084528).
-- **Letterboard**: Inspired by the book *The Reason I Jump*.
+- **Letterboard**: Inspired by the book [The Reason I Jump](https://www.amazon.com/Reason-Jump-Inner-Thirteen-Year-Old-Autism/dp/0812994868).
 
 ## 🎡 Screens
 
-![teach_screen](./docs/teach.png)
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <figure>
+        <img src="./docs/teach.png" alt="Teach: Teaching words with Visual Cards" width="220" />
+        <figcaption><strong>Teach</strong><br/>Teaching words with visual cards</figcaption>
+      </figure>
+    </td>
+    <td width="33%" align="center">
+      <figure>
+        <img src="./docs/parent.png" alt="Parent: Start Conversation Session" width="220" />
+        <figcaption><strong>Parent</strong><br/>Start conversation session</figcaption>
+      </figure>
+    </td>
+    <td width="33%" align="center">
+      <figure>
+        <img src="./docs/child.png" alt="Child: Interact with conversation cards" width="220" />
+        <figcaption><strong>Child</strong><br/>Interact with conversation cards</figcaption>
+      </figure>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">
+      <figure>
+        <img src="./docs/letterboard.png" alt="Letterboard: Spell-based communication" width="220" />
+        <figcaption><strong>Letterboard</strong><br/>Spell-based communication</figcaption>
+      </figure>
+    </td>
+    <td width="33%" align="center">
+      <figure>
+        <img src="./docs/signin.png" alt="Sign In & Sign Up" width="220" />
+        <figcaption><strong>Auth</strong><br/>Sign in & sign up</figcaption>
+      </figure>
+    </td>
+    <td width="33%" align="center">
+      <figure>
+        <img src="./docs/settings.png" alt="Settings: API key & session management" width="220" />
+        <figcaption><strong>Settings</strong><br/>API key & session management</figcaption>
+      </figure>
+    </td>
+  </tr>
+</table>
 
 ## 🌟 Features
 
 ### 1. **Parent Interface** - Conversation Facilitation
 Start and manage conversations with your child using:
-- **8 Predefined Topics**: Daily routines, emotions, food, activities, school, bedtime, family, safety
-- **Custom Prompts**: Create conversation starters for any situation
-- **Real-time State Management**: Start, pause, resume, or stop conversations
-- **Quick Response Tracking**: Yes/No/"I don't know" buttons
-- **Conversation Timeline**: View complete interaction history
+- 8 Predefined Topics: Daily routines, emotions, food, activities, school, bedtime, family, safety
+- Custom Prompts: Create conversation starters for any situation
+- Real-time State Management: Start, pause, resume, or stop conversations
+- Quick Response Tracking: Yes/No/"I don't know" buttons
+- Conversation Timeline: View complete interaction history
 
 ### 2. **Child Interface** - Visual Response Board
 Simple, touch-friendly interface where children can:
@@ -55,15 +96,6 @@ Spell-based communication inspired by *The Reason I Jump*:
   - Azure OpenAI (card generation)
   - Unsplash API (free image search for visual suggestions)
 
-## 📋 Prerequisites
-
-- Node.js 18+
-- pnpm/npm/yarn
-- Azure account with:
-  - Azure OpenAI resource (GPT-4o deployment)
-  - Azure Database for PostgreSQL Flexible Server
-- Unsplash API key (free at https://unsplash.com/developers)
-
 ## 🚀 Getting Started
 
 ### 1. Clone the Repository
@@ -93,40 +125,27 @@ Create a `.env.local` file in the root directory:
 
 ```env
 # PostgreSQL Connection
-POSTGRES_URL=postgres://user:password@hostname:5432/visualgenius
+POSTGRES_URL=postgres://user:password@hostname:5432/database
 
 # Azure OpenAI
 AZURE_OPENAI_ENDPOINT=https://<your-openai-name>.openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT_NAME=<gpt-4o-deployment-name>
+AZURE_OPENAI_DEPLOYMENT_NAME=<gpt-deployment-name>
 
 # Unsplash Image Search (Free)
 # Get your free API key at: https://unsplash.com/developers
 UNSPLASH_ACCESS_KEY=<your-unsplash-access-key>
 ```
 
-**Note**: Settings in the database override `.env.local` values. See [SETTINGS_SYSTEM.md](./SETTINGS_SYSTEM.md) for details.
+**Note**: Settings in the database override `.env.local` values.
 
-### 4. Authenticate Azure Services
-
-For local development, authenticate via Azure CLI:
-
-```bash
-az login
-```
-
-For production, configure service principal credentials:
-- `AZURE_TENANT_ID`
-- `AZURE_CLIENT_ID`
-- `AZURE_CLIENT_SECRET`
-
-### 5. Initialize Database
+### 4. Initialize Database
 
 The application will automatically create required tables on first run:
 - `conversation_session`
 - `visual_card`
 - `utterance`
 
-### 6. Start Development Server
+### 5. Start Development Server
 
 ```bash
 npm run dev
@@ -170,124 +189,6 @@ The application will be available at `http://localhost:3001`
 4. Drag-and-drop to reorder steps
 5. Save arrangement for future lessons
 
-## 📂 Project Structure
-
-```
-src/
-├── app/
-│   ├── (routes)/
-│   │   ├── child/      # Child response interface
-│   │   ├── letterboard/ # Letter board spelling interface
-│   │   ├── parent/     # Parent conversation interface
-│   │   ├── settings/   # Configuration
-│   │   └── teach/      # Card creation
-│   └── api/
-│       ├── cards/      # Card generation endpoint
-│       ├── collections/ # Card collection management
-│       ├── conversations/ # Session management
-│       ├── images/
-│       │   └── search/ # Image search endpoint
-│       ├── settings/   # Settings management
-│       └── speech/     # Interaction logging
-├── components/
-│   ├── cards/          # Card display components
-│   ├── conversation/   # Timeline components
-│   ├── layout/         # Navigation shell
-│   └── ui/             # shadcn/ui components
-├── lib/
-│   ├── constants/      # Presets and demo data
-│   ├── observability/  # Logging utilities
-│   ├── state/          # Zustand store
-│   ├── env.ts          # Environment validation
-│   └── utils.ts
-└── server/
-    ├── azure/          # Azure service integrations
-    ├── db/             # Database layer
-    │   ├── client.ts   # PostgreSQL connection
-    │   ├── collections.ts # Card collections
-    │   ├── conversations.ts # Conversations
-    │   ├── schema.ts   # Database schema
-    │   └── settings.ts # App settings
-    └── services/       # Business logic
-```
-
-## 🔧 Configuration
-
-### Demo Mode (Development)
-
-For development without Azure credentials:
-- Uses demo cards from `src/lib/constants/demoCards.ts`
-- No AI generation or image search
-- In-memory state only
-
-### Production Mode
-
-Requires all environment variables:
-- Azure OpenAI for card generation
-- Unsplash API for visual suggestions
-- PostgreSQL for persistence
-
-## 🎨 Predefined Conversation Topics
-
-1. **Daily Routine** - Waking up, getting ready, going to school
-2. **Feelings & Emotions** - Identifying and discussing emotions
-3. **Food & Meals** - Food preferences and eating habits
-4. **Favorite Activities** - Games, hobbies, and fun activities
-5. **School & Learning** - Classes, friends, and school experiences
-6. **Bedtime Routine** - Evening rituals and sleep preparation
-7. **Family Time** - Family activities and relationships
-8. **Staying Safe** - Safety at home, school, and outdoors
-
-## 🗄️ Database Schema
-
-### conversation_session
-- `id` (uuid) - Primary key
-- `parent_id` (text) - Parent identifier
-- `child_id` (text) - Child identifier
-- `started_at` (timestamptz) - Session start time
-
-### visual_card
-- `id` (uuid) - Primary key
-- `session_id` (uuid) - Foreign key (cascade delete)
-- `title` (text) - Card title
-- `description` (text) - Card description
-- `image_url` (text) - Card image URL
-- `category` (text) - "topic", "action", "emotion", "response"
-- `created_at` (timestamptz) - Creation timestamp
-
-### utterance
-- `id` (uuid) - Primary key
-- `session_id` (uuid) - Foreign key (cascade delete)
-- `speaker` (text) - "parent" or "child"
-- `card_id` (uuid, nullable) - Foreign key to visual_card
-- `transcript` (text) - Text content of utterance
-- `recording_url` (text) - Audio recording URL
-- `created_at` (timestamptz) - Creation timestamp
-
-### app_settings
-- `id` (uuid) - Primary key
-- `key` (text, unique) - Setting key name
-- `value` (text) - Setting value
-- `is_encrypted` (boolean) - Whether value is encrypted
-- `description` (text) - Setting description
-- `updated_at` (timestamptz) - Last update time
-- `created_at` (timestamptz) - Creation timestamp
-
-### card_collection
-- `id` (uuid) - Primary key
-- `name` (text) - Collection name
-- `user_id` (text) - User identifier
-- `created_at` (timestamptz) - Creation timestamp
-- `updated_at` (timestamptz) - Last update time
-
-### card_order
-- `id` (uuid) - Primary key
-- `collection_id` (uuid) - Foreign key (cascade delete)
-- `card_id` (uuid) - Card identifier
-- `card_data` (jsonb) - Full card data
-- `position` (integer) - Order position in collection
-- `created_at` (timestamptz) - Creation timestamp
-
 ## 🚢 Deployment
 
 ### Docker Deployment
@@ -310,21 +211,12 @@ docker-compose up --build -d
 open http://localhost:3001
 ```
 
-**What's Included:**
-- Multi-stage optimized Next.js Docker image
-- PostgreSQL database with automatic schema initialization
-- Health checks and automatic restart policies
-- Volume persistence for database data
-- Production-ready configuration
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for comprehensive deployment guides for each platform.
-
 ### Azure Native Deployment
 
 **Azure Resources Needed:**
 
 1. **Azure App Service** (Linux, Node.js 18+) or **Container Instances**
-2. **Azure OpenAI Service** (GPT-4o deployment)
+2. **Azure OpenAI Service** 
 3. **Azure Database for PostgreSQL Flexible Server**
 4. **Application Insights** (optional, for monitoring)
 

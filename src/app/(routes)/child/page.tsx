@@ -8,6 +8,7 @@ import { getDemoCards } from "@/lib/constants/demoCards"; // TODO: Replace with 
 import { Button } from "@/components/ui/button";
 import { X, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 async function logSelection(
   sessionId: string,
@@ -51,8 +52,14 @@ export default function ChildBoard() {
   }, [generatedCards]);
 
   const handleCardClick = async (card: VisualCard) => {
-    // Add to my selections only, don't add to timeline yet
-    setMySelections(prev => [...prev, card]);
+    // Add to my selections only if not already selected (prevent duplicates by title)
+    setMySelections(prev => {
+      const alreadyExists = prev.some(existingCard => existingCard.title === card.title);
+      if (alreadyExists) {
+        return prev;
+      }
+      return [...prev, card];
+    });
 
     if (!activeSessionId) {
       setStatus("Session not ready yet");
@@ -65,8 +72,14 @@ export default function ChildBoard() {
   };
 
   const handleSelect = async (card: VisualCard) => {
-    // Add to my selections only, don't add to timeline yet
-    setMySelections(prev => [...prev, card]);
+    // Add to my selections only if not already selected (prevent duplicates by title)
+    setMySelections(prev => {
+      const alreadyExists = prev.some(existingCard => existingCard.title === card.title);
+      if (alreadyExists) {
+        return prev;
+      }
+      return [...prev, card];
+    });
 
     if (!activeSessionId) {
       setStatus("Session not ready yet");
@@ -117,6 +130,7 @@ export default function ChildBoard() {
   const hasGeneratedCards = generatedCards && generatedCards.length > 0;
 
   return (
+    <AuthGuard>
     <div className="space-y-6">
       {/* Next Turn Button - Top Right */}
       <div className="fixed top-20 right-6 z-50">
@@ -183,9 +197,9 @@ export default function ChildBoard() {
           <div className="max-h-[400px] overflow-y-auto">
             <div className="grid grid-cols-2 gap-3">
               {topicCards.length > 0 ? (
-                topicCards.map((card: VisualCard) => (
+                topicCards.map((card: VisualCard, index: number) => (
                   <Button
-                    key={card.id}
+                    key={`topic-${card.id}-${index}`}
                     onClick={() => handleCardClick(card)}
                     variant="outline"
                     className="h-auto flex-col items-center justify-start p-3 text-center transition hover:-translate-y-1 hover:border-purple-500 hover:shadow-md border-purple-200"
@@ -216,9 +230,9 @@ export default function ChildBoard() {
           <div className="max-h-[400px] overflow-y-auto">
             <div className="grid grid-cols-2 gap-3">
               {actionCards.length > 0 ? (
-                actionCards.map((card: VisualCard) => (
+                actionCards.map((card: VisualCard, index: number) => (
                   <Button
-                    key={card.id}
+                    key={`action-${card.id}-${index}`}
                     onClick={() => handleCardClick(card)}
                     variant="outline"
                     className="h-auto flex-col items-center justify-start p-3 text-center transition hover:-translate-y-1 hover:border-blue-500 hover:shadow-md border-blue-200"
@@ -249,9 +263,9 @@ export default function ChildBoard() {
           <div className="max-h-[400px] overflow-y-auto">
             <div className="grid grid-cols-2 gap-3">
               {emotionCards.length > 0 ? (
-                emotionCards.map((card: VisualCard) => (
+                emotionCards.map((card: VisualCard, index: number) => (
                   <Button
-                    key={card.id}
+                    key={`emotion-${card.id}-${index}`}
                     onClick={() => handleCardClick(card)}
                     variant="outline"
                     className="h-auto flex-col items-center justify-start p-3 text-center transition hover:-translate-y-1 hover:border-green-500 hover:shadow-md border-green-200"
@@ -285,5 +299,6 @@ export default function ChildBoard() {
       </section>
       {status && <p className="text-sm text-red-600 bg-white/95 p-3 rounded-lg">{status}</p>}
     </div>
+    </AuthGuard>
   );
 }

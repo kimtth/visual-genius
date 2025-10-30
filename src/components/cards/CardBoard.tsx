@@ -19,9 +19,9 @@ export function CardBoard({ cards, onSelect }: CardBoardProps) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {cards.map((card) => (
+      {cards.map((card, index) => (
         <button
-          key={card.id}
+          key={`${card.id}-${index}`}
           onClick={() => onSelect?.(card)}
           className="group flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-brand/80 hover:shadow-md"
         >

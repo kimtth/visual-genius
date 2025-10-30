@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { useSessionStore } from "@/lib/state/sessionStore";
+import { useAuthStore } from "@/lib/state/authStore";
 import {
   quickResponses,
   VisualCard,
@@ -13,6 +14,7 @@ import { QuickResponseTray } from "@/components/cards/QuickResponseTray";
 import { ConversationTimeline } from "@/components/conversation/ConversationTimeline";
 import { Play, Pause, StopCircle, ArrowRight, RotateCcw, Search, Check, Edit, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 import {
   Select,
   SelectContent,
@@ -33,11 +35,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-async function createSession() {
+async function createSession(userId: string) {
   const response = await fetch("/api/conversations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ parentId: "demo-parent", childId: "demo-child" })
+    body: JSON.stringify({ 
+      parentId: "demo-parent", 
+      childId: "demo-child",
+      parentUserId: userId 
+    })
   });
   const payload = await response.json();
   if (!response.ok) {
@@ -61,14 +67,13 @@ async function generateCards(sessionId: string, prompt: string) {
 
 export default function ParentPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const {
     activeSessionId,
     setSession,
     addCard,
     addEntry,
-    selectedCards,
     timeline,
-    currentSpeaker,
     setCurrentSpeaker,
     clearTimeline,
     conversationState,
@@ -102,8 +107,8 @@ export default function ParentPage() {
   );
 
   useEffect(() => {
-    if (!activeSessionId) {
-      createSession()
+    if (!activeSessionId && user?.id) {
+      createSession(user.id)
         .then((sessionId) => setSession(sessionId))
         .catch((error) => setStatus(error.message));
     } else {
@@ -112,22 +117,7 @@ export default function ParentPage() {
         setCards(generatedCards);
       }
     }
-  }, [activeSessionId, setSession]);
-
-  const handleGenerate = () => {
-    if (!prompt || !activeSessionId) return;
-
-    setStatus(null);
-    startTransition(() => {
-      generateCards(activeSessionId, prompt)
-        .then((generated) => {
-          setCards(generated);
-          generated.forEach((card) => addCard(card));
-          setPrompt("");
-        })
-        .catch((error) => setStatus(error.message));
-    });
-  };
+  }, [activeSessionId, setSession, user?.id]);
 
   const handleSelect = (card: VisualCard) => {
     // Open edit dialog instead of adding to timeline
@@ -147,28 +137,56 @@ export default function ParentPage() {
     }, 100);
   };
 
-  const handleQuickResponse = (card: VisualCard) => {
-    addEntry({
-      id: crypto.randomUUID(),
-      speaker: "child",
-      card,
-      createdAt: new Date().toISOString()
-    });
-  };
-
   const handleStartConversation = () => {
     if ((selectedTopic || prompt) && activeSessionId) {
       const topicToUse = selectedTopic || prompt;
       setConversationState("active");
       setCurrentTopic(topicToUse);
+      setParentMessage("");
+      setStatus("🎨 Generating cards for your conversation...");
+      
+      const entryId = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+      
+      // Add parent's initial message to timeline
+      addEntry({
+        id: entryId,
+        speaker: "parent",
+        transcript: topicToUse,
+        createdAt: timestamp
+      });
+      
+      // Persist to database
+      fetch("/api/speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: activeSessionId,
+          speaker: "parent",
+          transcript: topicToUse
+        })
+      }).catch((error) => {
+        console.error("Failed to persist parent message:", error);
+      });
+      
       startTransition(() => {
         generateCards(activeSessionId, topicToUse)
           .then((generated) => {
-            setCards(generated);
-            setGeneratedCards(generated);
-            generated.forEach((card) => addCard(card));
+            // Filter out duplicates by title
+            const uniqueCards = generated.filter(
+              (newCard) => !generatedCards.some((existingCard) => existingCard.title === newCard.title)
+            );
+            
+            setCards(uniqueCards);
+            setGeneratedCards(uniqueCards);
+            uniqueCards.forEach((card) => addCard(card));
+            setStatus("✅ Cards generated successfully!");
+            setTimeout(() => setStatus(null), 3000);
           })
-          .catch((error) => setStatus(error.message));
+          .catch((error) => {
+            setStatus(`❌ ${error.message}`);
+            setTimeout(() => setStatus(null), 5000);
+          });
       });
     }
   };
@@ -198,23 +216,44 @@ export default function ParentPage() {
     if (!parentMessage.trim() || !activeSessionId) return;
 
     const messageToSend = parentMessage;
+    const entryId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+    
     setStatus("🎨 Generating cards...");
     startTransition(() => {
       generateCards(activeSessionId, messageToSend)
         .then((generated) => {
           // Add parent's message to timeline after successful card generation
           addEntry({
-            id: crypto.randomUUID(),
+            id: entryId,
             speaker: "parent",
             transcript: messageToSend,
-            createdAt: new Date().toISOString()
+            createdAt: timestamp
           });
           
-          // Append new cards to existing ones
-          const newCards = [...generatedCards, ...generated];
+          // Persist to database
+          fetch("/api/speech", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: activeSessionId,
+              speaker: "parent",
+              transcript: messageToSend
+            })
+          }).catch((error) => {
+            console.error("Failed to persist parent message:", error);
+          });
+          
+          // Filter out duplicates by title before appending
+          const uniqueNewCards = generated.filter(
+            (newCard) => !generatedCards.some((existingCard) => existingCard.title === newCard.title)
+          );
+          
+          // Append only unique new cards to existing ones
+          const newCards = [...generatedCards, ...uniqueNewCards];
           setCards(newCards);
           setGeneratedCards(newCards);
-          generated.forEach((card) => addCard(card));
+          uniqueNewCards.forEach((card) => addCard(card));
           setParentMessage("");
           setStatus("✅ Cards generated successfully!");
           setTimeout(() => setStatus(null), 3000);
@@ -367,6 +406,7 @@ export default function ParentPage() {
   };
 
   return (
+    <AuthGuard>
     <div className="grid gap-8 lg:grid-cols-[2fr,1fr]">
       {/* Next Turn Button - Top Right */}
       <div className="fixed top-20 right-6 z-50">
@@ -427,8 +467,17 @@ export default function ParentPage() {
                     disabled={!selectedTopic || !activeSessionId || isPending}
                     className="w-full"
                   >
-                    <Play className="h-4 w-4" />
-                    {isPending ? "Starting..." : "Start Conversation"}
+                    {isPending ? (
+                      <span className="flex items-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Generating...
+                      </span>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4" />
+                        Start Conversation
+                      </>
+                    )}
                   </Button>
                 </TabsContent>
                 
@@ -450,8 +499,17 @@ export default function ParentPage() {
                     disabled={!prompt || !activeSessionId || isPending}
                     className="w-full"
                   >
-                    <Play className="h-4 w-4" />
-                    {isPending ? "Starting..." : "Start Conversation"}
+                    {isPending ? (
+                      <span className="flex items-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Generating...
+                      </span>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4" />
+                        Start Conversation
+                      </>
+                    )}
                   </Button>
                 </TabsContent>
               </Tabs>
@@ -526,9 +584,18 @@ export default function ParentPage() {
               </div>
             )}
           </div>
-          
-          {status && <p className="mt-2 text-sm text-red-600">{status}</p>}
         </div>
+        
+        {/* Status Message - Prominent Display */}
+        {status && (
+          <div className={`rounded-lg border p-4 ${
+            status.includes('✅') ? 'bg-green-50 border-green-200 text-green-800' :
+            status.includes('🎨') ? 'bg-blue-50 border-blue-200 text-blue-800' :
+            'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            <p className="text-sm font-medium">{status}</p>
+          </div>
+        )}
         
         {conversationState !== "idle" && <CardBoard cards={cards} onSelect={handleSelect} />}
         
@@ -764,5 +831,6 @@ export default function ParentPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </AuthGuard>
   );
 }

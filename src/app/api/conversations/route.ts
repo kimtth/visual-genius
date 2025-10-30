@@ -5,14 +5,23 @@ import { log } from "@/lib/observability/logger";
 
 const createSchema = z.object({
   parentId: z.string().min(1),
-  childId: z.string().min(1)
+  childId: z.string().min(1),
+  parentUserId: z.string().uuid()
 });
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { parentId, childId } = createSchema.parse(body);
-    const sessionId = await bootstrapSession(parentId, childId);
+    const { parentId, childId, parentUserId } = createSchema.parse(body);
+    
+    if (!parentUserId) {
+      return NextResponse.json(
+        { error: "User authentication required" },
+        { status: 401 }
+      );
+    }
+    
+    const sessionId = await bootstrapSession(parentId, childId, parentUserId);
     return NextResponse.json({ sessionId });
   } catch (error) {
     log({

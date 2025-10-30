@@ -82,15 +82,15 @@ Categories: "topic" (conversation subjects), "action" (activities), "emotion" (f
     const content = response.choices[0]?.message?.content ?? "";
 
     // Log full response for debugging
-    log({
-      level: "info",
-      message: "OpenAI raw response",
-      diagnostics: JSON.stringify({
-        finishReason: response.choices[0]?.finish_reason,
-        contentLength: content?.length || 0,
-        content: content
-      })
-    });
+    // log({
+    //   level: "info",
+    //   message: "OpenAI raw response",
+    //   diagnostics: JSON.stringify({
+    //     finishReason: response.choices[0]?.finish_reason,
+    //     contentLength: content?.length || 0,
+    //     content: content
+    //   })
+    // });
 
     if (!content || content.trim() === "") {
       log({
