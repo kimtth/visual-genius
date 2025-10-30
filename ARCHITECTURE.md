@@ -155,11 +155,7 @@ src/
 **card_collection**
 - `id` (uuid, primary key, default gen_random_uuid())
 - `name` (text, not null)
-<<<<<<< HEAD
 - `user_id` (uuid, foreign key to users, cascade delete)
-=======
-- `user_id` (uuid, foreign key to users, cascade delete, default '00000000-0000-0000-0000-000000000001')
->>>>>>> ad2518456a005d82178d8608b77d7ee8b841e072
 - `created_at` (timestamptz, not null, default NOW())
 - `updated_at` (timestamptz, not null, default NOW())
 
