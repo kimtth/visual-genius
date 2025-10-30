@@ -1,15 +1,13 @@
-version: '3.9'
-
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database (Local alternative to Azure)
   postgres:
     image: postgres:16-alpine
     container_name: visual-genius-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-your_db_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your_secure_password}
-      POSTGRES_DB: ${POSTGRES_DB:-your_db_name}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-visualgenius}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -17,12 +15,14 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-your_db_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-visualgenius}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - visual-genius-network
+    profiles:
+      - local-db
 
   # Next.js Application
   app:
@@ -35,8 +35,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # Database - uses POSTGRES_URL format (falls back to placeholders)
-      POSTGRES_URL: ${POSTGRES_URL:-"postgresql://${POSTGRES_USER:-your_db_user}:${POSTGRES_PASSWORD:-your_secure_password}@postgres:5432/${POSTGRES_DB:-your_db_name}"}
+      # Database - supports both Azure PostgreSQL and local Docker PostgreSQL
+      # Override with container-internal hostname when using local profile
+      POSTGRES_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-visualgenius}
       
       # Azure OpenAI
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}

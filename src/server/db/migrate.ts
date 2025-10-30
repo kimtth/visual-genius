@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+import { getPool } from "./client";
+import { createTablesSql } from "./schema";
+import { log } from "../../lib/observability/logger";
+=======
 import { config } from "dotenv";
 import { resolve } from "path";
 
@@ -6,7 +11,8 @@ config({ path: resolve(process.cwd(), ".env.local") });
 
 import { getPool } from "./client";
 import { createTablesSql } from "./schema";
-import { log } from "../../lib/observability/logger";
+import { log } from "@/lib/observability/logger";
+>>>>>>> ad2518456a005d82178d8608b77d7ee8b841e072
 
 /**
  * Initialize or update database schema

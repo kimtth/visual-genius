@@ -1,4 +1,4 @@
-import { generateCardIdeas } from "@/server/azure/openai";
+import { generateCardIdeas, generateTeachingCards } from "@/server/azure/openai";
 import { searchImages } from "@/server/azure/imageSearch";
 import { VisualCard } from "@/lib/constants/presets";
 import { randomUUID } from "crypto";
@@ -44,6 +44,34 @@ export async function getExistingCardsByTitles(titles: string[]): Promise<Visual
 
 export async function createCardsFromPrompt(prompt: string) {
   const ideas = await generateCardIdeas(prompt);
+
+  // Check if we have existing cards with these titles
+  const titles = ideas.map(idea => idea.title);
+  const existingCards = await getExistingCardsByTitles(titles);
+  const existingTitles = new Set(existingCards.map(c => c.title.toLowerCase()));
+
+  const enriched: VisualCard[] = [...existingCards];
+
+  // Only generate new cards for titles we don't have
+  for (const idea of ideas) {
+    if (!existingTitles.has(idea.title.toLowerCase())) {
+      const results = await searchImages(`${idea.title} illustration for children`);
+      enriched.push({
+        id: randomUUID(),
+        title: idea.title,
+        description: idea.description,
+        category: idea.category,
+        imageUrl: results[0]?.contentUrl, // Use contentUrl for higher quality
+        createdAt: new Date().toISOString()
+      });
+    }
+  }
+
+  return enriched;
+}
+
+export async function createTeachingCardsFromPrompt(prompt: string) {
+  const ideas = await generateTeachingCards(prompt);
 
   // Check if we have existing cards with these titles
   const titles = ideas.map(idea => idea.title);

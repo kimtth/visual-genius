@@ -205,7 +205,8 @@ cp .env.example .env
 nano .env
 
 # 3. Build and start services
-docker-compose up --build -d
+# docker compose up --build -d → Only builds/starts the app, not postgres
+docker compose --profile local-db up --build -d # → Builds/starts both postgres and app
 
 # 4. Access the application
 open http://localhost:3001

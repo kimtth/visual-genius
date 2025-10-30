@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createCardsFromPrompt } from "@/server/services/cardService";
+import { createCardsFromPrompt, createTeachingCardsFromPrompt } from "@/server/services/cardService";
 import { storeCards } from "@/server/services/conversationService";
 import { log } from "@/lib/observability/logger";
 
 const requestSchema = z.object({
   prompt: z.string().min(3),
-  sessionId: z.string().uuid().optional()
+  sessionId: z.string().uuid().optional(),
+  mode: z.enum(["standard", "teaching"]).optional().default("standard")
 });
 
 const saveCardsSchema = z.object({
@@ -24,9 +25,12 @@ const saveCardsSchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { prompt, sessionId } = requestSchema.parse(body);
+    const { prompt, sessionId, mode } = requestSchema.parse(body);
 
-    const cards = await createCardsFromPrompt(prompt);
+    // Use different card generation based on mode
+    const cards = mode === "teaching" 
+      ? await createTeachingCardsFromPrompt(prompt)
+      : await createCardsFromPrompt(prompt);
 
     if (sessionId) {
       await storeCards(sessionId, cards as Parameters<typeof storeCards>[1]);

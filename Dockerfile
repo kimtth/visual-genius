@@ -1,5 +1,5 @@
 # Multi-stage build for Next.js application
-FROM node:18-bookworm-slim AS base
+FROM node:20-bookworm-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -34,6 +34,9 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
+# Create public directory if it doesn't exist (for Docker COPY compatibility)
+RUN mkdir -p /app/public
+
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
@@ -44,16 +47,22 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy public assets
-COPY --from=builder /app/public ./public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Install tsx and required dependencies for running TypeScript migrations
+RUN npm install -g tsx
+RUN npm install --production drizzle-orm postgres
 
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy public assets (directory created in builder stage to ensure it exists)
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy migration source files and dependencies
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
+COPY --chown=nextjs:nodejs docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 USER nextjs
 
@@ -66,4 +75,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]

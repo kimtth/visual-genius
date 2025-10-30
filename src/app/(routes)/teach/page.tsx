@@ -49,7 +49,7 @@ async function generateCards(sessionId: string, prompt: string) {
   const response = await fetch("/api/cards", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, prompt })
+    body: JSON.stringify({ sessionId, prompt, mode: "teaching" })
   });
   const payload = await response.json();
   if (!response.ok) {

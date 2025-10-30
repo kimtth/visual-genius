@@ -20,9 +20,9 @@ export async function POST(request: Request) {
     await appendEntry(sessionId, {
       id: randomUUID(),
       speaker,
-      transcript,
+      text: transcript || "",
+      timestamp: new Date().toISOString(),
       recordingUrl,
-      createdAt: new Date().toISOString(),
       card: cardId
         ? {
             id: cardId,
