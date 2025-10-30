@@ -1,6 +1,16 @@
 import { randomUUID } from "crypto";
 import { VisualCard } from "@/lib/constants/presets";
-import type { ConversationEntry } from "@/components/conversation/ConversationTimeline";
+import { DEFAULT_USER_ID } from "@/lib/constants/presets";
+
+type ConversationEntry = {
+  id?: string;
+  speaker: "user" | "assistant" | string;
+  transcript?: string | null;
+  recordingUrl?: string | null;
+  card?: { id: string } | null;
+  createdAt: string;
+};
+
 import { withClient } from "./client";
 import type { QueryResult } from "pg";
 import { createTablesSql } from "./schema";
@@ -18,12 +28,13 @@ export async function ensureSchema() {
   });
 }
 
-export async function startSession(parentId: string, childId: string) {
+export async function startSession(parentId: string, childId: string, parentUserId: string) {
   const id = randomUUID();
   await withClient(async (pool) => {
     await pool.query(
-      `INSERT INTO conversation_session (id, parent_id, child_id) VALUES ($1, $2, $3)`
-    , [id, parentId, childId]);
+      `INSERT INTO conversation_session (id, parent_id, child_id, parent_user_id, status) 
+       VALUES ($1, $2, $3, $4, $5)`
+    , [id, parentId, childId, parentUserId, 'active']);
   });
   return id;
 }

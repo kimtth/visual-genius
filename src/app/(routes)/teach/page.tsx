@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useState, useTransition, useRef } from "react";
 import Image from "next/image";
 import { useSessionStore } from "@/lib/state/sessionStore";
+import { useAuthStore } from "@/lib/state/authStore";
 import { VisualCard } from "@/lib/constants/presets";
 import { CardBoard } from "@/components/cards/CardBoard";
 import { GripVertical, Save, Trash2, Plus, FolderOpen, Upload, Lock, Play, ChevronLeft, ChevronRight, X, Edit, Search, Check } from "lucide-react";
@@ -29,12 +30,13 @@ import {
   isDemoCollection,
   CardCollection
 } from "@/lib/constants/demoCollections";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
-async function createSession() {
+async function createSession(parentUserId: string) {
   const response = await fetch("/api/conversations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ parentId: "demo-parent", childId: "demo-child" })
+    body: JSON.stringify({ parentId: "demo-parent", childId: "demo-child", parentUserId })
   });
   const payload = await response.json();
   if (!response.ok) {
@@ -73,8 +75,8 @@ async function saveCardOrder(sessionId: string, cards: VisualCard[], collectionI
   return false;
 }
 
-async function fetchCollections() {
-  const response = await fetch("/api/collections");
+async function fetchCollections(userId: string) {
+  const response = await fetch(`/api/collections?userId=${userId}`);
   const payload = await response.json();
   if (!response.ok) {
     throw new Error(payload.error ?? "Unable to fetch collections");
@@ -82,11 +84,11 @@ async function fetchCollections() {
   return payload.collections as CardCollection[];
 }
 
-async function saveCollection(name: string, cards: VisualCard[]): Promise<string> {
+async function saveCollection(name: string, cards: VisualCard[], userId: string): Promise<string> {
   const response = await fetch("/api/collections", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "create", name, cards })
+    body: JSON.stringify({ action: "create", name, cards, userId })
   });
   const payload = await response.json();
   if (!response.ok) {
@@ -114,6 +116,7 @@ async function deleteCollectionById(id: string) {
 
 export default function TeachPage() {
   const { activeSessionId, setSession } = useSessionStore();
+  const user = useAuthStore((state) => state.user);
 
   const [prompt, setPrompt] = useState("");
   const [cards, setCards] = useState<VisualCard[]>([]);
@@ -139,16 +142,18 @@ export default function TeachPage() {
   const [selectedImageUrl, setSelectedImageUrl] = useState<string>("");
 
   useEffect(() => {
-    if (!activeSessionId) {
-      createSession()
+    if (!activeSessionId && user?.id) {
+      createSession(user.id)
         .then((sessionId) => setSession(sessionId))
         .catch((error) => setStatus(error.message));
     }
-  }, [activeSessionId, setSession]);
+  }, [activeSessionId, setSession, user?.id]);
 
   useEffect(() => {
     // Fetch collections from database
-    fetchCollections()
+    if (!user?.id) return;
+    
+    fetchCollections(user.id)
       .then((userCollections) => {
         setSavedCollections(getAllCollections(userCollections));
       })
@@ -156,7 +161,7 @@ export default function TeachPage() {
         console.error("Failed to fetch collections:", error);
         setStatus("Failed to load collections");
       });
-  }, []);
+  }, [user?.id]);
 
   const handleGenerate = () => {
     if (!prompt || !activeSessionId) return;
@@ -234,8 +239,10 @@ export default function TeachPage() {
       await saveCardOrder(activeSessionId, orderedCards, currentCollectionId);
       
       // Refresh collections to reflect the update
-      const userCollections = await fetchCollections();
-      setSavedCollections(getAllCollections(userCollections));
+      if (user?.id) {
+        const userCollections = await fetchCollections(user.id);
+        setSavedCollections(getAllCollections(userCollections));
+      }
       
       setStatus("✅ Card order saved successfully!");
       setTimeout(() => setStatus(null), 3000);
@@ -263,11 +270,16 @@ export default function TeachPage() {
         createdAt: card.createdAt
       }));
       
-      const collectionId = await saveCollection(collectionName.trim(), normalizedCards);
+      if (!user?.id) {
+        setStatus("User authentication required");
+        return;
+      }
+      
+      const collectionId = await saveCollection(collectionName.trim(), normalizedCards, user.id);
       setCurrentCollectionId(collectionId);
       
       // Refresh collections list
-      const userCollections = await fetchCollections();
+      const userCollections = await fetchCollections(user.id);
       setSavedCollections(getAllCollections(userCollections));
       
       setCollectionName("");
@@ -298,9 +310,9 @@ export default function TeachPage() {
 
     try {
       const success = await deleteCollectionById(id);
-      if (success) {
+      if (success && user?.id) {
         // Refresh collections list
-        const userCollections = await fetchCollections();
+        const userCollections = await fetchCollections(user.id);
         setSavedCollections(getAllCollections(userCollections));
         
         if (currentCollectionId === id) {
@@ -411,8 +423,10 @@ export default function TeachPage() {
         await saveCardOrder(activeSessionId, normalizedCards, currentCollectionId);
         
         // Refresh collections to reflect the update
-        const userCollections = await fetchCollections();
-        setSavedCollections(getAllCollections(userCollections));
+        if (user?.id) {
+          const userCollections = await fetchCollections(user.id);
+          setSavedCollections(getAllCollections(userCollections));
+        }
         
         setStatus("✅ Card updated and saved to collection!");
       } catch (error) {
@@ -486,6 +500,7 @@ export default function TeachPage() {
   const currentCard = cards[currentCardIndex];
 
   return (
+    <AuthGuard>
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-sm p-6 shadow-sm">
         <div>
@@ -1064,5 +1079,6 @@ export default function TeachPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </AuthGuard>
   );
 }

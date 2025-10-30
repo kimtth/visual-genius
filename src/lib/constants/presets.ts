@@ -201,3 +201,9 @@ export function getSampleCardsForTopic(prompt: string): VisualCard[] {
     ...toVisualCards(sampleGeneratedCards.needs).slice(0, 2)
   ];
 }
+
+/**
+ * Default user ID for development/demo (until auth is implemented)
+ * This UUID is created in the database schema initialization
+ */
+export const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";

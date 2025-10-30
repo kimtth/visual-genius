@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, XCircle, Undo2, Sparkles, Info, Hand, Clock } from "lucide-react";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 type LayoutId = "alphabetical" | "qwerty";
 
@@ -133,6 +134,7 @@ export default function LetterboardPage() {
   const rateOptions = [0.75, 0.9, 1.05];
 
   return (
+    <AuthGuard>
     <div className="space-y-8">
       <section className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -309,5 +311,6 @@ export default function LetterboardPage() {
         </aside>
       </div>
     </div>
+    </AuthGuard>
   );
 }

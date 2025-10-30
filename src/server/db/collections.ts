@@ -30,7 +30,7 @@ type CardOrderRow = {
 export async function createCollection(
   name: string,
   cards: VisualCard[],
-  userId: string = "default-user"
+  userId: string
 ): Promise<string> {
   const collectionId = randomUUID();
 
@@ -66,7 +66,7 @@ export async function createCollection(
 /**
  * Get all collections for a user
  */
-export async function listCollections(userId: string = "default-user"): Promise<CardCollection[]> {
+export async function listCollections(userId: string): Promise<CardCollection[]> {
   const result = await withClient<QueryResult<CollectionRow>>((pool) =>
     pool.query<CollectionRow>(
       `SELECT id, name, created_at, updated_at
