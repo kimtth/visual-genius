@@ -88,9 +88,9 @@ Spell-based communication inspired by *The Reason I Jump*:
 ## 🏗️ Technology Stack
 
 - **Framework**: Next.js 14+ (App Router)
-- **UI**: shadcn/ui + Tailwind CSS
+- **UI**: Tailwind CSS
 - **State**: Zustand
-- **Database**: PostgreSQL (Azure Database for PostgreSQL Flexible Server)
+- **Database**: PostgreSQL (or Azure Database for PostgreSQL)
 - **ORM**: Drizzle ORM
 - **AI Services**: 
   - Azure OpenAI (card generation)
@@ -155,31 +155,26 @@ The application will be available at `http://localhost:3001`
 
 ## 📱 Usage
 
-### Parent/Caregiver Workflow
+### Communication Workflow
 
 1. **Start a Conversation** (`/parent`)
    - Select a predefined topic or enter a custom prompt
    - Click "Start Conversation"
    - AI generates relevant visual cards with images
-   - Cards appear on the main board
+   - Cards appear on the main board and child screen
+   - Click "->" button to hand over the conversation to a child
 
-2. **Manage Conversation**
+2. **Response to a conversation facilitated by a parent**
+
+   - View available cards from the active session
+   - Tap cards to select
+   - Click "->" button to hand over the conversation to a parent
+
+3. **Manage Conversation**
    - **Pause**: Temporarily halt the conversation
    - **Resume**: Continue from where you paused
    - **Stop**: End conversation and clear session
    - Quick response buttons log child's answers
-
-3. **Review History**
-   - Timeline sidebar shows all interactions
-   - Color-coded by speaker (parent/child)
-   - Timestamped entries
-
-### Child Workflow
-
-1. Navigate to `/child`
-2. View available cards from the active session
-3. Tap cards to select and respond
-4. Selections are logged automatically
 
 ### Teaching Workflow
 
@@ -249,7 +244,6 @@ MIT
 - Inspired by ABA (Applied Behavior Analysis) principles
 - Research on visual supports for autism communication
 - Azure AI services for accessibility
-- shadcn/ui for beautiful, accessible components
 
 ---
 

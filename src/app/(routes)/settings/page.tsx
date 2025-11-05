@@ -376,7 +376,7 @@ function SettingsContent() {
 
       <div className="space-y-6">
         {/* Database Settings */}
-        <div>
+{/*         <div>
           <h3 className="text-base font-semibold text-slate-800 mb-3">Database</h3>
           <div className="space-y-4">
             {settings
@@ -390,7 +390,7 @@ function SettingsContent() {
                 />
               ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Azure OpenAI Settings */}
         <div>
@@ -434,7 +434,7 @@ function SettingsContent() {
               <li>Leave fields empty to use .env.local values as fallback</li>
               <li>Sensitive values (keys, passwords) are masked in the UI</li>
               <li>Get free Unsplash API key at: <a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer" className="underline">unsplash.com/developers</a></li>
-              <li>PostgreSQL URL format: postgres://user:password@host:5432/database</li>
+              {/* <li>PostgreSQL URL format: postgres://user:password@host:5432/database</li> */}
             </ul>
           </div>
         </TabsContent>
